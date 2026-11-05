@@ -29,6 +29,10 @@ ignore = [
     { id = "RUSTSEC-2026-0367", reason = "zip 3.0.0 : extract() seulement (bits SUID/SGID) ; jamais appelé, aucun système de fichiers en wasm32 ; correctif zip >= 9 hors périmètre du fork" },
     { id = "RUSTSEC-2026-0368", reason = "zip 3.0.0 : extract() seulement (liens hors du dossier cible) ; jamais appelé, aucun système de fichiers en wasm32 ; correctif zip >= 9 hors périmètre du fork" },
     { id = "RUSTSEC-2026-0369", reason = "zip 3.0.0 : extract() seulement (permissions à travers un lien) ; jamais appelé, aucun système de fichiers en wasm32 ; correctif zip >= 9 hors périmètre du fork" },
+    # Paru après le run vert du 2026-10-28 (rougi au run 41952459432 du 2026-11-05) : abandon du processus par
+    # ZipArchive::extract sur un lien symbolique dont la taille déclarée est démesurée. Mêmes motifs (1) et (2) ;
+    # relevé des appels refait le 2026-11-05 sur evora/v0.13.0 : aucun « .extract( » ne porte sur une archive.
+    { id = "RUSTSEC-2026-0429", reason = "zip 3.0.0 : extract() seulement (abandon sur un lien symbolique de taille déclarée démesurée) ; jamais appelé (relevé du 2026-11-05), aucun système de fichiers en wasm32 ; correctif zip >= 9 hors périmètre du fork" },
     # Avis de maintenance (pas de vulnérabilité), sans remplaçant dans le graphe de l'amont : mise
     # en forme du texte par krilla et usvg (rustybuzz), lecture des polices (ttf-parser, par fontdb,
     # rustybuzz et usvg). À réévaluer à chaque montée de version.
