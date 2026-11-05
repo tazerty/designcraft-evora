@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Fumée Evora « pont-ehp » (patches EVORA-CIC-07 à CIC-10, CIC-15 ; interface Evora EVORA-CIC-02 à CIC-22) : le pont
-hôte natif de Cicero et l'interface qu'Evora a conçue pour lui.
+"""Fumée Evora « pont-ehp » (patches EVORA-CIC-07 à CIC-10, CIC-15, CIC-26 ; interface Evora EVORA-CIC-02 à CIC-22) : le
+pont hôte natif de Cicero et l'interface qu'Evora a conçue pour lui.
 
 Bibliothèque standard Python seule. Réutilise le pilote Chrome de smoke.py (protocole DevTools sur tuyaux).
 La page parente (origine B, http://localhost:8852) est une coquille minimale : elle encadre le moteur
@@ -18,6 +18,14 @@ juge chaque étiquette :
   CATALOG          evora:commands : empreinte, schéma sans paramètre, aucune commande de la coquille
                    (file., app., help., prefs., window.) hors des exports admis un par un
   NEW-DOC          evora:open {new: true} : accusé positif, evora:dirty false, un document
+  NEW-A4           le document neuf est un A4 portrait en millimètres (210 × 297 mm, une page), relu dans le moteur
+                   (diag.stats, setup) (EVORA-CIC-26)
+  NEW-SPEC         host.newDocumentSetup sur ce document neuf (A5 vis-à-vis, 12 pages, 2 colonnes, gouttière, marges et
+                   fond perdu non nuls, en millimètres) : accusé positif, evora:dirty false, un seul document, même
+                   docRef et même titre, autre document du moteur, chaque réglage relu dans le moteur (EVORA-CIC-26)
+  NEW-SPEC-REFUSED host.newDocumentSetup refusé : paramètres hors schéma (clé en trop ou manquante, type, borne)
+                   → invalid_content, document intact ; document ouvert d'octets, document neuf modifié → conflict,
+                   document intact ; la commande n'est jamais au catalogue (EVORA-CIC-26)
   MODIFY           une commande du catalogue (Nouveau gabarit…, Entrée) : evora:dirty true
   SAVE-REQ         evora:request-save : un evora:save conforme (re, docRef, .designcraft, zip)
   S-ACK-1          aucun evora:dirty false tant que la coquille n'a pas répondu
@@ -106,7 +114,8 @@ SHELL_PREFIXES = ("file.", "app.", "help.", "prefs.", "window.")
 ADMITTED = {"app.exportPdf", "app.exportInteractivePdf", "app.exportPng", "app.exportIdml", "app.exportEpub",
             "app.exportFixedEpub", "app.exportHtml", "app.exportPptx", "app.exportXml", "app.exportText",
             "app.placeDialog", "app.loadSwatches"}
-LABELS = ["READY", "INIT-V2", "INIT-EXTRA", "INIT-ACK", "STARTED", "CATALOG", "NEW-DOC", "MODIFY", "SAVE-REQ",
+LABELS = ["READY", "INIT-V2", "INIT-EXTRA", "INIT-ACK", "STARTED", "CATALOG", "NEW-DOC", "NEW-A4", "NEW-SPEC",
+          "NEW-SPEC-REFUSED", "MODIFY", "SAVE-REQ",
           "S-ACK-1", "S-ACK-2", "S-ACK-3", "S-ACK-4", "S-ACK-5", "OPEN-BYTES", "EXPORT-PDF", "EXPORT-PNG", "PICK",
           "SHELL-REFUSED", "PARAMS-REFUSED", "DESTRUCTIVE", "DESTRUCTIVE-MARKERS", "DESTRUCTIVE-SET", "SOURCE-REFUSED",
           "FILTER-NEW", "FOCUS-OUT", "LANG", "THEME", "THEME-LIGHT", "THEME-DARK", "WORKSPACES", "MENUS", "ICONS", "KEYMAP",
@@ -164,6 +173,77 @@ DESTRUCTIVE_EXPECTED = {"edit.cut", "edit.clear", "transform.clear", "flex.remov
                         "variables.convertToText"}
 # Une destructive admise avec confirmed: true (sans tableau dans le document : busy, aucun effet).
 DESTRUCTIVE_CONFIRMED_PROBE = "table.delete"
+# Document neuf (EVORA-CIC-26) : la commande d'hôte, le défaut A4 et une spécification (millimètres), écrits ici, jamais
+# relus du moteur qu'ils jugent. Le moteur tient ses longueurs en points (72 au pouce, 25,4 mm au pouce).
+SETUP_COMMAND = "host.newDocumentSetup"
+PT_PER_MM = 72.0 / 25.4
+MM_TOLERANCE = 1e-6  # borne d'instrument (arrondi des conversions), pas une tolérance produit
+A4_MM = (210.0, 297.0)
+SPEC_A5 = {"width": 148, "height": 210, "pages": 12, "facingPages": True, "columns": 2, "gutter": 5,
+           "margins": {"top": 15, "bottom": 20, "inside": 18, "outside": 12}, "bleed": 3}
+
+
+def spec_variant(**changes):
+    """La spécification A5 modifiée : une valeur None retire la clé ; `margins` remplace les marges."""
+    out = json.loads(json.dumps(SPEC_A5))
+    for k, v in changes.items():
+        if v is None:
+            out.pop(k, None)
+        else:
+            out[k] = v
+    return out
+
+
+# Spécifications refusées par le pont avant toute action (invalid_content) : (nom, paramètres).
+SPEC_INVALID = [
+    ("cle-en-trop", spec_variant(slug=0)),
+    ("cle-manquante", spec_variant(bleed=None)),
+    ("marge-en-trop", spec_variant(margins={"top": 15, "bottom": 20, "inside": 18, "outside": 12, "left": 1})),
+    ("marge-manquante", spec_variant(margins={"top": 15, "bottom": 20, "inside": 18})),
+    ("type-vis-a-vis", spec_variant(facingPages="oui")),
+    ("type-largeur", spec_variant(width="148")),
+    ("pages-0", spec_variant(pages=0)),
+    ("pages-fraction", spec_variant(pages=12.5)),
+    ("pages-10000", spec_variant(pages=10000)),
+    ("colonnes-217", spec_variant(columns=217)),
+    ("largeur-0", spec_variant(width=0)),
+    ("largeur-au-dela-216-pouces", spec_variant(width=5486.5)),
+    ("fond-perdu-au-dela-1296-pt", spec_variant(bleed=457.3)),
+    ("marge-negative", spec_variant(margins={"top": -1, "bottom": 20, "inside": 18, "outside": 12})),
+    ("gouttiere-negative", spec_variant(gutter=-0.5)),
+]
+
+
+def to_mm(pt):
+    return pt / PT_PER_MM if isinstance(pt, (int, float)) and not isinstance(pt, bool) else None
+
+
+def near_mm(pt, mm):
+    v = to_mm(pt)
+    return v is not None and abs(v - mm) <= MM_TOLERANCE
+
+
+def setup_mm(stats):
+    """Les réglages du document relus dans le moteur (diag.stats, setup), en millimètres."""
+    s = (stats or {}).get("setup") or {}
+    m = s.get("margins") or {}
+    return {"width": to_mm(s.get("width")), "height": to_mm(s.get("height")), "units": s.get("units"),
+            "facingPages": s.get("facingPages"), "columns": s.get("columns"), "gutter": to_mm(s.get("gutter")),
+            "margins": {k: to_mm(m.get(k)) for k in ("top", "bottom", "inside", "outside")},
+            "bleed": [to_mm(b) for b in (s.get("bleed") or [])], "pages": (stats or {}).get("pages")}
+
+
+def setup_matches(stats, spec):
+    """Le document du moteur porte exactement la spécification `spec` (millimètres, unités du document)."""
+    s = (stats or {}).get("setup") or {}
+    m = s.get("margins") or {}
+    bleed = s.get("bleed") or []
+    return (near_mm(s.get("width"), spec["width"]) and near_mm(s.get("height"), spec["height"])
+            and s.get("units") == "millimeters" and (stats or {}).get("pages") == spec["pages"]
+            and s.get("facingPages") is spec["facingPages"] and s.get("columns") == spec["columns"]
+            and near_mm(s.get("gutter"), spec["gutter"])
+            and all(near_mm(m.get(k), v) for k, v in spec["margins"].items())
+            and len(bleed) == 4 and all(near_mm(b, spec["bleed"]) for b in bleed))
 
 PARENT = """<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Evora : coquille de banc</title>
 <link rel="icon" href="data:,"></head><body style="margin:0">
@@ -491,6 +571,72 @@ class Banc:
             self.chrome.pump(0.3)
         return False, f"aucune modification (dialogue {self.diag().get('dialog')})"
 
+    # ── document neuf (EVORA-CIC-26) ───────────────────────────────────────
+    def setup_command(self, params):
+        """host.newDocumentSetup avec `params` : (id, réponse) ; réponse None sans evora:ack à la borne."""
+        i = self.command(SETUP_COMMAND, params=json.dumps(params))
+        a = self.answer(i)
+        return i, a and a["payload"]
+
+    def new_document_setup(self, doc_ref, d):
+        """NEW-A4 sur le document neuf `doc_ref` (diag `d`), NEW-SPEC, puis les refus de paramètres, dont le verdict
+        attend celui des refus d'état (setup_refused_states) : NEW-SPEC-REFUSED n'est jamais vert à moitié joué."""
+        s = d.get("setup") or {}
+        self.set("NEW-A4", near_mm(s.get("width"), A4_MM[0]) and near_mm(s.get("height"), A4_MM[1])
+                 and s.get("units") == "millimeters" and d.get("pages") == 1, setup_mm(d))
+        n = self.count()
+        i, a = self.setup_command(SPEC_A5)
+        dirty = self.wait(lambda m: m.get("type") == "evora:dirty" and m["payload"].get("docRef") == doc_ref, start=n)
+        log = self.log()
+        ack_at = next((k for k in range(n, len(log)) if log[k].get("type") == "evora:ack" and log[k].get("re") == i), None)
+        dirty_at = next((k for k in range(n, len(log)) if log[k].get("type") == "evora:dirty"
+                         and log[k]["payload"].get("docRef") == doc_ref), None)
+        d2 = self.diag()
+        self.set("NEW-SPEC", a == {"ok": True} and dirty is not None and dirty["payload"].get("dirty") is False
+                 and ack_at is not None and dirty_at is not None and dirty_at > ack_at
+                 and d2.get("documents") == 1 and d2.get("docRef") == doc_ref and d2.get("title") == d.get("title")
+                 and d2.get("uid") not in (None, d.get("uid")) and d2.get("dirty") is False and setup_matches(d2, SPEC_A5),
+                 {"ack": a, "diag": {k: d2.get(k) for k in ("documents", "docRef", "title", "uid", "dirty", "dialog")},
+                  "avant": {k: d.get(k) for k in ("title", "uid")}, "relu": setup_mm(d2)})
+        # Paramètres hors schéma : refusés avant toute action, le document reste celui de la spécification.
+        answers = [(name, self.setup_command(params)[1]) for name, params in SPEC_INVALID]
+        d3 = self.diag()
+        bad = [(name, p) for name, p in answers if p != {"ok": False, "code": "invalid_content"}]
+        intact = (d3.get("uid") == d2.get("uid") and d3.get("revision") == d2.get("revision")
+                  and d3.get("documents") == 1 and setup_mm(d3) == setup_mm(d2))
+        self.spec_params = (not bad and intact, {"refus": len(answers), "ecarts": bad[:4], "intact": intact})
+
+    def setup_refused_states(self, doc_bytes):
+        """NEW-SPEC-REFUSED : refus de paramètres (new_document_setup), document ouvert d'octets (`doc_bytes`) puis
+        document neuf modifié → conflict, document intact ; la commande n'est pas au catalogue livré."""
+        params_ok, params_note = getattr(self, "spec_params", (False, "non joué"))
+        notes = {"parametres": params_note}
+        before = self.diag()
+        _, p = self.setup_command(SPEC_A5)
+        after = self.diag()
+        from_bytes = (p == {"ok": False, "code": "conflict"} and after.get("docRef") == doc_bytes == before.get("docRef")
+                      and after.get("uid") == before.get("uid") and after.get("revision") == before.get("revision")
+                      and after.get("documents") == 1)
+        notes["octets"] = {"reponse": p, "uid": [before.get("uid"), after.get("uid")]}
+        doc3 = "01JD0000000000000000000003"
+        a = self.answer(self.send("evora:open", f"{{docRef: '{doc3}', name: 'Affiche.designcraft', new: true}}"))
+        opened = bool(a and a["payload"].get("ok"))
+        self.click_canvas()
+        ok, why = self.modify()
+        before = self.diag()
+        n = self.count()
+        _, p = self.setup_command(SPEC_A5)
+        after = self.diag()
+        no_clean = self.quiet(lambda m: m.get("type") == "evora:dirty" and m["payload"].get("dirty") is False, 1.0, start=n)
+        modified = (opened and ok and before.get("dirty") is True and p == {"ok": False, "code": "conflict"}
+                    and after.get("docRef") == doc3 and after.get("uid") == before.get("uid")
+                    and after.get("revision") == before.get("revision") and after.get("dirty") is True
+                    and after.get("documents") == 1 and after.get("pages") == before.get("pages") and no_clean)
+        notes["modifie"] = {"ouvert": opened, "modification": ok or why, "reponse": p, "relu": setup_mm(after)}
+        outside = SETUP_COMMAND not in getattr(self, "catalog_ids", {SETUP_COMMAND})
+        notes["horsCatalogue"] = outside
+        self.set("NEW-SPEC-REFUSED", params_ok and from_bytes and modified and outside, notes)
+
     # ── scénario ───────────────────────────────────────────────────────────
     def run(self):
         c = self.chrome
@@ -544,6 +690,7 @@ class Banc:
         dirty0 = self.wait(lambda m: m.get("type") == "evora:dirty" and m["payload"].get("docRef") == doc1)
         self.set("NEW-DOC", bool(a and a["payload"].get("ok")) and d.get("documents") == 1 and d.get("docRef") == doc1
                  and dirty0 is not None and dirty0["payload"].get("dirty") is False, {"ack": a and a["payload"], "diag": d})
+        self.new_document_setup(doc1, d)
 
         cat = self.wait(lambda m: m.get("type") == "evora:commands")
         cp = (cat or {}).get("payload", {})
@@ -554,6 +701,7 @@ class Banc:
         cmds = cp.get("commands", [])
         bad = [x["id"] for x in cmds if x["id"].startswith(SHELL_PREFIXES) and x["id"] not in ADMITTED]
         ids = {x["id"] for x in cmds}
+        self.catalog_ids = ids
         self.set("CATALOG", bool(cmds) and not bad and len(str(cp.get("hash", ""))) == 16
                  and cp.get("params") == {"type": "object", "maxProperties": 0} and "layout.parents.new" in ids
                  and cp.get("count") == len(cmds), {"count": len(cmds), "shell": bad[:10], "lang": cp.get("lang")})
@@ -776,6 +924,9 @@ class Banc:
         empty = all(after.get(k) == 0 for k in ("local", "session", "idb", "caches", "opfs"))
         self.set("PURGE", seeded == "ok" and before.get("local", 0) >= 1 and bool(a and a["payload"].get("ok")) and empty,
                  {"avant": before, "apres": after, "ack": a and a["payload"]})
+
+        # Document neuf (EVORA-CIC-26) : refus d'état, en dernier (un refus manqué remplacerait le document).
+        self.setup_refused_states(doc2)
 
     def finish(self):
         attempts = None
