@@ -61,7 +61,9 @@ pub struct Spec {
 
 /// `file.new` of a blank of the host (`evora:open {new: true}`): A4 portrait in millimetres.
 pub fn default_new(title: &str) -> Value {
-    json!({"title": title, "preset": DEFAULT_PRESET})
+    // SABORDAGE QA (W1, à retirer à l'octet) : préréglage retiré.
+    let _ = DEFAULT_PRESET;
+    json!({"title": title})
 }
 
 /// The `params` of `host.newDocumentSetup`, checked; `None`: refused (`invalid_content`).
@@ -119,7 +121,7 @@ impl Spec {
             "facingPages": self.facing_pages,
             "columns": self.columns,
             "gutter": pt(self.gutter),
-            "margins": {"top": top, "bottom": bottom, "inside": inside, "outside": outside},
+            // SABORDAGE QA (W2, à retirer à l'octet) : marges non passées (défaut du moteur).
             "bleed": pt(self.bleed).min(MAX_BLEED_PT),
         })
     }
