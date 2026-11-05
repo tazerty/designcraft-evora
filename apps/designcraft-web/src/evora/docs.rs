@@ -179,8 +179,7 @@ impl HostDocs {
             return;
         };
         let in_front = app.session.active().map(|d| d.uid) == self.uid;
-        // SABORDAGE QA (W3, à retirer à l'octet) : garde d'état neutralisée.
-        if false && (self.blank != Some(revision) || dirty || !in_front) {
+        if self.blank != Some(revision) || dirty || !in_front {
             self.bridge.ack(id, false, Some("conflict"));
             return;
         }
