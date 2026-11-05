@@ -5,6 +5,7 @@
 //! - `ehp`: the protocol (EHP v1): envelope, origin and source checks, messages;
 //! - `docs`: the host's document in the engine (open, save, saved state, dirty, requests);
 //! - `pick`: the engine's file pickers become the host's;
+//! - `setup`: the new document Evora asks for (A4 in millimetres, `host.newDocumentSetup`, CIC-26);
 //! - `commands`: the compiled command list, the command catalogue (white list, no free parameter);
 //! - `masks`: what the host build hides and refuses (one document per editor, print, links);
 //! - `focus`: F6 gives the keyboard back to the host;
@@ -18,4 +19,5 @@ pub mod focus;
 pub mod lang;
 pub mod masks;
 pub mod pick;
+pub mod setup;
 pub mod storage;

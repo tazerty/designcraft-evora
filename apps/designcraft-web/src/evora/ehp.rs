@@ -127,6 +127,9 @@ pub enum HostEvent {
     /// `evora:command {command, params: {}}`: of the compiled list, or (with `command.catalog`
     /// effective) of the catalogue, `confirmed` for a destructive one.
     Command { id: String, command: String, confirmed: bool },
+    /// `evora:command {command: "host.newDocumentSetup", params}` (patch CIC-26): the host's
+    /// specification of its blank document, its parameters checked (`setup`).
+    NewDocumentSetup { id: String, spec: crate::evora::setup::Spec },
     /// `evora:saved` answering the `evora:save` `re`, with `doc.saved-ack` effective; `doc_ref`: the
     /// new document of a successful `saveAs` (a recovery copy).
     Saved { re: String, ok: bool },
@@ -794,6 +797,8 @@ impl Bridge {
     /// bridge of the suite): `params` must be `{}` (no free parameter); a command of the compiled
     /// list, or of the catalogue with `command.catalog` effective (`commands`). A well-formed command
     /// off both is refused with `capability`; a malformed message, or parameters given, is ignored.
+    /// The host command `host.newDocumentSetup` (patch CIC-26) alone takes parameters, closed and
+    /// checked by `setup`: refused with `invalid_content` when they don't match.
     fn on_command(&self, id: &str, p: &JsValue) {
         let catalog = self.has("command.catalog");
         let keys: &[&str] = if catalog { &["command", "params", "confirmed"] } else { &["command", "params"] };
@@ -807,6 +812,14 @@ impl Bridge {
         }
         let confirmed = get(p, "confirmed");
         let Some(confirmed) = (if confirmed.is_undefined() { Some(false) } else { confirmed.as_bool() }) else { return };
+        // Evora (CIC-26): the host's command, outside the catalogue, with its closed parameters.
+        if command == crate::evora::setup::COMMAND {
+            match crate::evora::setup::parse(&params) {
+                Some(spec) => self.push(HostEvent::NewDocumentSetup { id: id.to_owned(), spec }),
+                None => self.ack(id, false, Some("invalid_content")),
+            }
+            return;
+        }
         if js_sys::Object::keys(params.unchecked_ref::<js_sys::Object>()).length() != 0 {
             return;
         }
@@ -955,7 +968,7 @@ pub(crate) fn get(data: &JsValue, key: &str) -> JsValue {
 }
 
 /// A plain object: not null, not an array, prototype `Object.prototype` (§5.2 step 2).
-fn plain_object(v: &JsValue) -> bool {
+pub(crate) fn plain_object(v: &JsValue) -> bool {
     if !v.is_object() || js_sys::Array::is_array(v) {
         return false;
     }

@@ -15,6 +15,10 @@
 //! (the document content sent is kept for the comparison), else it stays modified with the content
 //! sent as its saved state; `evora:saved {ok: false}` leaves it modified. Without the capability, the
 //! engine counts the document saved when it hands it over (§6.3).
+//!
+//! New document (patch CIC-26, `setup`): `evora:open {new: true}` makes an A4 portrait document in
+//! millimetres; the host command `host.newDocumentSetup` replaces that blank by the specification
+//! the member chose in Evora, only while the blank is in front, never saved and unchanged.
 
 use std::sync::Arc;
 
@@ -43,11 +47,25 @@ pub struct HostDocs {
     catalog_for: Option<(String, Option<u64>)>,
     /// Families registered from `evora:font`.
     fonts: Vec<String>,
+    /// The revision of the host's blank, made by `evora:open {new: true}` (or by its specification)
+    /// and never saved since: the only document `host.newDocumentSetup` may replace (CIC-26), while
+    /// its revision is unchanged.
+    blank: Option<u64>,
 }
 
 impl HostDocs {
     pub fn new(bridge: Bridge, host: HostCall) -> Self {
-        HostDocs { bridge, host, uid: None, last_dirty: None, saved_before: None, pending: Vec::new(), catalog_for: None, fonts: Vec::new() }
+        HostDocs {
+            bridge,
+            host,
+            uid: None,
+            last_dirty: None,
+            saved_before: None,
+            pending: Vec::new(),
+            catalog_for: None,
+            fonts: Vec::new(),
+            blank: None,
+        }
     }
 
     fn host_doc<'a>(&self, app: &'a DesignApp) -> Option<&'a designcraft_engine::DocState> {
@@ -77,6 +95,7 @@ impl HostDocs {
                     self.bridge.ack(&id, true, None);
                 }
                 HostEvent::Command { id, command, confirmed } => self.command(app, &id, &command, confirmed),
+                HostEvent::NewDocumentSetup { id, spec } => self.setup(app, &id, &spec),
                 HostEvent::Saved { re, ok } => self.saved(app, &re, ok),
                 HostEvent::Font { id, family, bytes } => self.font(&id, family, bytes),
             }
@@ -102,20 +121,31 @@ impl HostDocs {
                 let b64 = designcraft_engine::cmd::base64_encode(bytes);
                 self.host.run(|| app.run("file.openBytes", json!({"name": title, "base64": b64})))
             }
-            None => self.host.run(|| app.run("file.new", json!({"title": title}))),
+            // Evora (CIC-26): A4 portrait in millimetres; the host's specification may follow (`setup`).
+            None => self.host.run(|| app.run("file.new", crate::evora::setup::default_new(&title))),
         };
         if let Err(e) = result {
             log::warn!("designcraft-web: the host's document could not open: {e}");
             self.bridge.ack(id, false, Some("invalid_content"));
             return;
         }
-        let Some(uid) = app.session.active().map(|d| d.uid).filter(|u| !before.contains(u)) else {
+        if !self.adopt(app, &before, &doc_ref) {
             self.bridge.ack(id, false, Some("invalid_content"));
             return;
+        }
+        // Only the blank of `new` may take the host's specification, while it stays as it was made.
+        self.blank = if bytes.is_none() { self.host_doc(app).map(|d| d.revision) } else { None };
+        self.opened(app, id, &doc_ref);
+    }
+
+    /// The document `file.new` or `file.openBytes` just made becomes the host's document `doc_ref`;
+    /// the one open before goes (one document per editor). `false`: no new document, nothing closed.
+    fn adopt(&mut self, app: &mut DesignApp, before: &[u64], doc_ref: &str) -> bool {
+        let Some(uid) = app.session.active().map(|d| d.uid).filter(|u| !before.contains(u)) else {
+            return false;
         };
-        // One document per editor: the one open before goes.
         for old in before {
-            if let Some(index) = app.session.documents().iter().position(|d| d.uid == old) {
+            if let Some(index) = app.session.documents().iter().position(|d| d.uid == *old) {
                 let _ = self.host.run(|| app.run("file.close", json!({"index": index})));
             }
         }
@@ -124,12 +154,51 @@ impl HostDocs {
         }
         self.uid = Some(uid);
         self.pending.clear();
-        self.bridge.set_doc_ref(Some(doc_ref.clone()));
+        self.bridge.set_doc_ref(Some(doc_ref.to_owned()));
+        true
+    }
+
+    /// The host's document is open: acknowledged, its state reported, the catalogue sent again.
+    fn opened(&mut self, app: &DesignApp, id: &str, doc_ref: &str) {
         self.bridge.ack(id, true, None);
         let dirty = self.host_doc(app).is_some_and(|d| d.is_dirty());
-        self.bridge.dirty(&doc_ref, dirty);
+        self.bridge.dirty(doc_ref, dirty);
         self.last_dirty = Some(dirty);
         self.catalog_for = None;
+    }
+
+    /// `host.newDocumentSetup` (CIC-26): the host's specification replaces its blank, under the same
+    /// `docRef` and title, only while that blank is in front, never saved and unchanged; never the
+    /// member's work. `conflict`: the document was opened from bytes, saved, changed or is not in
+    /// front; `busy`: a save is in flight or a dialog is open; `not_found`: no document of the host;
+    /// `invalid_content`: the engine refused the specification (the blank stays).
+    fn setup(&mut self, app: &mut DesignApp, id: &str, spec: &crate::evora::setup::Spec) {
+        let host = self.host_doc(app).map(|d| (d.revision, d.is_dirty(), d.doc.title.clone()));
+        let (Some(doc_ref), Some((revision, dirty, title))) = (self.bridge.doc_ref(), host) else {
+            self.bridge.ack(id, false, Some("not_found"));
+            return;
+        };
+        let in_front = app.session.active().map(|d| d.uid) == self.uid;
+        if self.blank != Some(revision) || dirty || !in_front {
+            self.bridge.ack(id, false, Some("conflict"));
+            return;
+        }
+        if !self.pending.is_empty() || app.ui.dialog.is_some() {
+            self.bridge.ack(id, false, Some("busy"));
+            return;
+        }
+        let before: Vec<u64> = app.session.documents().iter().map(|d| d.uid).collect();
+        if let Err(e) = self.host.run(|| app.run("file.new", spec.file_new(&title))) {
+            log::warn!("designcraft-web: the host's document setup was refused: {e}");
+            self.bridge.ack(id, false, Some("invalid_content"));
+            return;
+        }
+        if !self.adopt(app, &before, &doc_ref) {
+            self.bridge.ack(id, false, Some("invalid_content"));
+            return;
+        }
+        self.blank = self.host_doc(app).map(|d| d.revision);
+        self.opened(app, id, &doc_ref);
     }
 
     /// `evora:request-save`: `clean` when nothing changed since the last save the host accepted;
@@ -181,6 +250,8 @@ impl HostDocs {
         if !ok {
             return;
         }
+        // Saved by the host: no longer a blank its specification may replace (CIC-26).
+        self.blank = None;
         if let Some(st) = self.host_doc_mut(app) {
             if Arc::ptr_eq(&st.doc, &sent) {
                 st.saved_doc = st.doc.clone();

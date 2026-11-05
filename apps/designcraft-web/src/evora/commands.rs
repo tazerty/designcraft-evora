@@ -21,7 +21,8 @@
 //!   and Redo themselves).
 //!
 //! The compiled list (capability `command` alone) keeps the exports through the host and the
-//! diagnostics the smoke test reads.
+//! diagnostics the smoke test reads. The host command `host.newDocumentSetup` (patch CIC-26, `setup`)
+//! is answered by the bridge before this module: never a menu item, never in the catalogue.
 
 use designcraft_ui_egui::DesignApp;
 use designcraft_ui_egui::menus::{self, Item};
@@ -238,12 +239,32 @@ pub fn stats(app: &DesignApp, doc_ref: Option<&str>, uid: Option<u64>, counters:
         "revision": host.map(|d| d.revision),
         "pages": host.map(|d| d.doc.page_count()),
         "title": host.map(|d| d.doc.title.clone()),
+        // Evora (CIC-26): which document of the engine it is, and how `file.new` set it up.
+        "uid": host.map(|d| d.uid),
+        "setup": host.map(|d| setup_view(&d.doc)),
         "language": app.ui.language,
         "dialog": app.ui.dialog.as_ref().map(|d| d.id.clone()),
         "pickPending": crate::evora::pick::pending(),
         "fonts": fonts,
         "bridge": counters,
         "wasmMemoryBytes": wasm_memory_bytes(),
+    })
+}
+
+/// `diag.stats` `setup` (EVORA-CIC-26): the page size, units, facing pages and bleed of the document,
+/// and the margins and columns of its first page, lengths in points (the engine's).
+fn setup_view(doc: &designcraft_engine::doc::Document) -> Value {
+    let s = &doc.settings;
+    let page = doc.page_loc(0).and_then(|(si, pi)| doc.spreads.get(si)?.pages.get(pi));
+    json!({
+        "width": s.page_width,
+        "height": s.page_height,
+        "units": serde_json::to_value(s.horizontal_units).unwrap_or(Value::Null),
+        "facingPages": s.facing_pages,
+        "bleed": s.bleed,
+        "columns": page.map(|p| p.columns.count),
+        "gutter": page.map(|p| p.columns.gutter),
+        "margins": page.map(|p| json!({"top": p.margins.top, "bottom": p.margins.bottom, "inside": p.margins.inside, "outside": p.margins.outside})),
     })
 }
 
