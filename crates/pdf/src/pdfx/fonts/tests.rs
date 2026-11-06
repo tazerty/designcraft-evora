@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use super::{DEPTH_WARNING, FontScan, LIMIT_WARNING, MAX_OPERATIONS, unembedded_fonts};
 use crate::check_pdfx4;
 use crate::pdfx::tests::{place, tiny_pdf_with, x4};
-use designcraft_doc::{Document, build::NewDocument};
+use evodesign_doc::{Document, build::NewDocument};
 
 fn stream(entries: &str, content: &str) -> String {
     format!("<<{entries}/Length {}>>\nstream\n{content}\nendstream", content.len())

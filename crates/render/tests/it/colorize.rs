@@ -5,12 +5,12 @@
 
 use std::sync::Arc;
 
-use designcraft_color::swatch::apply_tint;
-use designcraft_compose::Cache;
-use designcraft_doc::build::NewDocument;
-use designcraft_doc::{Asset, AssetId, Content, Document, Fill, Graphic, Item, ItemId, Shape, SpreadRef, Stroke};
-use designcraft_geom::{Affine, Rect, shapes};
-use designcraft_render::{RenderOptions, Renderer, color_of};
+use evodesign_color::swatch::apply_tint;
+use evodesign_compose::Cache;
+use evodesign_doc::build::NewDocument;
+use evodesign_doc::{Asset, AssetId, Content, Document, Fill, Graphic, Item, ItemId, Shape, SpreadRef, Stroke};
+use evodesign_geom::{Affine, Rect, shapes};
+use evodesign_render::{RenderOptions, Renderer, color_of};
 use image::{ExtendedColorType, ImageEncoder};
 
 const RED: &str = "C=0 M=100 Y=100 K=0";

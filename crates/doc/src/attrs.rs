@@ -1303,7 +1303,7 @@ attr_set! {
         list_hang: bool = false,
         balance_ragged: bool = false,
         /// Hang punctuation outside the measure in this paragraph, at each character's own size
-        /// (DesignCraft's own per-paragraph switch; a story with Optical Margin Alignment on
+        /// (EvoDesign's own per-paragraph switch; a story with Optical Margin Alignment on
         /// overrides it with the story's size).
         optical_margin: bool = false,
         /// Ignore Optical Margin: no hang in this paragraph, whatever the story or
@@ -1355,7 +1355,7 @@ attr_set! {
         border_cap: crate::item::Cap = crate::item::Cap::Butt,
         border_join: crate::item::Join = crate::item::Join::Miter,
         /// Corner shape and size: top left, top right, bottom right, bottom left.
-        border_corners: [designcraft_geom::corners::Corner; 4] = [designcraft_geom::corners::Corner::default(); 4],
+        border_corners: [evodesign_geom::corners::Corner; 4] = [evodesign_geom::corners::Corner::default(); 4],
         border_width: BoxWidth = BoxWidth::Column,
         border_top: BoxTop = BoxTop::Ascent,
         border_bottom: BoxBottom = BoxBottom::Descent,
@@ -1368,7 +1368,7 @@ attr_set! {
         border_gap_color: String = "[None]".into(),
         border_gap_tint: f32 = 1.0,
         /// Shading corners: top left, top right, bottom right, bottom left.
-        shading_corners: [designcraft_geom::corners::Corner; 4] = [designcraft_geom::corners::Corner::default(); 4],
+        shading_corners: [evodesign_geom::corners::Corner; 4] = [evodesign_geom::corners::Corner::default(); 4],
         shading_width: BoxWidth = BoxWidth::Column,
         shading_top: BoxTop = BoxTop::Ascent,
         shading_bottom: BoxBottom = BoxBottom::Descent,

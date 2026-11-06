@@ -2,10 +2,10 @@
 //! fonts and glyphs, missing or low-resolution graphics, RGB content in print documents, empty
 //! text frames.
 
-use designcraft_compose::ComposedStory;
-use designcraft_doc::{Content, Document, Intent, Item, SpreadRef};
-use designcraft_fonts::FaceRef;
-use designcraft_geom::Affine;
+use evodesign_compose::ComposedStory;
+use evodesign_doc::{Content, Document, Intent, Item, SpreadRef};
+use evodesign_fonts::FaceRef;
+use evodesign_geom::Affine;
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -45,9 +45,9 @@ const MISSING_GLYPHS_LISTED: usize = 20;
 /// Nested notes and cells report the owning page frame, not their synthetic frame zero.
 fn missing_glyphs(
     cs: &ComposedStory,
-    owner: Option<designcraft_doc::ItemId>,
+    owner: Option<evodesign_doc::ItemId>,
     depth: usize,
-    out: &mut Vec<(FaceRef, Vec<char>, designcraft_doc::ItemId)>,
+    out: &mut Vec<(FaceRef, Vec<char>, evodesign_doc::ItemId)>,
 ) {
     if depth > 16 {
         return;
@@ -75,12 +75,12 @@ fn missing_glyphs(
 }
 
 /// Locate an embedded frame at the outer page frame that actually renders it.
-fn overset_location(s: &Session, target: designcraft_doc::ItemId) -> Option<(designcraft_doc::ItemId, Option<usize>)> {
+fn overset_location(s: &Session, target: evodesign_doc::ItemId) -> Option<(evodesign_doc::ItemId, Option<usize>)> {
     let d = &s.active()?.doc;
     if let Some(loc) = d.find(target) {
         return Some((target, d.item(target).and_then(|it| page_of(d, loc.spread, it, d.parent_xf(&loc)))));
     }
-    fn contains(root: &designcraft_compose::FrameText, target: designcraft_doc::ItemId) -> bool {
+    fn contains(root: &evodesign_compose::FrameText, target: evodesign_doc::ItemId) -> bool {
         let mut frames = vec![root];
         while let Some(frame) = frames.pop() {
             for object in &frame.objects {
@@ -121,7 +121,7 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
     // Stories: overset and fonts.
     let mut missing_fonts: Vec<String> = Vec::new();
     let mut unsupported_typography = std::collections::BTreeSet::new();
-    let mut missing: Vec<(FaceRef, Vec<char>, designcraft_doc::ItemId)> = Vec::new();
+    let mut missing: Vec<(FaceRef, Vec<char>, evodesign_doc::ItemId)> = Vec::new();
     for story in d.stories.values() {
         let cs = s.cache.get(d, story.id, None);
         missing_glyphs(&cs, None, 0, &mut missing);
@@ -149,7 +149,7 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
         for (pi, pf) in story.paras.iter().enumerate() {
             let (para, base) = d.styles.resolve_para(pf);
             let Some(range) = ranges.get(pi) else { continue };
-            let has_rtl = story.text.get(range.clone()).is_some_and(|text| text.chars().any(designcraft_fonts::is_rtl));
+            let has_rtl = story.text.get(range.clone()).is_some_and(|text| text.chars().any(evodesign_fonts::is_rtl));
             if has_rtl {
                 if !matches!(para.arabic_justification.as_str(), "" | "DefaultJustification") {
                     unsupported_typography.insert(format!(
@@ -162,7 +162,7 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
                         .insert("Paragraph Kashida width preset is preserved; automatic elongation uses the engine's bounded allocation".into());
                 }
             }
-            match designcraft_doc::mojikumi::Rules::resolve(&d.styles, &para.mojikumi) {
+            match evodesign_doc::mojikumi::Rules::resolve(&d.styles, &para.mojikumi) {
                 Err(reason) => {
                     unsupported_typography.insert(format!("Mojikumi `{}` is not applied: {reason}", para.mojikumi));
                 }
@@ -182,7 +182,7 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
             for (run, f) in story.runs().filter(|(run, _)| run.start < range.end && run.end > range.start) {
                 let props = d.styles.resolve_char(&base, f);
                 {
-                    use designcraft_doc::cjk_settings::AdornmentOverprint as O;
+                    use evodesign_doc::cjk_settings::AdornmentOverprint as O;
                     let kenten = props.kenten && (props.kenten_overprint_fill == O::On || props.kenten_overprint_stroke == O::On);
                     let ruby = !props.ruby.is_empty() && (props.ruby_overprint_fill == O::On || props.ruby_overprint_stroke == O::On);
                     if kenten || ruby {
@@ -191,9 +191,9 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
                     }
                 }
                 if has_rtl
-                    && story.text.get(run.start.max(range.start)..run.end.min(range.end)).is_some_and(|t| t.chars().any(designcraft_fonts::is_rtl))
+                    && story.text.get(run.start.max(range.start)..run.end.min(range.end)).is_some_and(|t| t.chars().any(evodesign_fonts::is_rtl))
                 {
-                    use designcraft_doc::arabic::DiacriticPosition as P;
+                    use evodesign_doc::arabic::DiacriticPosition as P;
                     if !matches!(props.diacritic_position, P::Default | P::OpenType) {
                         unsupported_typography.insert(format!(
                             "Diacritic preset `{:?}` is preserved; font OpenType anchors and explicit offsets are used",
@@ -250,12 +250,12 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
             pending.extend(it.children().iter().rev().map(|child| (child.as_ref(), xf)));
             let page = page_of(d, SpreadRef::Doc(si), it, parent);
             if let Content::Graphic(g) = &it.content
-                && g.layer_options.as_ref().is_some_and(designcraft_doc::GraphicLayerOptions::has_visibility_overrides)
+                && g.layer_options.as_ref().is_some_and(evodesign_doc::GraphicLayerOptions::has_visibility_overrides)
             {
                 out.push(Issue {
                     severity: "warning",
                     kind: "unsupportedGraphicLayers",
-                    message: designcraft_doc::GRAPHIC_LAYER_RENDERING_WARNING.into(),
+                    message: evodesign_doc::GRAPHIC_LAYER_RENDERING_WARNING.into(),
                     item: Some(it.id.0),
                     page,
                 });
@@ -275,7 +275,7 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
                     }),
                     Some(a) => {
                         // Placed PDF and SVG pages export as vectors; `pixels` is only the preview's.
-                        let vector = designcraft_images::is_pdf(&a.data) || designcraft_images::is_svg(&a.data);
+                        let vector = evodesign_images::is_pdf(&a.data) || evodesign_images::is_svg(&a.data);
                         if let Some((pw, ph)) = a.pixels.filter(|_| !vector) {
                             // Measure each image axis in points, not its rotated bounding box or
                             // cropped frame. Either axis can fall below the minimum resolution.
@@ -307,7 +307,7 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
     // RGB swatches in use in a print document.
     if d.settings.intent == Intent::Print {
         for sw in &d.swatches {
-            if let designcraft_color::SwatchValue::Color { color: designcraft_color::Color::Rgb { .. }, .. } = sw.value {
+            if let evodesign_color::SwatchValue::Color { color: evodesign_color::Color::Rgb { .. }, .. } = sw.value {
                 out.push(Issue {
                     severity: "warning",
                     kind: "rgbColor",
@@ -324,7 +324,7 @@ pub fn check(s: &Session, min_ppi: f64) -> Vec<Issue> {
         out.push(Issue {
             severity: "warning",
             kind: "unsupportedGraphicLayers",
-            message: designcraft_doc::GRAPHIC_LAYER_RENDERING_WARNING.into(),
+            message: evodesign_doc::GRAPHIC_LAYER_RENDERING_WARNING.into(),
             item: None,
             page: None,
         });
@@ -358,7 +358,7 @@ mod placed_vector_tests {
         s.execute("file.place", &json!({"base64": pdf["base64"], "name": "logo.pdf", "x": 72, "y": 72, "width": 300})).unwrap();
         // Deselect the logo, or the photo would replace it in its frame.
         s.execute("selection.set", &json!({"ids": []})).unwrap();
-        let png = designcraft_render::Rendered { width: 40, height: 20, pixels: vec![200; 40 * 20 * 4] }.to_png();
+        let png = evodesign_render::Rendered { width: 40, height: 20, pixels: vec![200; 40 * 20 * 4] }.to_png();
         s.execute("file.place", &json!({"base64": base64_encode(&png), "name": "photo.png", "x": 72, "y": 300, "width": 300})).unwrap();
         let r = s.execute("preflight.run", &json!({})).unwrap();
         let low: Vec<&str> =
@@ -372,7 +372,7 @@ mod placed_vector_tests {
     fn a_missing_link_shown_by_its_preview_is_still_reported() {
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
-        let png = designcraft_render::Rendered { width: 40, height: 20, pixels: vec![200; 40 * 20 * 4] }.to_png();
+        let png = evodesign_render::Rendered { width: 40, height: 20, pixels: vec![200; 40 * 20 * 4] }.to_png();
         s.execute("file.place", &json!({"base64": base64_encode(&png), "name": "photo.jpg", "x": 72, "y": 72, "width": 20})).unwrap();
         let doc = std::sync::Arc::make_mut(&mut s.doc_mut().unwrap().doc);
         let asset = doc.assets.values_mut().next().unwrap();
@@ -430,11 +430,11 @@ mod missing_glyph_tests {
     #[test]
     fn characters_drawn_as_missing_glyphs_are_listed() {
         // Some font has them, for when fallback fonts are on.
-        designcraft_fonts::FontDb::global().add_font(designcraft_fonts::testing::font_with("DC Test Preflight Helper", &['日', '本', '語']).unwrap());
+        evodesign_fonts::FontDb::global().add_font(evodesign_fonts::testing::font_with("DC Test Preflight Helper", &['日', '本', '語']).unwrap());
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         s.execute("frame.create", &json!({"rect": [72, 72, 400, 300], "content": "text", "text": "Hello 日本語 日本 and 語."})).unwrap();
-        let family = designcraft_fonts::DEFAULT_FAMILY;
+        let family = evodesign_fonts::DEFAULT_FAMILY;
         assert_eq!(missing_glyphs(&mut s), [("error".to_string(), format!("Missing glyphs in {family} Regular: 日 本 語"))]);
         // Drawn from fallback fonts: nothing missing.
         s.execute("document.preferences", &json!({"glyphFallback": true})).unwrap();
@@ -466,9 +466,9 @@ mod generated_glyph_tests {
         let created = s.execute("frame.create", &json!({"rect":[20,20,300,400],"content":"text","text":"Body"})).unwrap();
         let d = Arc::make_mut(&mut s.doc_mut().unwrap().doc);
         let sid = *d.stories.keys().next().unwrap();
-        d.footnote_options.affix_in = designcraft_doc::notes::AffixIn::Reference;
+        d.footnote_options.affix_in = evodesign_doc::notes::AffixIn::Reference;
         d.footnote_options.suffix = "\u{10fffd}".into();
-        d.story_mut(sid).unwrap().insert_note(4, "Note", designcraft_doc::ParaFormat::default());
+        d.story_mut(sid).unwrap().insert_note(4, "Note", evodesign_doc::ParaFormat::default());
         let report = s.execute("preflight.run", &json!({})).unwrap();
         let issue = report["issues"].as_array().unwrap().iter().find(|i| i["kind"] == "missingGlyphs").unwrap();
         assert!(issue["message"].as_str().unwrap().contains('\u{10fffd}'));
@@ -488,9 +488,9 @@ mod mojikumi_nested_tests {
         s.execute("frame.create", &json!({"rect":[20,20,300,400],"content":"text","text":"Body"})).unwrap();
         let d = Arc::make_mut(&mut s.doc_mut().unwrap().doc);
         let sid = *d.stories.keys().next().unwrap();
-        let mut table = designcraft_doc::Table::new(1, 1, 1, 0, 0, 100.0);
+        let mut table = evodesign_doc::Table::new(1, 1, 1, 0, 0, 100.0);
         let cell = &mut table.cells[0].text;
-        let mut pf = designcraft_doc::ParaFormat::default();
+        let mut pf = evodesign_doc::ParaFormat::default();
         pf.para.mojikumi = Some("MojikumiTable/Unrecognized".into());
         cell.insert_note(0, "Note", pf);
         d.story_mut(sid).unwrap().insert_table(0, table);

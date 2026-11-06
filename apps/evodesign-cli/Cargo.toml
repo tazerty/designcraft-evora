@@ -1,0 +1,25 @@
+[package]
+name = "evodesign-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "evodesign-cli"
+path = "src/main.rs"
+
+[dependencies]
+evodesign-engine = { workspace = true }
+evodesign-render = { workspace = true }
+evodesign-doc = { workspace = true }
+evodesign-geom = { workspace = true }
+evodesign-color = { workspace = true }
+evodesign-compose = { workspace = true }
+evodesign-format = { workspace = true }
+evodesign-pdf = { workspace = true }
+evodesign-mcp = { workspace = true }
+serde_json = { workspace = true }

@@ -1,11 +1,11 @@
 //! A gradient between process colours shows the inks' blend, as InDesign shows it.
-use designcraft_color::swatch::Swatch;
-use designcraft_color::{Color, Gradient, GradientKind, GradientStop, SwatchValue};
-use designcraft_compose::Cache;
-use designcraft_doc::build::NewDocument;
-use designcraft_doc::{Document, Fill, Item, ItemId, Shape, SpreadRef, Stroke};
-use designcraft_geom::{Affine, Rect, shapes};
-use designcraft_render::{Placed, RenderOptions, Renderer};
+use evodesign_color::swatch::Swatch;
+use evodesign_color::{Color, Gradient, GradientKind, GradientStop, SwatchValue};
+use evodesign_compose::Cache;
+use evodesign_doc::build::NewDocument;
+use evodesign_doc::{Document, Fill, Item, ItemId, Shape, SpreadRef, Stroke};
+use evodesign_geom::{Affine, Rect, shapes};
+use evodesign_render::{Placed, RenderOptions, Renderer};
 
 #[test]
 fn a_cmyk_gradient_is_c50_m50_halfway() {

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=EvoDesign
+GenericName=Page Layout
+Comment=Lay out magazines, books and print documents
+Exec=evodesign %F
+TryExec=evodesign
+Icon=ai.storyteller.evodesign
+Terminal=false
+StartupNotify=true
+StartupWMClass=ai.storyteller.evodesign
+Categories=Graphics;Publishing;
+MimeType=application/x-evodesign;application/vnd.adobe.indesign-idml-package;
+Keywords=layout;page;desktop publishing;dtp;magazine;book;indesign;idml;typesetting;

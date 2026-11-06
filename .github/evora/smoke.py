@@ -4,7 +4,7 @@
 
 Bibliothèque standard Python seule, aucune action tierce. Chrome sans interface (préinstallé sur le
 runner) est piloté par le protocole DevTools sur tuyaux (--remote-debugging-pipe : messages JSON
-terminés par un octet nul sur les descripteurs 3 et 4), même technique que la fumée de tazerty/pdfcraft.
+terminés par un octet nul sur les descripteurs 3 et 4), même technique que la fumée de tazerty/evopdf.
 
   origine moteur  : http://127.0.0.1:<PORT_ENGINE>/  sert le site empaqueté ;
   origine parente : http://localhost:<PORT_PARENT>/  sert une page qui l'encadre (sandbox
@@ -20,8 +20,8 @@ Scénarios, chacun sur un profil Chrome vierge (démarrage à froid) :
                      le détecteur de démarrage : la preuve que la fumée sait rougir.
 
 Démarrage établi quand, dans le document moteur : le panneau d'erreur du moteur existe (preuve que le
-main wasm a tourné, il le crée en premier), le voile « #designcraft_loading » est retiré (le moteur ne le
-retire qu'après un démarrage réussi), le canvas « #designcraft_canvas » est dimensionné par eframe
+main wasm a tourné, il le crée en premier), le voile « #evodesign_loading » est retiré (le moteur ne le
+retire qu'après un démarrage réussi), le canvas « #evodesign_canvas » est dimensionné par eframe
 (largeur différente des 300 px par défaut) et le panneau d'erreur n'est pas affiché.
 Succès du scénario : démarrage établi, aucune exception JavaScript (page parente ou moteur), aucune
 ressource du moteur en erreur HTTP, aucun téléchargement. Les erreurs de console sont relevées en rapport.
@@ -61,20 +61,20 @@ TIMING = """(() => {
   const mark = (k) => { if (!(k in T)) T[k] = Math.round(performance.now()); };
   addEventListener('TrunkApplicationStarted', () => mark('trunkStarted'));
   new MutationObserver(() => {
-    if (document.getElementById('designcraft_graphics_error')) mark('mainRan');
-    if (document.readyState !== 'loading' && !document.getElementById('designcraft_loading')) mark('loadingRemoved');
-    const c = document.getElementById('designcraft_canvas');
+    if (document.getElementById('evodesign_graphics_error')) mark('mainRan');
+    if (document.readyState !== 'loading' && !document.getElementById('evodesign_loading')) mark('loadingRemoved');
+    const c = document.getElementById('evodesign_canvas');
     if (c && c.width !== 300) mark('canvasSized');
   }).observe(document, {childList: true, subtree: true, attributes: true, attributeFilter: ['width']});
 })()"""
 
 PROBE = """(() => {
-  const c = document.getElementById('designcraft_canvas');
-  const p = document.getElementById('designcraft_graphics_error');
+  const c = document.getElementById('evodesign_canvas');
+  const p = document.getElementById('evodesign_graphics_error');
   const shown = !!p && getComputedStyle(p).display !== 'none';
   return JSON.stringify({
     url: location.href, readyState: document.readyState, canvas: !!c, w: c ? c.width : 0, h: c ? c.height : 0,
-    loading: !!document.getElementById('designcraft_loading'), panel: !!p, panelShown: shown,
+    loading: !!document.getElementById('evodesign_loading'), panel: !!p, panelShown: shown,
     panelText: shown ? p.innerText.slice(0, 600) : '', webgpu: !!navigator.gpu,
     t: Math.round(performance.now()), marks: window.__evoraT || null});
 })()"""

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  EvoDesign MSI (WiX Toolset v5: `dotnet tool install -g wix`). Built by package.ps1:
+
+    wix build evodesign.wxs installer-ui.wxs -arch x64 -d Version=1.2.3 -d BinDir=... -d IconPath=... -o out.msi
+
+  Per-machine install into Program Files, a Start Menu shortcut, `.evodesign` owned by
+  EvoDesign, and EvoDesign offered under "Open with" for IDML (without taking over the user's
+  default app for it).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="EvoDesign"
+      Manufacturer="Learning Machines LLC"
+      Version="$(var.Version)"
+      UpgradeCode="49E87D30-BB68-4896-AA1D-F45C833CFC3C"
+      Scope="perMachine"
+      Compressed="yes"
+      Language="1033">
+    <SummaryInformation Description="EvoDesign page layout and publishing" Manufacturer="Learning Machines LLC" />
+    <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
+         (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+        DowngradeErrorMessage="A newer version of EvoDesign is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="EvoDesignIcon.ico" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="EvoDesignIcon.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://evora.st" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://evora.st" />
+    <Property Id="ARPHELPLINK" Value="https://evora.st" />
+
+    <!-- Shared native setup UI, including install/uninstall completion. -->
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="EvoDesign" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Feature Id="Main" Title="EvoDesign" Level="1">
+      <ComponentGroupRef Id="EvoDesignFiles" />
+      <ComponentGroupRef Id="EvoInstallerSettings" />
+    </Feature>
+    <!-- Shared full UI; app installation policy remains below. -->
+    <UIRef Id="EvoInstallerUI" />
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="EvoDesignFiles" Directory="INSTALLFOLDER">
+      <Component Id="EvoDesignApp" Guid="DE018EF3-EE87-4E36-9F76-0B7B060A195E">
+        <File Id="EvoDesignExe" Source="$(var.BinDir)\evodesign.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="EvoDesign"
+              Description="EvoDesign page layout and publishing" WorkingDirectory="INSTALLFOLDER" Advertise="yes"
+              Icon="EvoDesignIcon.ico" IconIndex="0" />
+        </File>
+
+        <!-- .evodesign: EvoDesign's own format; EvoDesign is its default app. -->
+        <ProgId Id="EvoDesign.Document" Description="EvoDesign Document" Icon="EvoDesignExe" IconIndex="0">
+          <Extension Id="evodesign" ContentType="application/x-evodesign">
+            <Verb Id="open" Command="Open" TargetFile="EvoDesignExe" Argument="&quot;%1&quot;" />
+          </Extension>
+        </ProgId>
+        <!-- IDML: offered under "Open with", never forced as the default. -->
+        <ProgId Id="EvoDesign.Idml" Description="IDML Document" Icon="EvoDesignExe" IconIndex="0" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\EvoDesign.Idml\shell\open\command" Value="&quot;[#EvoDesignExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\.idml\OpenWithProgids" Name="EvoDesign.Idml" Value="" Type="string" />
+
+        <!-- "Open with" app list and the Run dialog (Win+R "evodesign"). -->
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\evodesign.exe" Name="FriendlyAppName" Value="EvoDesign" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\evodesign.exe\shell\open\command" Value="&quot;[#EvoDesignExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\evodesign.exe\SupportedTypes" Name=".evodesign" Value="" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\evodesign.exe\SupportedTypes" Name=".idml" Value="" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\evodesign.exe" Value="[#EvoDesignExe]" Type="string" />
+      </Component>
+
+      <Component Id="EvoDesignCli">
+        <File Id="EvoDesignCliExe" Source="$(var.BinDir)\evodesign-cli.exe" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

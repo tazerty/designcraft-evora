@@ -1,12 +1,12 @@
-//! Name and enumeration mappings between the DesignCraft model and IDML.
+//! Name and enumeration mappings between the EvoDesign model and IDML.
 
-use designcraft_color::BlendMode;
-use designcraft_doc::{
+use evodesign_color::BlendMode;
+use evodesign_doc::{
     Align, Arrowhead, AutoSize, Cap, Capitalization, ClippingKind, ContourType, FirstBaseline, Join, Leading, NumberStyle, Position, StartParagraph,
     StrokeAlign, StrokeType, TabAlign, VerticalJustification, WrapMode, WrapSide,
 };
-use designcraft_geom::Unit;
-use designcraft_geom::corners::CornerShape;
+use evodesign_geom::Unit;
+use evodesign_geom::corners::CornerShape;
 
 /// `%` → `%25`, `:` → `%3a` (IDML Self-id escaping).
 const ANCHORS: [&str; 9] = [
@@ -21,8 +21,8 @@ const ANCHORS: [&str; 9] = [
     "BottomRightAnchor",
 ];
 
-pub fn anchor_rel_out(r: designcraft_doc::anchored::AnchorRelative, vertical: bool) -> &'static str {
-    use designcraft_doc::anchored::AnchorRelative as R;
+pub fn anchor_rel_out(r: evodesign_doc::anchored::AnchorRelative, vertical: bool) -> &'static str {
+    use evodesign_doc::anchored::AnchorRelative as R;
     match r {
         R::Anchor if vertical => "LineBaseline",
         R::Anchor => "AnchorLocation",
@@ -33,8 +33,8 @@ pub fn anchor_rel_out(r: designcraft_doc::anchored::AnchorRelative, vertical: bo
     }
 }
 
-pub fn anchor_rel_in(s: &str) -> designcraft_doc::anchored::AnchorRelative {
-    use designcraft_doc::anchored::AnchorRelative as R;
+pub fn anchor_rel_in(s: &str) -> evodesign_doc::anchored::AnchorRelative {
+    use evodesign_doc::anchored::AnchorRelative as R;
     match s {
         "TextFrame" => R::TextFrame,
         "ColumnEdge" => R::ColumnEdge,
@@ -45,8 +45,8 @@ pub fn anchor_rel_in(s: &str) -> designcraft_doc::anchored::AnchorRelative {
 }
 
 /// `PDFAttribute` `PDFCrop` for a placed PDF's crop choice.
-pub fn pdf_crop_out(c: designcraft_doc::PdfCrop) -> &'static str {
-    use designcraft_doc::PdfCrop as C;
+pub fn pdf_crop_out(c: evodesign_doc::PdfCrop) -> &'static str {
+    use evodesign_doc::PdfCrop as C;
     match c {
         C::Crop => "CropPDF",
         C::Art => "CropArt",
@@ -59,8 +59,8 @@ pub fn pdf_crop_out(c: designcraft_doc::PdfCrop) -> &'static str {
 }
 
 /// A placed PDF's crop choice from `PDFCrop` (the crop box when unknown).
-pub fn pdf_crop_in(s: &str) -> designcraft_doc::PdfCrop {
-    use designcraft_doc::PdfCrop as C;
+pub fn pdf_crop_in(s: &str) -> evodesign_doc::PdfCrop {
+    use evodesign_doc::PdfCrop as C;
     C::ALL.into_iter().find(|c| pdf_crop_out(*c) == s).unwrap_or(C::Crop)
 }
 
@@ -72,8 +72,8 @@ pub fn anchor_in(s: &str) -> u8 {
     ANCHORS.iter().position(|a| *a == s).unwrap_or(4) as u8
 }
 
-pub fn fitting_out(f: designcraft_doc::Fitting) -> &'static str {
-    use designcraft_doc::Fitting as F;
+pub fn fitting_out(f: evodesign_doc::Fitting) -> &'static str {
+    use evodesign_doc::Fitting as F;
     match f {
         F::None => "None",
         F::FillProportionally => "FillProportionally",
@@ -83,8 +83,8 @@ pub fn fitting_out(f: designcraft_doc::Fitting) -> &'static str {
     }
 }
 
-pub fn fitting_in(s: &str) -> designcraft_doc::Fitting {
-    use designcraft_doc::Fitting as F;
+pub fn fitting_in(s: &str) -> evodesign_doc::Fitting {
+    use evodesign_doc::Fitting as F;
     match s {
         "FillProportionally" => F::FillProportionally,
         "Proportionally" => F::FitProportionally,
@@ -94,8 +94,8 @@ pub fn fitting_in(s: &str) -> designcraft_doc::Fitting {
     }
 }
 
-pub fn liquid_rule_out(rule: designcraft_doc::LiquidRule) -> &'static str {
-    use designcraft_doc::LiquidRule as R;
+pub fn liquid_rule_out(rule: evodesign_doc::LiquidRule) -> &'static str {
+    use evodesign_doc::LiquidRule as R;
     match rule {
         R::Off => "Off",
         R::Scale => "Scale",
@@ -106,8 +106,8 @@ pub fn liquid_rule_out(rule: designcraft_doc::LiquidRule) -> &'static str {
     }
 }
 
-pub fn liquid_rule_in(s: &str) -> designcraft_doc::LiquidRule {
-    use designcraft_doc::LiquidRule as R;
+pub fn liquid_rule_in(s: &str) -> evodesign_doc::LiquidRule {
+    use evodesign_doc::LiquidRule as R;
     match s {
         "Off" => R::Off,
         "Scale" => R::Scale,
@@ -407,60 +407,60 @@ pub fn arrow_in(s: &str) -> Arrowhead {
     .unwrap_or(Arrowhead::None)
 }
 
-pub fn box_width_out(w: designcraft_doc::BoxWidth) -> &'static str {
+pub fn box_width_out(w: evodesign_doc::BoxWidth) -> &'static str {
     match w {
-        designcraft_doc::BoxWidth::Column => "ColumnWidth",
-        designcraft_doc::BoxWidth::Text => "TextWidth",
+        evodesign_doc::BoxWidth::Column => "ColumnWidth",
+        evodesign_doc::BoxWidth::Text => "TextWidth",
     }
 }
-pub fn box_width_in(s: &str) -> designcraft_doc::BoxWidth {
-    if s == "TextWidth" { designcraft_doc::BoxWidth::Text } else { designcraft_doc::BoxWidth::Column }
+pub fn box_width_in(s: &str) -> evodesign_doc::BoxWidth {
+    if s == "TextWidth" { evodesign_doc::BoxWidth::Text } else { evodesign_doc::BoxWidth::Column }
 }
 
-pub fn box_top_out(t: designcraft_doc::BoxTop) -> &'static str {
+pub fn box_top_out(t: evodesign_doc::BoxTop) -> &'static str {
     match t {
-        designcraft_doc::BoxTop::Ascent => "AscentTopOrigin",
-        designcraft_doc::BoxTop::Baseline => "BaselineTopOrigin",
-        designcraft_doc::BoxTop::EmBox => "EmBoxTopOrigin",
-        designcraft_doc::BoxTop::Leading => "LeadingTopOrigin",
+        evodesign_doc::BoxTop::Ascent => "AscentTopOrigin",
+        evodesign_doc::BoxTop::Baseline => "BaselineTopOrigin",
+        evodesign_doc::BoxTop::EmBox => "EmBoxTopOrigin",
+        evodesign_doc::BoxTop::Leading => "LeadingTopOrigin",
     }
 }
-pub fn box_top_in(s: &str) -> designcraft_doc::BoxTop {
+pub fn box_top_in(s: &str) -> evodesign_doc::BoxTop {
     match s {
-        "BaselineTopOrigin" => designcraft_doc::BoxTop::Baseline,
-        "EmBoxTopOrigin" => designcraft_doc::BoxTop::EmBox,
-        "LeadingTopOrigin" => designcraft_doc::BoxTop::Leading,
-        _ => designcraft_doc::BoxTop::Ascent,
+        "BaselineTopOrigin" => evodesign_doc::BoxTop::Baseline,
+        "EmBoxTopOrigin" => evodesign_doc::BoxTop::EmBox,
+        "LeadingTopOrigin" => evodesign_doc::BoxTop::Leading,
+        _ => evodesign_doc::BoxTop::Ascent,
     }
 }
 
-pub fn box_bottom_out(b: designcraft_doc::BoxBottom) -> &'static str {
+pub fn box_bottom_out(b: evodesign_doc::BoxBottom) -> &'static str {
     match b {
-        designcraft_doc::BoxBottom::Descent => "DescentBottomOrigin",
-        designcraft_doc::BoxBottom::Baseline => "BaselineBottomOrigin",
-        designcraft_doc::BoxBottom::EmBox => "EmBoxBottomOrigin",
+        evodesign_doc::BoxBottom::Descent => "DescentBottomOrigin",
+        evodesign_doc::BoxBottom::Baseline => "BaselineBottomOrigin",
+        evodesign_doc::BoxBottom::EmBox => "EmBoxBottomOrigin",
     }
 }
-pub fn box_bottom_in(s: &str) -> designcraft_doc::BoxBottom {
+pub fn box_bottom_in(s: &str) -> evodesign_doc::BoxBottom {
     match s {
-        "BaselineBottomOrigin" => designcraft_doc::BoxBottom::Baseline,
-        "EmBoxBottomOrigin" => designcraft_doc::BoxBottom::EmBox,
-        _ => designcraft_doc::BoxBottom::Descent,
+        "BaselineBottomOrigin" => evodesign_doc::BoxBottom::Baseline,
+        "EmBoxBottomOrigin" => evodesign_doc::BoxBottom::EmBox,
+        _ => evodesign_doc::BoxBottom::Descent,
     }
 }
 
-pub fn list_align_out(a: designcraft_doc::ListAlign) -> &'static str {
+pub fn list_align_out(a: evodesign_doc::ListAlign) -> &'static str {
     match a {
-        designcraft_doc::ListAlign::Left => "LeftAlign",
-        designcraft_doc::ListAlign::Center => "CenterAlign",
-        designcraft_doc::ListAlign::Right => "RightAlign",
+        evodesign_doc::ListAlign::Left => "LeftAlign",
+        evodesign_doc::ListAlign::Center => "CenterAlign",
+        evodesign_doc::ListAlign::Right => "RightAlign",
     }
 }
-pub fn list_align_in(s: &str) -> designcraft_doc::ListAlign {
+pub fn list_align_in(s: &str) -> evodesign_doc::ListAlign {
     match s {
-        "CenterAlign" => designcraft_doc::ListAlign::Center,
-        "RightAlign" => designcraft_doc::ListAlign::Right,
-        _ => designcraft_doc::ListAlign::Left,
+        "CenterAlign" => evodesign_doc::ListAlign::Center,
+        "RightAlign" => evodesign_doc::ListAlign::Right,
+        _ => evodesign_doc::ListAlign::Left,
     }
 }
 
@@ -691,10 +691,10 @@ pub fn unit_in(s: &str) -> Unit {
 
 /// IDML layer colour enumeration names for our layer colour table.
 pub fn layer_color_out(c: [u8; 3]) -> Option<String> {
-    designcraft_doc::LAYER_COLORS.iter().find(|(_, v)| *v == c).map(|(n, _)| n.replace(' ', ""))
+    evodesign_doc::LAYER_COLORS.iter().find(|(_, v)| *v == c).map(|(n, _)| n.replace(' ', ""))
 }
 pub fn layer_color_in(s: &str) -> Option<[u8; 3]> {
-    designcraft_doc::LAYER_COLORS.iter().find(|(n, _)| n.replace(' ', "") == s).map(|(_, v)| *v)
+    evodesign_doc::LAYER_COLORS.iter().find(|(n, _)| n.replace(' ', "") == s).map(|(_, v)| *v)
 }
 
 /// Format a number compactly (no trailing zeros, no `-0`).
@@ -760,17 +760,17 @@ pub fn note_style_in(s: &str) -> NumberStyle {
         s => number_style_in(s),
     }
 }
-pub const NOTE_RESTART: [(designcraft_doc::notes::NoteRestart, &str); 4] = [
-    (designcraft_doc::notes::NoteRestart::Never, "DontRestart"),
-    (designcraft_doc::notes::NoteRestart::Page, "PageRestart"),
-    (designcraft_doc::notes::NoteRestart::Spread, "SpreadRestart"),
-    (designcraft_doc::notes::NoteRestart::Section, "SectionRestart"),
+pub const NOTE_RESTART: [(evodesign_doc::notes::NoteRestart, &str); 4] = [
+    (evodesign_doc::notes::NoteRestart::Never, "DontRestart"),
+    (evodesign_doc::notes::NoteRestart::Page, "PageRestart"),
+    (evodesign_doc::notes::NoteRestart::Spread, "SpreadRestart"),
+    (evodesign_doc::notes::NoteRestart::Section, "SectionRestart"),
 ];
-pub const NOTE_AFFIX: [(designcraft_doc::notes::AffixIn, &str); 4] = [
-    (designcraft_doc::notes::AffixIn::None, "NoPrefixSuffix"),
-    (designcraft_doc::notes::AffixIn::Reference, "PrefixSuffixReference"),
-    (designcraft_doc::notes::AffixIn::Text, "PrefixSuffixMarker"),
-    (designcraft_doc::notes::AffixIn::Both, "PrefixSuffixBoth"),
+pub const NOTE_AFFIX: [(evodesign_doc::notes::AffixIn, &str); 4] = [
+    (evodesign_doc::notes::AffixIn::None, "NoPrefixSuffix"),
+    (evodesign_doc::notes::AffixIn::Reference, "PrefixSuffixReference"),
+    (evodesign_doc::notes::AffixIn::Text, "PrefixSuffixMarker"),
+    (evodesign_doc::notes::AffixIn::Both, "PrefixSuffixBoth"),
 ];
 pub fn note_marker_out(p: Position) -> &'static str {
     match p {
@@ -788,8 +788,8 @@ pub fn note_marker_in(s: &str) -> Position {
 }
 
 /// Nested-style delimiter → (property type, value).
-pub fn nested_until_out(u: &designcraft_doc::NestedUntil) -> (&'static str, String) {
-    use designcraft_doc::NestedUntil as N;
+pub fn nested_until_out(u: &evodesign_doc::NestedUntil) -> (&'static str, String) {
+    use evodesign_doc::NestedUntil as N;
     let e = |v: &str| ("enumeration", v.to_string());
     match u {
         N::Sentences => e("Sentence"),
@@ -806,8 +806,8 @@ pub fn nested_until_out(u: &designcraft_doc::NestedUntil) -> (&'static str, Stri
     }
 }
 
-pub fn nested_until_in(ty: &str, v: &str) -> designcraft_doc::NestedUntil {
-    use designcraft_doc::NestedUntil as N;
+pub fn nested_until_in(ty: &str, v: &str) -> evodesign_doc::NestedUntil {
+    use evodesign_doc::NestedUntil as N;
     if ty == "string" {
         return N::Chars(v.to_string());
     }
@@ -825,26 +825,26 @@ pub fn nested_until_in(ty: &str, v: &str) -> designcraft_doc::NestedUntil {
     }
 }
 
-pub fn path_align_out(a: designcraft_doc::PathAlign) -> &'static str {
+pub fn path_align_out(a: evodesign_doc::PathAlign) -> &'static str {
     match a {
-        designcraft_doc::PathAlign::Baseline => "BaselineAlignment",
-        designcraft_doc::PathAlign::Ascender => "AscenderAlignment",
-        designcraft_doc::PathAlign::Descender => "DescenderAlignment",
-        designcraft_doc::PathAlign::Center => "CenterAlignment",
+        evodesign_doc::PathAlign::Baseline => "BaselineAlignment",
+        evodesign_doc::PathAlign::Ascender => "AscenderAlignment",
+        evodesign_doc::PathAlign::Descender => "DescenderAlignment",
+        evodesign_doc::PathAlign::Center => "CenterAlignment",
     }
 }
 
-pub fn path_align_in(v: &str) -> designcraft_doc::PathAlign {
+pub fn path_align_in(v: &str) -> evodesign_doc::PathAlign {
     match v {
-        "AscenderAlignment" => designcraft_doc::PathAlign::Ascender,
-        "DescenderAlignment" => designcraft_doc::PathAlign::Descender,
-        "CenterAlignment" => designcraft_doc::PathAlign::Center,
-        _ => designcraft_doc::PathAlign::Baseline,
+        "AscenderAlignment" => evodesign_doc::PathAlign::Ascender,
+        "DescenderAlignment" => evodesign_doc::PathAlign::Descender,
+        "CenterAlignment" => evodesign_doc::PathAlign::Center,
+        _ => evodesign_doc::PathAlign::Baseline,
     }
 }
 
-pub fn digits_out(d: designcraft_doc::Digits) -> &'static str {
-    use designcraft_doc::Digits;
+pub fn digits_out(d: evodesign_doc::Digits) -> &'static str {
+    use evodesign_doc::Digits;
     match d {
         Digits::Default => "DefaultDigits",
         Digits::Arabic => "ArabicDigits",
@@ -853,8 +853,8 @@ pub fn digits_out(d: designcraft_doc::Digits) -> &'static str {
         Digits::Native => "NativeDigits",
     }
 }
-pub fn digits_in(s: &str) -> Option<designcraft_doc::Digits> {
-    use designcraft_doc::Digits;
+pub fn digits_in(s: &str) -> Option<evodesign_doc::Digits> {
+    use evodesign_doc::Digits;
     [Digits::Default, Digits::Arabic, Digits::Hindi, Digits::Farsi, Digits::Native].into_iter().find(|d| digits_out(*d) == s)
 }
 

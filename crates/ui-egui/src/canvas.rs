@@ -1,11 +1,11 @@
-//! The document canvas: pasteboard, spreads (rendered by `designcraft-render`), guides, frame edges,
+//! The document canvas: pasteboard, spreads (rendered by `evodesign-render`), guides, frame edges,
 //! selection, text ports and threads, the text caret, rulers, and pointer/keyboard input.
 
-use designcraft_compose as compose;
-use designcraft_doc::{Content, Document, GuideSel, Item, SpreadRef};
-use designcraft_engine::doc::Selection;
-use designcraft_geom::{Affine, Point, Rect as DRect, Vec2 as DVec2};
-use designcraft_tools::{CanvasLayout, Cursor, Mods, Overlay, PointerEvent, PointerKind, SpreadSlot, ToolKey};
+use evodesign_compose as compose;
+use evodesign_doc::{Content, Document, GuideSel, Item, SpreadRef};
+use evodesign_engine::doc::Selection;
+use evodesign_geom::{Affine, Point, Rect as DRect, Vec2 as DVec2};
+use evodesign_tools::{CanvasLayout, Cursor, Mods, Overlay, PointerEvent, PointerKind, SpreadSlot, ToolKey};
 use egui::{Color32, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::{Value, json};
 
@@ -105,7 +105,7 @@ pub fn fit(app: &mut DesignApp, rect: Rect, what: &str) {
     }
     if what == "selection" {
         // Fit Selection in Window: the selected objects (on their spread's slot).
-        let sel: Vec<designcraft_geom::Rect> = st
+        let sel: Vec<evodesign_geom::Rect> = st
             .selection
             .items
             .iter()
@@ -256,13 +256,13 @@ fn centre_page(app: &mut DesignApp, abs: usize) {
 }
 
 /// The document's pages by id, in page order.
-fn page_ids(doc: &Document) -> Vec<designcraft_doc::ids::PageId> {
+fn page_ids(doc: &Document) -> Vec<evodesign_doc::ids::PageId> {
     doc.spreads.iter().flat_map(|s| s.pages.iter().map(|p| p.id)).collect()
 }
 
 /// The page in view and the view centre's offset from that page's centre. Parent pages have none,
 /// nor has a view still waiting to be fitted (leaving parent pages for a document page).
-pub(crate) fn page_in_view(app: &DesignApp) -> Option<(designcraft_doc::ids::PageId, DVec2)> {
+pub(crate) fn page_in_view(app: &DesignApp) -> Option<(evodesign_doc::ids::PageId, DVec2)> {
     let st = app.session.active().filter(|st| !st.editing_parents)?;
     let (v, r) = (app.view().filter(|v| v.fitted)?, app.canvas_rect?);
     let abs = current_page(app)?;
@@ -466,7 +466,7 @@ fn spring_zoom_mode(app: &DesignApp, ctx: &egui::Context, space: bool) -> bool {
 
 #[derive(Clone, Default)]
 struct SpringZoom {
-    tool: designcraft_tools::ZoomTool,
+    tool: evodesign_tools::ZoomTool,
     down: bool,
 }
 
@@ -574,7 +574,7 @@ pub fn show(app: &mut DesignApp, ui: &mut egui::Ui) {
     }
     // Paper under the rendered content: a page scrolled or jumped to shows its paper colour,
     // not the shadow's black, until its render arrives.
-    let [r, g, b, _] = doc.resolve_color(designcraft_color::swatch::PAPER, 1.0).unwrap_or(designcraft_color::Color::WHITE).to_rgba8(1.0);
+    let [r, g, b, _] = doc.resolve_color(evodesign_color::swatch::PAPER, 1.0).unwrap_or(evodesign_color::Color::WHITE).to_rgba8(1.0);
     let paper = Color32::from_rgb(r, g, b);
     for slot in &layout.slots {
         for page in doc.spread(slot.spread).map(|sp| sp.pages.as_slice()).unwrap_or_default() {
@@ -626,8 +626,8 @@ pub fn show(app: &mut DesignApp, ui: &mut egui::Ui) {
             let spot = guide_spot(app, &xf, &g);
             let line = spot.as_ref().map_or(p, |s| s.screen);
             let (a, b) = match g.orientation {
-                designcraft_doc::Orientation::Horizontal => (pos2(rect.min.x, line.y), pos2(rect.max.x, line.y)),
-                designcraft_doc::Orientation::Vertical => (pos2(line.x, rect.min.y), pos2(line.x, rect.max.y)),
+                evodesign_doc::Orientation::Horizontal => (pos2(rect.min.x, line.y), pos2(rect.max.x, line.y)),
+                evodesign_doc::Orientation::Vertical => (pos2(line.x, rect.min.y), pos2(line.x, rect.max.y)),
             };
             // What caught it, as for a moved object.
             for mark in spot.iter().flat_map(|s| &s.marks) {
@@ -756,8 +756,8 @@ fn draw_cursor_badge(painter: &egui::Painter, p: Pos2, c: Cursor, t: &Tokens) {
 }
 
 /// Render options for the canvas texture.
-fn screen_options(app: &DesignApp, layout: &CanvasLayout, preview: bool, ppp: f64) -> designcraft_render::RenderOptions {
-    designcraft_render::RenderOptions {
+fn screen_options(app: &DesignApp, layout: &CanvasLayout, preview: bool, ppp: f64) -> evodesign_render::RenderOptions {
+    evodesign_render::RenderOptions {
         printing_only: preview,
         greek_below_px: 3.0 * ppp,
         highlight_missing_fonts: !preview && app.session.prefs.highlight_substituted_fonts,
@@ -781,7 +781,7 @@ fn screen_options(app: &DesignApp, layout: &CanvasLayout, preview: bool, ppp: f6
 /// The area each spread's document grid covers, in spread coordinates: the full-width band of
 /// the pasteboard nearest that spread, the band in which `CanvasLayout::spread_at` (and so
 /// snapping) picks it.
-fn grid_areas(layout: &CanvasLayout) -> Vec<(designcraft_doc::SpreadRef, DRect)> {
+fn grid_areas(layout: &CanvasLayout) -> Vec<(evodesign_doc::SpreadRef, DRect)> {
     let pb = layout.pasteboard;
     let slots = &layout.slots;
     slots
@@ -798,7 +798,7 @@ fn grid_areas(layout: &CanvasLayout) -> Vec<(designcraft_doc::SpreadRef, DRect)>
 /// The display options that change how the canvas texture looks without touching the document.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DisplayKey {
-    quality: designcraft_render::DisplayQuality,
+    quality: evodesign_render::DisplayQuality,
     separation: Option<u8>,
     rich_black: bool,
     overprint_preview: bool,
@@ -892,8 +892,8 @@ fn render_texture(app: &mut DesignApp, ctx: &egui::Context, rect: Rect, xf: &Xf,
     let zoom_same = app.canvas.shown.is_some_and(|s| (s.zoom - xf.zoom).abs() < 1e-9);
     let job = |app: &DesignApp| {
         let st = app.session.active()?;
-        let placed: Vec<designcraft_render::Placed> =
-            layout.slots.iter().map(|s| designcraft_render::Placed { spread: s.spread, xf: s.xf }).collect();
+        let placed: Vec<evodesign_render::Placed> =
+            layout.slots.iter().map(|s| evodesign_render::Placed { spread: s.spread, xf: s.xf }).collect();
         let w = (target.size.0 as f64 * ppp).round().max(1.0) as u32;
         let h = (target.size.1 as f64 * ppp).round().max(1.0) as u32;
         let view = Affine::scale(ppp) * Affine::scale(xf.zoom) * Affine::translate((-target.origin.x, -target.origin.y));
@@ -966,7 +966,7 @@ fn patch_texture(app: &mut DesignApp, layout: &CanvasLayout, ppp: f64, doc_key: 
         return false;
     }
     let new = st.doc.clone();
-    let Some(regions) = designcraft_render::damage::damage_with(&old, &new, Some(&app.session.cache)) else { return false };
+    let Some(regions) = evodesign_render::damage::damage_with(&old, &new, Some(&app.session.cache)) else { return false };
     let t0 = crate::now_ms();
     let k = sh.zoom * ppp;
     let mut px: Option<(i64, i64, i64, i64)> = None;
@@ -997,7 +997,7 @@ fn patch_texture(app: &mut DesignApp, layout: &CanvasLayout, ppp: f64, doc_key: 
     if ((x1 - x0) * (y1 - y0)) as f64 > 0.5 * (tw * th) as f64 {
         return false;
     }
-    let placed: Vec<designcraft_render::Placed> = layout.slots.iter().map(|s| designcraft_render::Placed { spread: s.spread, xf: s.xf }).collect();
+    let placed: Vec<evodesign_render::Placed> = layout.slots.iter().map(|s| evodesign_render::Placed { spread: s.spread, xf: s.xf }).collect();
     let view = Affine::translate((-(x0 as f64), -(y0 as f64)))
         * Affine::scale(ppp)
         * Affine::scale(sh.zoom)
@@ -1016,19 +1016,19 @@ fn patch_texture(app: &mut DesignApp, layout: &CanvasLayout, ppp: f64, doc_key: 
 
 #[cfg(not(target_arch = "wasm32"))]
 fn render_worker_spawn(ctx: &egui::Context) -> Option<crate::render_worker::Worker> {
-    if std::env::var_os("DESIGNCRAFT_SYNC_RENDER").is_some() {
+    if std::env::var_os("EVODESIGN_SYNC_RENDER").is_some() {
         return None;
     }
     crate::render_worker::Worker::spawn(ctx.clone())
 }
 
-fn upload(app: &mut DesignApp, ctx: &egui::Context, mut img: designcraft_render::Rendered) {
+fn upload(app: &mut DesignApp, ctx: &egui::Context, mut img: evodesign_render::Rendered) {
     if app.ui.proof_colors {
-        designcraft_render::proof_view(&mut img, &app.ui.proof_setup);
+        evodesign_render::proof_view(&mut img, &app.ui.proof_setup);
     }
     // Plates render from source colours; the ink limit is estimated from the composite.
     if app.ui.separation.is_none() && app.ui.ink_limit.is_some() {
-        designcraft_render::separation_view(&mut img, None, app.ui.ink_limit);
+        evodesign_render::separation_view(&mut img, None, app.ui.ink_limit);
     }
     let ci = egui::ColorImage::from_rgba_premultiplied([img.width as usize, img.height as usize], &img.pixels);
     let ci = crate::widgets::fit_texture(ci, ctx.input(|i| i.max_texture_side));
@@ -1046,7 +1046,7 @@ fn dashed(painter: &egui::Painter, a: Pos2, b: Pos2, stroke: Stroke, dash: f32, 
 const MAX_BASELINES: usize = 216 * 72;
 
 /// Baseline grid lines inside a page, measured from its top: `start + n * increment` for n >= 0 (the bottom
-/// edge is not a line), `start` from [`BaselineGrid::origin`](designcraft_doc::BaselineGrid::origin). Lines
+/// edge is not a line), `start` from [`BaselineGrid::origin`](evodesign_doc::BaselineGrid::origin). Lines
 /// above the page are skipped without walking them, however far up the start is.
 fn baseline_grid_lines(start: f64, increment: f64, height: f64) -> impl Iterator<Item = f64> {
     let step = increment.max(1.0);
@@ -1139,15 +1139,15 @@ fn draw_guides(app: &DesignApp, painter: &egui::Painter, xf: &Xf, doc: &Document
                     && m.guides.contains(&key)
                 {
                     g.position += match g.orientation {
-                        designcraft_doc::Orientation::Vertical => m.dx,
-                        designcraft_doc::Orientation::Horizontal => m.dy,
+                        evodesign_doc::Orientation::Vertical => m.dx,
+                        evodesign_doc::Orientation::Horizontal => m.dy,
                     };
                 }
                 // Spread guides cross the pasteboard; page guides their page.
                 let span = if g.spread { pasteboard } else { pr };
                 let (a, bb) = match g.orientation {
-                    designcraft_doc::Orientation::Horizontal => (Point::new(span.x0, g.position), Point::new(span.x1, g.position)),
-                    designcraft_doc::Orientation::Vertical => {
+                    evodesign_doc::Orientation::Horizontal => (Point::new(span.x0, g.position), Point::new(span.x1, g.position)),
+                    evodesign_doc::Orientation::Vertical => {
                         let span = if g.spread { sp.bounds().inflate(0.0, 36.0) } else { pr };
                         (Point::new(g.position, span.y0), Point::new(g.position, span.y1))
                     }
@@ -1171,7 +1171,7 @@ fn draw_guides(app: &DesignApp, painter: &egui::Painter, xf: &Xf, doc: &Document
 }
 
 /// Spread-space → canvas transform for an item at `loc`.
-fn item_canvas_xf(doc: &Document, layout: &CanvasLayout, id: designcraft_doc::ItemId) -> Option<(Affine, &'static str)> {
+fn item_canvas_xf(doc: &Document, layout: &CanvasLayout, id: evodesign_doc::ItemId) -> Option<(Affine, &'static str)> {
     let loc = doc.find(id)?;
     Some((layout.xf(loc.spread) * doc.parent_xf(&loc), ""))
 }
@@ -1181,8 +1181,8 @@ fn path_screen(it: &Item, xf: &Xf, a: Affine) -> Vec<Vec<Pos2>> {
     let full = a * it.xf;
     let mut out = Vec::new();
     let mut cur: Vec<Pos2> = Vec::new();
-    designcraft_geom::kurbo::flatten(&bp, 0.25 / xf.zoom.max(0.01), |el| {
-        use designcraft_geom::PathEl::*;
+    evodesign_geom::kurbo::flatten(&bp, 0.25 / xf.zoom.max(0.01), |el| {
+        use evodesign_geom::PathEl::*;
         match el {
             MoveTo(p) => {
                 if cur.len() > 1 {
@@ -1241,7 +1241,7 @@ fn draw_frames(app: &DesignApp, painter: &egui::Painter, xf: &Xf, doc: &Document
         // to miss while laying out).
         for (it, c) in overset_marks(app, doc, layout, &sp.items, xf.zoom, &ported) {
             let c = xf.to_screen(c);
-            let s = designcraft_tools::thread::PORT_SIZE_PX as f32;
+            let s = evodesign_tools::thread::PORT_SIZE_PX as f32;
             painter.rect_filled(Rect::from_center_size(c, vec2(s, s)), 0.0, Color32::WHITE);
             painter.rect_stroke(Rect::from_center_size(c, vec2(s, s)), 0.0, Stroke::new(hair(painter), layer_color(doc, it)), StrokeKind::Inside);
             let red = Color32::from_rgb(230, 20, 20);
@@ -1287,7 +1287,7 @@ fn draw_item_edges(painter: &egui::Painter, xf: &Xf, doc: &Document, it: &Item, 
         }
     }
     // Empty graphic frame: the X.
-    if it.object_style == designcraft_doc::BASIC_GRAPHICS_FRAME && matches!(it.content, Content::Unassigned) {
+    if it.object_style == evodesign_doc::BASIC_GRAPHICS_FRAME && matches!(it.content, Content::Unassigned) {
         let r = it.inner_bounds();
         let m = a * it.xf;
         let p = |x: f64, y: f64| xf.to_screen(m * Point::new(x, y));
@@ -1357,7 +1357,7 @@ fn draw_selection(app: &DesignApp, painter: &egui::Painter, xf: &Xf, doc: &Docum
             painter.rect_stroke(gb, 0.0, Stroke::new(1.0, brown), StrokeKind::Middle);
             // Its own handles resize the graphic (InDesign's brown content bounding box).
             if sel.items.len() == 1 {
-                for h in designcraft_tools::select::handles(DRect::new(gb.min.x as f64, gb.min.y as f64, gb.max.x as f64, gb.max.y as f64)) {
+                for h in evodesign_tools::select::handles(DRect::new(gb.min.x as f64, gb.min.y as f64, gb.max.x as f64, gb.max.y as f64)) {
                     let r = Rect::from_center_size(pos2(h.x as f32, h.y as f32), vec2(6.5, 6.5));
                     painter.rect_filled(r, 0.0, Color32::WHITE);
                     painter.rect_stroke(r, 0.0, Stroke::new(hair(painter), brown), StrokeKind::Inside);
@@ -1401,7 +1401,7 @@ fn draw_selection(app: &DesignApp, painter: &egui::Painter, xf: &Xf, doc: &Docum
         // A selected placed graphic has its own handles instead of the frame's.
         let graphic_selected =
             sel.content && sel.items.len() == 1 && doc.item(sel.items[0]).is_some_and(|i| matches!(i.content, Content::Graphic(_)));
-        for h in designcraft_tools::select::handles(DRect::new(u.min.x as f64, u.min.y as f64, u.max.x as f64, u.max.y as f64))
+        for h in evodesign_tools::select::handles(DRect::new(u.min.x as f64, u.min.y as f64, u.max.x as f64, u.max.y as f64))
             .into_iter()
             .filter(|_| !graphic_selected)
         {
@@ -1430,7 +1430,7 @@ const PORT_GROUP_DEPTH: usize = 32;
 
 /// The text frames whose ports `draw_selection` draws: the selected text frames and the text
 /// frames inside selected groups.
-fn ported_frames(app: &DesignApp, doc: &Document) -> std::collections::HashSet<designcraft_doc::ItemId> {
+fn ported_frames(app: &DesignApp, doc: &Document) -> std::collections::HashSet<evodesign_doc::ItemId> {
     let mut frames = Vec::new();
     if let Some(st) = app.session.active() {
         for it in st.selection.items.iter().filter_map(|id| doc.item(*id)) {
@@ -1449,14 +1449,14 @@ fn overset_marks<'a>(
     layout: &CanvasLayout,
     items: &'a [std::sync::Arc<Item>],
     zoom: f64,
-    ported: &std::collections::HashSet<designcraft_doc::ItemId>,
+    ported: &std::collections::HashSet<evodesign_doc::ItemId>,
 ) -> Vec<(&'a Item, Point)> {
     let mut frames = Vec::new();
     overset_frames(app, doc, items, 0, &mut frames);
     frames
         .into_iter()
         .filter(|it| !ported.contains(&it.id))
-        .filter_map(|it| Some((it, designcraft_tools::thread::port_center(doc, layout, it.id, true, zoom)?)))
+        .filter_map(|it| Some((it, evodesign_tools::thread::port_center(doc, layout, it.id, true, zoom)?)))
         .collect()
 }
 
@@ -1484,7 +1484,7 @@ fn overset_frames<'a>(app: &DesignApp, doc: &Document, items: &'a [std::sync::Ar
 
 /// `it` when it is a text frame, or every text frame nested in it when it is a group, each with
 /// its story.
-fn text_frames_in<'a>(it: &'a Item, depth: usize, out: &mut Vec<(&'a Item, designcraft_doc::StoryId)>) {
+fn text_frames_in<'a>(it: &'a Item, depth: usize, out: &mut Vec<(&'a Item, evodesign_doc::StoryId)>) {
     match &it.content {
         Content::Text(tf) => out.push((it, tf.story)),
         Content::Group { items } if depth < PORT_GROUP_DEPTH => {
@@ -1497,7 +1497,7 @@ fn text_frames_in<'a>(it: &'a Item, depth: usize, out: &mut Vec<(&'a Item, desig
 }
 
 /// Port location (canvas): out port at bottom-right, in port at top-left.
-fn port_pos(doc: &Document, layout: &CanvasLayout, id: designcraft_doc::ItemId, out: bool) -> Option<Point> {
+fn port_pos(doc: &Document, layout: &CanvasLayout, id: evodesign_doc::ItemId, out: bool) -> Option<Point> {
     let it = doc.item(id)?;
     let (a, _) = item_canvas_xf(doc, layout, id)?;
     let r = it.inner_bounds();
@@ -1513,7 +1513,7 @@ fn draw_ports(
     doc: &Document,
     layout: &CanvasLayout,
     it: &Item,
-    sid: designcraft_doc::StoryId,
+    sid: evodesign_doc::StoryId,
     color: Color32,
 ) {
     let Some(story) = doc.story(sid) else { return };
@@ -1521,10 +1521,10 @@ fn draw_ports(
     let is_last = pos + 1 == story.frames.len();
     let cs = app.session.cache.get(doc, sid, None);
     let overset = is_last && cs.is_overset();
-    let s = designcraft_tools::thread::PORT_SIZE_PX as f32;
+    let s = evodesign_tools::thread::PORT_SIZE_PX as f32;
     // In port on the left edge below the top-left corner; out port on the right edge above the
     // bottom-right corner. The Selection tool hit-tests the same places.
-    let port = |out: bool| designcraft_tools::thread::port_center(doc, layout, it.id, out, xf.zoom).map(|c| xf.to_screen(c));
+    let port = |out: bool| evodesign_tools::thread::port_center(doc, layout, it.id, out, xf.zoom).map(|c| xf.to_screen(c));
     let (Some(inp), Some(outp)) = (port(false), port(true)) else { return };
     for (c, has_link, is_out) in [(inp, pos > 0, false), (outp, !is_last, true)] {
         let pr = Rect::from_center_size(c, vec2(s, s));
@@ -1546,8 +1546,8 @@ fn draw_text_selection(
     xf: &Xf,
     doc: &Document,
     layout: &CanvasLayout,
-    ts: designcraft_doc::TextSel,
-    cells: Option<designcraft_doc::TableSel>,
+    ts: evodesign_doc::TextSel,
+    cells: Option<evodesign_doc::TableSel>,
 ) {
     let cs = app.session.cache.get(doc, ts.story, None);
     let range = ts.range();
@@ -1697,8 +1697,8 @@ fn draw_cell_selection(
     doc: &Document,
     layout: &CanvasLayout,
     cs: &compose::ComposedStory,
-    ts: designcraft_doc::TextSel,
-    cell: designcraft_doc::CellAddr,
+    ts: evodesign_doc::TextSel,
+    cell: evodesign_doc::CellAddr,
 ) {
     // Footnote text or a cell: its composed story and where it sits in the frame.
     let found = match cell.footnote_id() {
@@ -1708,7 +1708,7 @@ fn draw_cell_selection(
     let Some((fi, origin, text)) = found else { return };
     let Some(ft) = cs.frames.get(fi) else { return };
     let (Some((a, _)), Some(it)) = (item_canvas_xf(doc, layout, ft.frame), doc.item(ft.frame)) else { return };
-    let m = a * doc.text_xf(it) * designcraft_geom::Affine::translate(origin.to_vec2());
+    let m = a * doc.text_xf(it) * evodesign_geom::Affine::translate(origin.to_vec2());
     let range = ts.range();
     if !range.is_empty()
         && let Some(cft) = text.frames.first()
@@ -1751,10 +1751,10 @@ fn draw_inverse_highlight(
     xf: &Xf,
     doc: &Document,
     cs: &compose::ComposedStory,
-    story: designcraft_doc::StoryId,
+    story: evodesign_doc::StoryId,
     runs: &[(usize, Affine, Vec<[Point; 4]>, Vec<(usize, usize)>)],
 ) {
-    use designcraft_render::vello_cpu::{self, kurbo, peniko};
+    use evodesign_render::vello_cpu::{self, kurbo, peniko};
     let ctx = painter.ctx();
     let ppp = ctx.pixels_per_point();
     let to_screen = |m: Affine, p: Point| xf.to_screen(m * p);
@@ -1800,7 +1800,7 @@ fn draw_inverse_highlight(
                     rc.fill_path(&bp);
                 }
             }
-            let db = designcraft_fonts::FontDb::global();
+            let db = evodesign_fonts::FontDb::global();
             for (fi, m, _, glyphs) in runs {
                 let Some(ft) = cs.frames.get(*fi) else { continue };
                 for &(li, gi) in glyphs {
@@ -1836,7 +1836,7 @@ fn draw_tool_overlays(app: &mut DesignApp, painter: &egui::Painter, xf: &Xf) {
     if let (Some((z, c)), Some(rect)) = (app.power_zoom, app.canvas_rect) {
         // The view that releasing returns to.
         let (w, h) = (rect.width() as f64 / z, rect.height() as f64 / z);
-        let r = xf.rect(designcraft_geom::Rect::new(c.x - w / 2.0, c.y - h / 2.0, c.x + w / 2.0, c.y + h / 2.0));
+        let r = xf.rect(evodesign_geom::Rect::new(c.x - w / 2.0, c.y - h / 2.0, c.x + w / 2.0, c.y + h / 2.0));
         painter.rect_stroke(r, 0.0, egui::Stroke::new(1.5, Color32::from_rgb(230, 40, 40)), egui::StrokeKind::Middle);
     }
     let tok = Tokens::get(painter.ctx());
@@ -1938,11 +1938,11 @@ fn draw_tool_overlays(app: &mut DesignApp, painter: &egui::Painter, xf: &Xf) {
 
 /// A path overlay (canvas coordinates; the Pencil's stroke while drawing, the Smooth and Erase
 /// drags) as screen polylines, its curves flattened to about a quarter of a screen pixel.
-fn draw_path_overlay(painter: &egui::Painter, xf: &Xf, path: &designcraft_geom::BezPath, color: Color32, dashed_line: bool) {
-    use designcraft_geom::PathEl;
+fn draw_path_overlay(painter: &egui::Painter, xf: &Xf, path: &evodesign_geom::BezPath, color: Color32, dashed_line: bool) {
+    use evodesign_geom::PathEl;
     let stroke = Stroke::new(1.0, color);
     let mut runs: Vec<Vec<Pos2>> = Vec::new();
-    designcraft_geom::kurbo::flatten(path, 0.25 / xf.zoom.max(1e-9), |el| match el {
+    evodesign_geom::kurbo::flatten(path, 0.25 / xf.zoom.max(1e-9), |el| match el {
         PathEl::MoveTo(p) => runs.push(vec![xf.to_screen(p)]),
         PathEl::LineTo(p) => {
             if let Some(run) = runs.last_mut() {
@@ -1970,7 +1970,7 @@ fn draw_path_overlay(painter: &egui::Painter, xf: &Xf, path: &designcraft_geom::
 
 /// A frame's whole content drawn faintly over the canvas, the part outside the frame included,
 /// with its bounds outlined (while the content moves inside the frame).
-fn draw_content_ghost(painter: &egui::Painter, xf: &Xf, doc: &Document, layout: &CanvasLayout, id: designcraft_doc::ItemId) {
+fn draw_content_ghost(painter: &egui::Painter, xf: &Xf, doc: &Document, layout: &CanvasLayout, id: evodesign_doc::ItemId) {
     let Some(it) = doc.item(id) else { return };
     let Some((a, _)) = item_canvas_xf(doc, layout, id) else { return };
     let outline = Stroke::new(1.0, Color32::from_rgb(196, 111, 43));
@@ -2000,14 +2000,14 @@ fn draw_content_ghost(painter: &egui::Painter, xf: &Xf, doc: &Document, layout: 
 }
 
 /// A screen-resolution proxy of a placed graphic for the ghost, cached per asset.
-fn ghost_texture(ctx: &egui::Context, doc: &Document, g: &designcraft_doc::Graphic) -> Option<egui::TextureHandle> {
+fn ghost_texture(ctx: &egui::Context, doc: &Document, g: &evodesign_doc::Graphic) -> Option<egui::TextureHandle> {
     let asset = doc.assets.get(&g.asset)?;
     let key = egui::Id::new(("content_ghost", std::sync::Arc::as_ptr(&asset.data) as usize, asset.data.len(), asset.page));
     if let Some(t) = ctx.data(|d| d.get_temp::<egui::TextureHandle>(key)) {
         return Some(t);
     }
     // A 72 ppi proxy is enough for a faint preview.
-    let pm = designcraft_render::images::mip(&asset.data, asset.page, g.size.0, 1.0)?;
+    let pm = evodesign_render::images::mip(&asset.data, asset.page, g.size.0, 1.0)?;
     let (pw, ph) = (pm.width() as usize, pm.height() as usize);
     if pw == 0 || ph == 0 {
         return None;
@@ -2034,7 +2034,7 @@ fn draw_liquid_pins(painter: &egui::Painter, o: Rect, page: Rect, pins: [bool; 4
     for m in mids {
         painter.circle_filled(m, 3.5, col);
     }
-    let (po, lo) = (designcraft_tools::PIN_OFFSET_PX as f32, designcraft_tools::LOCK_OFFSET_PX as f32);
+    let (po, lo) = (evodesign_tools::PIN_OFFSET_PX as f32, evodesign_tools::LOCK_OFFSET_PX as f32);
     let outward = [vec2(0.0, -1.0), vec2(1.0, 0.0), vec2(0.0, 1.0), vec2(-1.0, 0.0)];
     let edge = [pos2(c.x, page.min.y), pos2(page.max.x, c.y), pos2(c.x, page.max.y), pos2(page.min.x, c.y)];
     for i in 0..4 {
@@ -2224,8 +2224,8 @@ enum RulerMenu {
 }
 
 /// The units a ruler's menu offers, in InDesign's order.
-const RULER_UNITS: [designcraft_geom::Unit; 9] = {
-    use designcraft_geom::Unit::*;
+const RULER_UNITS: [evodesign_geom::Unit; 9] = {
+    use evodesign_geom::Unit::*;
     [Points, Picas, Inches, InchesDecimal, Millimeters, Centimeters, Ciceros, Agates, Pixels]
 };
 
@@ -2233,7 +2233,7 @@ const RULER_UNITS: [designcraft_geom::Unit; 9] = {
 /// ruler, Delete All Guides on Spread. The corner's menu (`Both`) starts with Lock Zero Point
 /// (`locked` = the zero point is locked). Picking a unit sets `horizontalUnits`,
 /// `verticalUnits` or both through `document.preferences`.
-fn ruler_units_menu(app: &mut DesignApp, ui: &mut egui::Ui, which: RulerMenu, cur: Option<designcraft_geom::Unit>, locked: bool) {
+fn ruler_units_menu(app: &mut DesignApp, ui: &mut egui::Ui, which: RulerMenu, cur: Option<evodesign_geom::Unit>, locked: bool) {
     let lang = app.ui.language.clone();
     let tr = |s: &str| crate::i18n::tr(&lang, s).to_string();
     if which == RulerMenu::Both {
@@ -2356,13 +2356,13 @@ fn context_target(app: &mut DesignApp, p: Point, zoom: f64) -> crate::menus::Con
 }
 
 /// The frontmost item under canvas point `p` and that point in its spread, hit as the tools do.
-fn item_at(app: &DesignApp, p: Point, zoom: f64) -> Option<(designcraft_doc::ItemId, Point)> {
+fn item_at(app: &DesignApp, p: Point, zoom: f64) -> Option<(evodesign_doc::ItemId, Point)> {
     let st = app.session.active()?;
     let (sr, sp) = CanvasLayout::new(&st.doc, st.editing_parents).spread_at(p)?;
     let tol = 4.0 / zoom.max(1e-6);
     let id = match sr {
         SpreadRef::Doc(si) => st.doc.hit_item(si, sp, tol)?,
-        _ => st.doc.spread(sr)?.items.iter().rev().find(|it| !it.locked && designcraft_doc::edit_hit(it, sp, tol))?.id,
+        _ => st.doc.spread(sr)?.items.iter().rev().find(|it| !it.locked && evodesign_doc::edit_hit(it, sp, tol))?.id,
     };
     Some((id, sp))
 }
@@ -2749,7 +2749,7 @@ fn keyboard_pane(app: &DesignApp) -> bool {
 }
 
 /// One input method event for the text caret: marked text previews in the story, a commit types.
-fn ime_event(app: &mut DesignApp, e: egui::ImeEvent, vi: designcraft_engine::ViewInfo) {
+fn ime_event(app: &mut DesignApp, e: egui::ImeEvent, vi: evodesign_engine::ViewInfo) {
     let r = match e {
         egui::ImeEvent::Preedit { text, active_range_chars } => {
             app.ime_marked = Some(text.clone()).filter(|t| !t.is_empty());
@@ -2893,7 +2893,7 @@ fn draw_flattener_preview(painter: &egui::Painter, xf: &Xf, doc: &Document, layo
     for slot in &layout.slots {
         let Some(sp) = doc.spread(slot.spread) else { continue };
         for it in sp.items.iter().filter(|it| !it.hidden && transparent(it)) {
-            let r = it.bounds().inflate(designcraft_render::effect_outset(it), designcraft_render::effect_outset(it));
+            let r = it.bounds().inflate(evodesign_render::effect_outset(it), evodesign_render::effect_outset(it));
             painter.rect_filled(xf.rect(slot.xf.transform_rect_bbox(r)), 0.0, red);
         }
     }
@@ -2907,7 +2907,7 @@ fn draw_dynamic_spelling(app: &DesignApp, ctx: &egui::Context, painter: &egui::P
         let bad: std::sync::Arc<Vec<std::ops::Range<usize>>> = match ctx.data(|d| d.get_temp(key)) {
             Some(v) => v,
             None => {
-                let v = std::sync::Arc::new(designcraft_engine::cmd::spelling::misspellings(doc, story, &doc.user_words));
+                let v = std::sync::Arc::new(evodesign_engine::cmd::spelling::misspellings(doc, story, &doc.user_words));
                 ctx.data_mut(|d| d.insert_temp(key, v.clone()));
                 v
             }
@@ -2948,7 +2948,7 @@ pub fn selected_text(app: &DesignApp) -> Option<String> {
     if s.is_empty() {
         return None;
     }
-    Some(s.replace(designcraft_doc::story::FORCED_LINE_BREAK, "\n"))
+    Some(s.replace(evodesign_doc::story::FORCED_LINE_BREAK, "\n"))
 }
 
 /// One device pixel, the width InDesign uses for guides and frame edges.
@@ -3046,8 +3046,8 @@ const GUIDE_DRAG: &str = "canvas_guide_drag";
 /// A ruler guide being dragged: out of a ruler (`from` None) or an existing one.
 #[derive(Clone, Debug)]
 struct GuideDrag {
-    orientation: designcraft_doc::Orientation,
-    from: Option<(designcraft_doc::SpreadRef, usize, usize)>,
+    orientation: evodesign_doc::Orientation,
+    from: Option<(evodesign_doc::SpreadRef, usize, usize)>,
     /// Pointer position (screen).
     at: Option<Pos2>,
     /// Modifiers held at the pointer's last move: Shift snaps to the ruler's ticks, Command
@@ -3073,7 +3073,7 @@ const GUIDE_CLICK_SLOP: f32 = 3.0;
 /// in the document's ruler units. `None` with no document or rulers.
 fn guide_readout(app: &DesignApp, xf: &Xf, g: &GuideDrag) -> Option<String> {
     let (label, value, unit) = guide_measure(app, xf, g)?;
-    Some(format!("{label}: {}", designcraft_geom::units::format_measure(value, unit)))
+    Some(format!("{label}: {}", evodesign_geom::units::format_measure(value, unit)))
 }
 
 /// Where a pointer readout of `size` goes for a pointer at `p`: below right of it, on the other
@@ -3089,7 +3089,7 @@ fn readout_at(p: Pos2, size: egui::Vec2, area: Rect) -> Pos2 {
 }
 
 /// [`guide_readout`]'s parts: the axis label, the value (points) and its unit.
-fn guide_measure(app: &DesignApp, xf: &Xf, g: &GuideDrag) -> Option<(&'static str, f64, designcraft_geom::Unit)> {
+fn guide_measure(app: &DesignApp, xf: &Xf, g: &GuideDrag) -> Option<(&'static str, f64, evodesign_geom::Unit)> {
     let p = g.at?;
     let st = app.session.active()?;
     let layout = CanvasLayout::new(&st.doc, st.editing_parents);
@@ -3107,12 +3107,12 @@ fn guide_measure(app: &DesignApp, xf: &Xf, g: &GuideDrag) -> Option<(&'static st
     let pieces = ruler_pieces_of(&st.doc, slot, st.doc.zero_point());
     let first = pieces.first()?;
     let (label, value, unit) = match g.orientation {
-        designcraft_doc::Orientation::Vertical => {
+        evodesign_doc::Orientation::Vertical => {
             // The horizontal ruler restarts at each page: the piece under the guide measures it.
             let o = pieces.iter().find(|(from, to, _)| *from <= c.x && c.x < *to).unwrap_or(first).2;
             ("X", c.x - o.x, st.doc.settings.horizontal_units)
         }
-        designcraft_doc::Orientation::Horizontal => ("Y", c.y - first.2.y, st.doc.settings.vertical_units),
+        evodesign_doc::Orientation::Horizontal => ("Y", c.y - first.2.y, st.doc.settings.vertical_units),
     };
     value.is_finite().then_some((label, value, unit))
 }
@@ -3147,7 +3147,7 @@ fn guide_spot(app: &DesignApp, xf: &Xf, g: &GuideDrag) -> Option<GuideSpot> {
     if g.mods.command || g.from.is_some_and(|(from, _, _)| from != r) {
         return Some(GuideSpot { spread: r, pointer, sp: pointer, screen: p, marks: Vec::new() });
     }
-    let vertical = matches!(g.orientation, designcraft_doc::Orientation::Vertical);
+    let vertical = matches!(g.orientation, evodesign_doc::Orientation::Vertical);
     let place = |v: f64| if vertical { Point::new(v, pointer.y) } else { Point::new(pointer.x, v) };
     if g.mods.shift {
         let slot = layout.slot(r)?;
@@ -3172,7 +3172,7 @@ fn guide_spot(app: &DesignApp, xf: &Xf, g: &GuideDrag) -> Option<GuideSpot> {
     } else {
         (pointer.y, DRect::new(reach.x0, pointer.y, reach.x1, pointer.y), [false; 3], [true; 3])
     };
-    let cx = designcraft_tools::ToolContext {
+    let cx = evodesign_tools::ToolContext {
         doc: &st.doc,
         selection: &st.selection,
         cache: &app.session.cache,
@@ -3183,11 +3183,11 @@ fn guide_spot(app: &DesignApp, xf: &Xf, g: &GuideDrag) -> Option<GuideSpot> {
         unit: app.ui.units,
         stroke_in_front: false,
     };
-    let s = designcraft_tools::snap::snap(
+    let s = evodesign_tools::snap::snap(
         &cx,
-        designcraft_tools::SnapRequest {
+        evodesign_tools::SnapRequest {
             spread: r,
-            gesture: designcraft_tools::Gesture::Guide,
+            gesture: evodesign_tools::Gesture::Guide,
             rect,
             x_edges,
             y_edges,
@@ -3207,13 +3207,13 @@ fn guide_spot(app: &DesignApp, xf: &Xf, g: &GuideDrag) -> Option<GuideSpot> {
 /// The nearest ruler tick to spread point `sp` along a guide of `orientation`'s axis, in spread
 /// coordinates: the horizontal ruler's (the piece under the point) where that axis runs across the
 /// screen, else the vertical ruler's. `None` when the ruler has no ticks there.
-fn ruler_tick_of(doc: &Document, slot: &SpreadSlot, orientation: designcraft_doc::Orientation, zoom: f64, sp: Point) -> Option<f64> {
-    let vertical = matches!(orientation, designcraft_doc::Orientation::Vertical);
+fn ruler_tick_of(doc: &Document, slot: &SpreadSlot, orientation: evodesign_doc::Orientation, zoom: f64, sp: Point) -> Option<f64> {
+    let vertical = matches!(orientation, evodesign_doc::Orientation::Vertical);
     // A quarter-turned spread runs its x axis down the screen.
     let across = vertical == slot.rotation.is_multiple_of(2);
     let c = slot.to_canvas(sp);
     let pieces = ruler_pieces_of(doc, slot, doc.zero_point());
-    let step = |unit: designcraft_geom::Unit| {
+    let step = |unit: evodesign_geom::Unit| {
         let (major, sub) = unit.ruler_ticks(zoom);
         let step = major / f64::from(sub.max(1));
         (step.is_finite() && step > 0.0).then_some(step)
@@ -3231,7 +3231,7 @@ fn ruler_tick_of(doc: &Document, slot: &SpreadSlot, orientation: designcraft_doc
 }
 
 /// The guide under a screen point (within 3 px), as (spread, page, index, orientation).
-fn guide_at(app: &DesignApp, xf: &Xf, p: Pos2) -> Option<(designcraft_doc::SpreadRef, usize, usize, designcraft_doc::Orientation)> {
+fn guide_at(app: &DesignApp, xf: &Xf, p: Pos2) -> Option<(evodesign_doc::SpreadRef, usize, usize, evodesign_doc::Orientation)> {
     let st = app.session.active()?;
     let layout = CanvasLayout::new(&st.doc, st.editing_parents);
     let cp = xf.to_canvas(p);
@@ -3247,8 +3247,8 @@ fn guide_at(app: &DesignApp, xf: &Xf, p: Pos2) -> Option<(designcraft_doc::Sprea
                 }
                 let r = if g.spread { pr } else { pg.bounds() };
                 let hit = match g.orientation {
-                    designcraft_doc::Orientation::Horizontal => (local.y - g.position).abs() <= tol && local.x >= r.x0 && local.x <= r.x1,
-                    designcraft_doc::Orientation::Vertical => (local.x - g.position).abs() <= tol && local.y >= r.y0 - tol && local.y <= r.y1 + tol,
+                    evodesign_doc::Orientation::Horizontal => (local.y - g.position).abs() <= tol && local.x >= r.x0 && local.x <= r.x1,
+                    evodesign_doc::Orientation::Vertical => (local.x - g.position).abs() <= tol && local.y >= r.y0 - tol && local.y <= r.y1 + tol,
                 };
                 if hit && !g.locked {
                     return Some((slot.spread, pi, gi, g.orientation));
@@ -3274,9 +3274,9 @@ fn guide_drag(app: &mut DesignApp, ui: &mut egui::Ui, resp: &egui::Response, rec
         if full.contains(o) && !rect.contains(o) {
             // In a ruler (not the corner).
             let orientation = if o.y < rect.min.y && o.x >= rect.min.x {
-                Some(designcraft_doc::Orientation::Horizontal)
+                Some(evodesign_doc::Orientation::Horizontal)
             } else if o.x < rect.min.x && o.y >= rect.min.y {
-                Some(designcraft_doc::Orientation::Vertical)
+                Some(evodesign_doc::Orientation::Vertical)
             } else {
                 None
             };
@@ -3304,8 +3304,8 @@ fn guide_drag(app: &mut DesignApp, ui: &mut egui::Ui, resp: &egui::Response, rec
     g.mods = ui.input(|i| i.modifiers);
     if !released {
         ui.ctx().set_cursor_icon(match g.orientation {
-            designcraft_doc::Orientation::Horizontal => egui::CursorIcon::ResizeVertical,
-            designcraft_doc::Orientation::Vertical => egui::CursorIcon::ResizeHorizontal,
+            evodesign_doc::Orientation::Horizontal => egui::CursorIcon::ResizeVertical,
+            evodesign_doc::Orientation::Vertical => egui::CursorIcon::ResizeHorizontal,
         });
         ui.data_mut(|d| d.insert_temp(id, g));
         return true;
@@ -3336,12 +3336,12 @@ fn guide_drag(app: &mut DesignApp, ui: &mut egui::Ui, resp: &egui::Response, rec
         Some((spot.spread, spot.sp, on_page))
     });
     let pos_of = |sp: Point| match g.orientation {
-        designcraft_doc::Orientation::Horizontal => sp.y,
-        designcraft_doc::Orientation::Vertical => sp.x,
+        evodesign_doc::Orientation::Horizontal => sp.y,
+        evodesign_doc::Orientation::Vertical => sp.x,
     };
     let orient = match g.orientation {
-        designcraft_doc::Orientation::Horizontal => "horizontal",
-        designcraft_doc::Orientation::Vertical => "vertical",
+        evodesign_doc::Orientation::Horizontal => "horizontal",
+        evodesign_doc::Orientation::Vertical => "vertical",
     };
     match (g.from, on_canvas, target) {
         // Dropped back on a ruler: delete.
@@ -3396,8 +3396,8 @@ fn guide_drag_delta(app: &DesignApp, xf: &Xf, g: &GuideDrag, origin: Pos2) -> Op
     let start = layout.slot(r)?.to_spread(xf.to_canvas(origin));
     let at = st.doc.spread(r)?.pages.get(pi)?.guides.get(gi)?.position;
     let (dx, dy) = match g.orientation {
-        designcraft_doc::Orientation::Vertical => (sp.x - at, sp.y - start.y),
-        designcraft_doc::Orientation::Horizontal => (sp.x - start.x, sp.y - at),
+        evodesign_doc::Orientation::Vertical => (sp.x - at, sp.y - start.y),
+        evodesign_doc::Orientation::Horizontal => (sp.x - start.x, sp.y - at),
     };
     (dx.is_finite() && dy.is_finite()).then_some((dx, dy))
 }
@@ -3430,7 +3430,7 @@ fn moving_guides(app: &DesignApp, xf: &Xf, rect: Rect, g: &GuideDrag, press: Gui
 fn over_item(app: &DesignApp, xf: &Xf, p: Pos2) -> bool {
     let Some(st) = app.session.active() else { return false };
     let layout = CanvasLayout::new(&st.doc, st.editing_parents);
-    let cx = designcraft_tools::ToolContext {
+    let cx = evodesign_tools::ToolContext {
         doc: &st.doc,
         selection: &st.selection,
         cache: &app.session.cache,
@@ -3537,7 +3537,7 @@ fn snap_gutter(app: &DesignApp, g: &ColumnDrag, want: f64, shift: bool, zoom: f6
         (Some(a), Some(b)) => (b.x0 - a.x1).max(0.0),
         _ => 0.0,
     };
-    let cx = designcraft_tools::ToolContext {
+    let cx = evodesign_tools::ToolContext {
         doc: &doc,
         selection: &st.selection,
         cache: &app.session.cache,
@@ -3545,16 +3545,16 @@ fn snap_gutter(app: &DesignApp, g: &ColumnDrag, want: f64, shift: bool, zoom: f6
         zoom: zoom.max(1e-6),
         layer: st.active_layer,
         // A line has no size or spacing to match.
-        snap: designcraft_tools::SnapView { smart_dimensions: false, smart_spacing: false, ..app.ui.snap_view() },
+        snap: evodesign_tools::SnapView { smart_dimensions: false, smart_spacing: false, ..app.ui.snap_view() },
         unit: app.ui.units,
         stroke_in_front: false,
     };
     let rect = DRect::new(want, m.y0, want + width, m.y1);
-    let s = designcraft_tools::snap::snap(
+    let s = evodesign_tools::snap::snap(
         &cx,
-        designcraft_tools::SnapRequest {
+        evodesign_tools::SnapRequest {
             spread: g.spread,
-            gesture: designcraft_tools::Gesture::Move,
+            gesture: evodesign_tools::Gesture::Move,
             rect,
             x_edges: [true, false, true],
             y_edges: [false; 3],
@@ -3675,7 +3675,7 @@ mod guide_selection_tests;
 
 #[cfg(test)]
 mod tests {
-    use designcraft_geom::Unit;
+    use evodesign_geom::Unit;
     use egui_kittest::{Harness, kittest::Queryable};
 
     use super::*;
@@ -3700,7 +3700,7 @@ mod tests {
     /// While a page's render is on its way the page shows paper, not the black of its shadow.
     #[test]
     fn pages_show_paper_under_their_render() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", serde_json::json!({"pages": 3, "facingPages": true})).unwrap();
         let ctx = egui::Context::default();
         let mut shapes = Vec::new();
@@ -3714,7 +3714,7 @@ mod tests {
         let layout = CanvasLayout::new(&st.doc, false);
         let xf = Xf::new(app.canvas_rect.unwrap(), app.view().unwrap());
         // The paper swatch on screen (white, as the colour settings show it).
-        let [r, g, b, _] = st.doc.resolve_color(designcraft_color::swatch::PAPER, 1.0).unwrap().to_rgba8(1.0);
+        let [r, g, b, _] = st.doc.resolve_color(evodesign_color::swatch::PAPER, 1.0).unwrap().to_rgba8(1.0);
         let paper: Vec<Rect> = shapes
             .iter()
             .filter_map(|c| match &c.shape {
@@ -3735,7 +3735,7 @@ mod tests {
     /// colour, beside the bleed guide.
     #[test]
     fn bleed_and_slug_are_preview_modes_that_show_their_area() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", serde_json::json!({"bleed": 9, "slug": 18})).unwrap();
         let strokes = |app: &mut DesignApp, want: [u8; 3]| -> usize {
             let ctx = egui::Context::default();
@@ -3767,7 +3767,7 @@ mod tests {
     /// Slug the slug box. A slug narrower than the bleed never pulls the edge back in.
     #[test]
     fn shown_area_widens_to_the_bleed_and_slug_boxes() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", serde_json::json!({"bleed": 9, "slug": 18})).unwrap();
         let doc = app.session.active().unwrap().doc.clone();
         let layout = CanvasLayout::new(&doc, false);
@@ -3820,7 +3820,7 @@ mod tests {
 
     #[test]
     fn display_option_change_drops_the_render_in_flight() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         let shown = crate::Shown { doc: (1, 2, 3, false), origin: Point::new(0.0, 0.0), zoom: 1.0, size: (10.0, 10.0), editing_parents: false };
         invalidate_on_display_change(&mut app);
         app.canvas.shown = Some(shown);
@@ -3829,7 +3829,7 @@ mod tests {
         invalidate_on_display_change(&mut app);
         assert!(app.canvas.shown.is_some() && app.canvas.pending.is_some());
         // A display option changed while the render ran: its result must not be accepted.
-        app.ui.display_quality = designcraft_render::DisplayQuality::Fast;
+        app.ui.display_quality = evodesign_render::DisplayQuality::Fast;
         invalidate_on_display_change(&mut app);
         assert!(app.canvas.shown.is_none() && app.canvas.pending.is_none() && app.canvas.pending_doc.is_none());
         // The document grid is drawn into the texture too.
@@ -3857,7 +3857,7 @@ mod tests {
     fn the_page_tool_draws_liquid_guides_from_the_rulers() {
         // Chris Cicchino's Page Tool and Liquid Layout video (11:00): with the Page tool, a guide
         // dragged from the ruler is a liquid guide (dashed).
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.session.set_tool("page");
         let mut h = harness(app);
@@ -3866,7 +3866,7 @@ mod tests {
         drag(&mut h, pos2(r.center().x, r.min.y - 8.0), r.center());
         let g = guides(&h);
         assert_eq!(g.len(), 1, "{g:?}");
-        assert!(g[0].liquid && g[0].orientation == designcraft_doc::Orientation::Horizontal);
+        assert!(g[0].liquid && g[0].orientation == evodesign_doc::Orientation::Horizontal);
         // With the Selection tool it's a ruler guide.
         h.state_mut().session.set_tool("selection");
         drag(&mut h, pos2(r.center().x, r.min.y - 8.0), r.center() + vec2(0.0, 40.0));
@@ -3879,7 +3879,7 @@ mod tests {
     /// column guides locked the same drag leaves the columns alone.
     #[test]
     fn the_selection_tool_drags_a_column_guide() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         // Two columns across the 540 pt margin box: the gutter's left edge is at x = 300.
         app.run("layout.marginsAndColumns", json!({"parent": "A", "columns": 2, "gutter": 12})).unwrap();
@@ -3968,7 +3968,7 @@ mod tests {
     /// parent being edited lies over it, or where its columns cannot move.
     #[test]
     fn column_guides_are_picked_only_where_a_drag_can_move_them() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 1})).unwrap();
         app.run("layout.marginsAndColumns", json!({"parent": "A", "columns": 2, "gutter": 12})).unwrap();
         app.run("view.lockColumnGuides", json!({"on": false})).unwrap();
@@ -4017,7 +4017,7 @@ mod tests {
     }
 
     fn new_document() -> Harness<'static, DesignApp> {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         harness(app)
     }
@@ -4102,7 +4102,7 @@ mod tests {
     }
 
     fn zoom_app(tool: &str) -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.select_tool(tool);
         app.ui.rulers = false;
@@ -4319,7 +4319,7 @@ mod tests {
 
     #[test]
     fn parent_guides_on_a_page_are_not_picked_there() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         // 100 pt into A's right page, which page 1 (a right page at x = 0) shows.
         let parent_guide = json!({"spread": {"kind": "parent", "index": 0}, "page": 1, "orientation": "vertical", "position": 712});
@@ -4339,9 +4339,9 @@ mod tests {
 
     #[test]
     fn mouse_double_clicking_a_frame_handle_fits_with_one_undo_step() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
-        let id = designcraft_doc::ItemId(
+        let id = evodesign_doc::ItemId(
             app.run("frame.create", json!({"rect": [100, 100, 400, 300], "content": "text", "text": "Fit this text"})).unwrap()["id"]
                 .as_u64()
                 .unwrap(),
@@ -4384,7 +4384,7 @@ mod tests {
 
     #[test]
     fn pasting_svg_from_another_app_places_editable_paths_in_the_middle_of_the_view() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let mut h = harness(app);
         h.run_steps(2);
@@ -4396,7 +4396,7 @@ mod tests {
         assert_eq!(st.history.undo.len(), undo + 1, "one undo step");
         let id = *st.selection.items.first().expect("the pasted path is selected");
         let it = st.doc.item(id).unwrap();
-        assert_eq!(it.shape, designcraft_doc::Shape::Path);
+        assert_eq!(it.shape, evodesign_doc::Shape::Path);
         assert_eq!(it.path.subpaths[0].anchors.len(), 2);
         assert!((it.stroke.weight - 2.0).abs() < 1e-9);
         // Centred where text from another app would go: the middle of the view.
@@ -4406,10 +4406,10 @@ mod tests {
 
     #[test]
     fn the_paste_in_place_shortcut_pastes_in_place_and_plain_paste_offsets() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let id = app.run("frame.create", json!({"rect": [100, 100, 200, 200]})).unwrap()["id"].as_u64().unwrap();
-        let original = app.session.doc().unwrap().doc.item(designcraft_doc::ItemId(id)).unwrap().bounds();
+        let original = app.session.doc().unwrap().doc.item(evodesign_doc::ItemId(id)).unwrap().bounds();
         app.run("edit.copy", json!({})).unwrap();
         let clip = app.object_clip_text.clone().expect("the copy's placeholder text");
         let mut h = harness(app);
@@ -4440,13 +4440,13 @@ mod tests {
     #[test]
     fn edit_paste_from_the_menu_pastes_svg_on_the_system_clipboard_as_paths() {
         let services = crate::Services { clipboard_text: Some(Box::new(|| Some(ART.to_string()))), ..Default::default() };
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), services);
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), services);
         app.native_menu = true;
         app.run("file.new", json!({})).unwrap();
         crate::menus::activate(&mut app, "edit.paste", &Value::Null);
         let st = app.session.doc().unwrap();
         let id = *st.selection.items.first().expect("the pasted path is selected");
-        assert_eq!(st.doc.item(id).unwrap().shape, designcraft_doc::Shape::Path);
+        assert_eq!(st.doc.item(id).unwrap().shape, evodesign_doc::Shape::Path);
         assert!(st.selection.text.is_none(), "paths, not a text frame of markup");
         // With an insertion point, the markup is text like any other.
         let story = app.run("frame.create", json!({"rect": [10, 10, 300, 300], "content": "text"})).unwrap()["story"].clone();
@@ -4460,7 +4460,7 @@ mod tests {
     fn selected_merged_owners_paint_the_same_row_and_column_targets() {
         for column in [true, false] {
             for merged in [false, true] {
-                let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+                let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
                 app.run("file.new", json!({"pages": 1})).unwrap();
                 app.run("frame.create", json!({"rect": [36, 36, 300, 300], "content": "text"})).unwrap();
                 app.run("table.insert", json!({"rows": 2, "cols": 2})).unwrap();
@@ -4477,7 +4477,7 @@ mod tests {
                 let selected = selection.cells.unwrap();
                 assert_eq!(
                     selected.range,
-                    if column { designcraft_doc::CellRange::new(0, 1, 1, 1) } else { designcraft_doc::CellRange::new(1, 0, 1, 1) }
+                    if column { evodesign_doc::CellRange::new(0, 1, 1, 1) } else { evodesign_doc::CellRange::new(1, 0, 1, 1) }
                 );
                 let layout = CanvasLayout::new(&st.doc, st.editing_parents);
                 let cs = app.session.cache.get(&st.doc, ts.story, None);
@@ -4532,14 +4532,14 @@ mod tests {
     /// A selected group lists the text frames inside it for ports.
     #[test]
     fn grouped_text_frames_get_ports() {
-        let mut s = designcraft_engine::Session::new();
+        let mut s = evodesign_engine::Session::new();
         s.execute("file.new", &json!({})).unwrap();
         let a = s.execute("frame.create", &json!({"rect": [10, 10, 110, 60], "content": "text"})).unwrap()["id"].as_u64().unwrap();
         let b = s.execute("frame.create", &json!({"rect": [10, 80, 110, 130]})).unwrap()["id"].as_u64().unwrap();
         s.execute("selection.set", &json!({"ids": [a, b]})).unwrap();
         let g = s.execute("object.group", &json!({})).unwrap()["id"].as_u64().unwrap();
         let doc = &s.doc().unwrap().doc;
-        let group = doc.item(designcraft_doc::ItemId(g)).unwrap();
+        let group = doc.item(evodesign_doc::ItemId(g)).unwrap();
         let mut out = Vec::new();
         text_frames_in(group, 0, &mut out);
         assert_eq!(out.iter().map(|(it, _)| it.id.0).collect::<Vec<_>>(), vec![a], "one text frame in the group");
@@ -4553,7 +4553,7 @@ mod tests {
     /// group's own selection marks.
     #[test]
     fn a_selected_group_paints_both_ports_of_its_text_frame() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let s = &mut app.session;
         let text = "far too much text for a frame this small, over and over again ".repeat(8);
@@ -4580,24 +4580,24 @@ mod tests {
             })
             .collect();
         for out in [false, true] {
-            let c = xf.to_screen(designcraft_tools::thread::port_center(&doc, &layout, designcraft_doc::ItemId(a), out, xf.zoom).unwrap());
+            let c = xf.to_screen(evodesign_tools::thread::port_center(&doc, &layout, evodesign_doc::ItemId(a), out, xf.zoom).unwrap());
             let port = white.iter().position(|r| (r.center() - c).length() < 0.01).unwrap_or_else(|| panic!("port (out: {out}) at {c:?}"));
             assert!(!white[port + 1..].iter().any(|r| r.contains(c)), "nothing painted later covers the port (out: {out})");
         }
     }
 
     fn out_frame(doc: &Document, id: u64) -> &Item {
-        doc.item(designcraft_doc::ItemId(id)).unwrap()
+        doc.item(evodesign_doc::ItemId(id)).unwrap()
     }
 
     /// An overset frame inside a group is listed for the red mark even when nothing is
     /// selected; a frame with room, or a hidden one, is not.
     #[test]
     fn overset_frames_are_found_inside_groups() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let s = &mut app.session;
-        let frame_with = |s: &mut designcraft_engine::Session, rect: [f64; 4], text: &str| {
+        let frame_with = |s: &mut evodesign_engine::Session, rect: [f64; 4], text: &str| {
             s.execute("frame.create", &json!({"rect": rect, "content": "text", "text": text})).unwrap()["id"].as_u64().unwrap()
         };
         let tiny = frame_with(s, [10.0, 10.0, 40.0, 16.0], "far too much text for a frame this small, over and over again");
@@ -4622,7 +4622,7 @@ mod tests {
     /// selected overset frame gets only the mark its ports draw.
     #[test]
     fn overset_mark_sits_on_the_out_port_once() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let s = &mut app.session;
         let id = s
@@ -4654,7 +4654,7 @@ mod tests {
 
     #[test]
     fn right_clicking_a_ruler_sets_that_rulers_units() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let mut h = harness(app);
         let rect = h.state().canvas_rect.unwrap();
@@ -4701,7 +4701,7 @@ mod tests {
     /// The live-corner widget draws on a selected rectangle frame; clicking it draws the diamonds.
     #[test]
     fn live_corner_widget_and_diamonds_draw() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [100, 100, 300, 250], "content": "graphic"})).unwrap();
         let id = app.session.doc().unwrap().doc.spreads[0].items[0].id;
@@ -4797,7 +4797,7 @@ mod tests {
 
     #[test]
     fn the_ruler_corner_drags_resets_and_locks_the_zero_point() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 3})).unwrap();
         let mut h = fast_harness(app);
         let rect = h.state().canvas_rect.unwrap();
@@ -4854,7 +4854,7 @@ mod tests {
 
     #[test]
     fn cmd_dragging_the_ruler_corner_makes_a_guide_each_way() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let mut h = harness(app);
         let rect = h.state().canvas_rect.unwrap();
@@ -4873,9 +4873,9 @@ mod tests {
         let doc = h.state().session.doc().unwrap().doc.clone();
         let guides: Vec<_> = doc.spread(r).unwrap().pages.iter().flat_map(|p| p.guides.clone()).collect();
         assert_eq!(guides.len(), 2, "{guides:?}");
-        let pos = |o: designcraft_doc::Orientation| guides.iter().find(|g| g.orientation == o).map(|g| g.position).unwrap();
-        assert!((pos(designcraft_doc::Orientation::Horizontal) - at.y).abs() < 0.5);
-        assert!((pos(designcraft_doc::Orientation::Vertical) - at.x).abs() < 0.5);
+        let pos = |o: evodesign_doc::Orientation| guides.iter().find(|g| g.orientation == o).map(|g| g.position).unwrap();
+        assert!((pos(evodesign_doc::Orientation::Horizontal) - at.y).abs() < 0.5);
+        assert!((pos(evodesign_doc::Orientation::Vertical) - at.x).abs() < 0.5);
         assert!(guides.iter().all(|g| g.spread));
         assert_eq!(doc.settings.zero_point, [0.0, 0.0], "the zero point stays");
     }
@@ -4884,7 +4884,7 @@ mod tests {
     /// from the zero point, in the ruler units, and the label follows the pointer while it moves.
     #[test]
     fn a_dragged_guide_shows_where_it_is() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("view.zeroPoint", json!({"at": [100, 50]})).unwrap();
         let mut h = harness(app);
@@ -4898,14 +4898,14 @@ mod tests {
         };
         let units = h.state().session.doc().unwrap().doc.settings.horizontal_units;
         for (orientation, label, want) in
-            [(designcraft_doc::Orientation::Vertical, "X", at.x - 100.0), (designcraft_doc::Orientation::Horizontal, "Y", at.y - 50.0)]
+            [(evodesign_doc::Orientation::Vertical, "X", at.x - 100.0), (evodesign_doc::Orientation::Horizontal, "Y", at.y - 50.0)]
         {
             let g = GuideDrag { orientation, from: None, at: Some(dest), mods: egui::Modifiers::NONE };
             let (l, v, _) = guide_measure(h.state(), &xf, &g).unwrap();
             assert_eq!(l, label);
             assert!((v - want).abs() < 1e-6, "{label}: {v} vs {want}");
             let text = guide_readout(h.state(), &xf, &g).unwrap();
-            assert_eq!(text, format!("{label}: {}", designcraft_geom::units::format_measure(v, units)));
+            assert_eq!(text, format!("{label}: {}", evodesign_geom::units::format_measure(v, units)));
         }
         // While a guide is actually being dragged out of the top ruler, the readout is there.
         let ruler = pos2(rect.min.x + 200.0, rect.min.y - RULER / 2.0);
@@ -4915,7 +4915,7 @@ mod tests {
         h.event(egui::Event::PointerMoved(dest));
         h.run_steps(2);
         let g = h.ctx.data(|d| d.get_temp::<GuideDrag>(egui::Id::new(GUIDE_DRAG))).expect("dragging");
-        assert_eq!(g.orientation, designcraft_doc::Orientation::Horizontal);
+        assert_eq!(g.orientation, evodesign_doc::Orientation::Horizontal);
         assert!(guide_readout(h.state(), &xf, &g).is_some_and(|t| t.starts_with("Y: ")));
         primary(&mut h, dest, false);
     }
@@ -4924,7 +4924,7 @@ mod tests {
     /// spread, the one the guide is dropped on: it reads the position the guide gets.
     #[test]
     fn the_guide_readout_measures_the_spread_under_the_pointer() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 5})).unwrap();
         app.run("view.zeroPoint", json!({"at": [100, 50]})).unwrap();
         let h = harness(app);
@@ -4940,7 +4940,7 @@ mod tests {
         let (r, sp) = layout.spread_at(inside).unwrap();
         assert_eq!(r, last.spread);
         let g = GuideDrag {
-            orientation: designcraft_doc::Orientation::Horizontal,
+            orientation: evodesign_doc::Orientation::Horizontal,
             from: None,
             at: Some(xf.to_screen(inside)),
             mods: egui::Modifiers::NONE,
@@ -4954,7 +4954,7 @@ mod tests {
         // spread): no readout over this one, a readout over its own.
         let first = layout.slots[current].spread;
         let moving = GuideDrag {
-            orientation: designcraft_doc::Orientation::Horizontal,
+            orientation: evodesign_doc::Orientation::Horizontal,
             from: Some((first, 0, 0)),
             at: Some(xf.to_screen(inside)),
             mods: egui::Modifiers::NONE,
@@ -4991,7 +4991,7 @@ mod tests {
 
     #[test]
     fn rulers_and_xy_fields_measure_from_the_zero_point_on_every_spread() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         // Spread 0: page 1; spread 1: pages 2 and 3.
         app.run("file.new", json!({"pages": 3})).unwrap();
         app.run("view.zeroPoint", json!({"at": [100, 50]})).unwrap();
@@ -5057,7 +5057,7 @@ mod tests {
 
     #[test]
     fn right_clicking_an_object_selects_it_and_its_menu_arranges_it() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [36, 36, 200, 200]})).unwrap()["id"].as_u64().unwrap();
         let b = app.run("frame.create", json!({"rect": [150, 150, 300, 300]})).unwrap()["id"].as_u64().unwrap();
@@ -5081,7 +5081,7 @@ mod tests {
 
     #[test]
     fn right_clicking_empty_canvas_offers_paste_after_a_copy() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [36, 36, 200, 200]})).unwrap()["id"].as_u64().unwrap();
         app.run("edit.copy", json!({})).unwrap();
@@ -5107,7 +5107,7 @@ mod tests {
 
     #[test]
     fn right_clicking_another_object_while_the_menu_is_open_reopens_it_there() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [36, 36, 200, 200]})).unwrap()["id"].as_u64().unwrap();
         let b = app.run("frame.create", json!({"rect": [36, 600, 200, 760]})).unwrap()["id"].as_u64().unwrap();
@@ -5124,7 +5124,7 @@ mod tests {
 
     #[test]
     fn a_context_menu_in_one_pane_keeps_the_keys_from_the_other() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [36, 36, 100, 100]})).unwrap()["id"].as_u64().unwrap();
         app.select_tool("rectangleFrame");
@@ -5143,7 +5143,7 @@ mod tests {
 
     #[test]
     fn right_clicking_text_keeps_the_selected_text_or_places_the_caret() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [36, 36, 400, 200], "content": "text"})).unwrap();
         app.select_tool("type");
@@ -5168,7 +5168,7 @@ mod tests {
 
     #[test]
     fn rows_hidden_in_the_menu_bar_are_hidden_in_context_menus() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [36, 36, 200, 200]})).unwrap();
         app.ui.hidden_menu_items.push(crate::menus::menu_key("Object/Arrange", "Bring to Front"));
@@ -5184,7 +5184,7 @@ mod tests {
 
     #[test]
     fn a_secondary_drag_neither_moves_marquees_nor_draws() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [36, 36, 200, 200]})).unwrap()["id"].as_u64().unwrap();
         let mut h = harness(app);
@@ -5202,7 +5202,7 @@ mod tests {
             h.event(egui::Event::PointerButton { pos: to, button: egui::PointerButton::Secondary, pressed: false, modifiers: Default::default() });
             h.run_steps(3);
         };
-        let xf = |h: &Harness<'_, DesignApp>| h.state().session.doc().unwrap().doc.item(designcraft_doc::ItemId(a)).unwrap().xf;
+        let xf = |h: &Harness<'_, DesignApp>| h.state().session.doc().unwrap().doc.item(evodesign_doc::ItemId(a)).unwrap().xf;
         let before = xf(&h);
         // Selection tool: on the object (no move), and from empty page across it (no marquee).
         drag(&mut h, (100.0, 100.0), (300.0, 300.0));
@@ -5219,7 +5219,7 @@ mod tests {
     /// A text frame holding `text`, the Type tool, and a harness stepping at 60 fps (clicks in a
     /// row must land within the double-click delay).
     fn typing(text: &str) -> (Harness<'static, DesignApp>, u64) {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let r = app.run("frame.create", json!({"rect": [72, 72, 400, 400], "content": "text", "text": text})).unwrap();
         let id = r["id"].as_u64().unwrap();
@@ -5329,7 +5329,7 @@ mod tests {
     #[test]
     fn an_edit_repaints_a_canvas_texture_sampled_down_to_the_gpu_limit_whole() {
         for (width, sampled_down) in [(1440.0, false), (2600.0, true)] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({})).unwrap();
             let frame = app.run("frame.create", json!({"rect": [72, 72, 400, 300], "content": "text", "text": "Text"})).unwrap();
             let mut h = Harness::builder().with_size(vec2(width, 900.0)).build_ui_state(
@@ -5391,7 +5391,7 @@ mod tests {
 
     #[test]
     fn tools_show_their_own_cursors_over_the_page() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let mut h = harness(app);
         let p = h.state().canvas_rect.unwrap().center();
@@ -5418,8 +5418,8 @@ mod tests {
 
     #[test]
     fn document_grid_is_drawn_where_points_snap_to_it() {
-        use designcraft_tools::{SnapView, ToolContext};
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        use evodesign_tools::{SnapView, ToolContext};
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let doc = app.session.active().unwrap().doc.clone();
         let layout = CanvasLayout::new(&doc, false);
@@ -5438,19 +5438,19 @@ mod tests {
             unit: Unit::Points,
             stroke_in_front: false,
         };
-        let (snapped, _) = designcraft_tools::snap::snap_point(&cx, sr, Point::new(page.x0 + 31.3, page.y0 + 47.9));
+        let (snapped, _) = evodesign_tools::snap::snap_point(&cx, sr, Point::new(page.x0 + 31.3, page.y0 + 47.9));
         assert_eq!((snapped.x - page.x0, snapped.y - page.y0), (27.0, 45.0));
         // Render 40 × 40 pt around it at 4 px/pt.
         let scale = 4.0;
         let corner = layout.xf(sr) * Point::new(snapped.x - 20.0, snapped.y - 20.0);
         let view = Affine::scale(scale) * Affine::translate((-corner.x, -corner.y));
-        let placed: Vec<_> = layout.slots.iter().map(|s| designcraft_render::Placed { spread: s.spread, xf: s.xf }).collect();
+        let placed: Vec<_> = layout.slots.iter().map(|s| evodesign_render::Placed { spread: s.spread, xf: s.xf }).collect();
         let render = |app: &DesignApp| {
             let opts = screen_options(app, &layout, false, 1.0);
-            designcraft_render::Renderer::new().render(&doc, &app.session.cache, &placed, 160, 160, view, &opts)
+            evodesign_render::Renderer::new().render(&doc, &app.session.cache, &placed, 160, 160, view, &opts)
         };
         // The snapped point is at pixel (80, 80); halfway to the next line is 18 px further.
-        let darkest = |img: &designcraft_render::Rendered, xs: [u32; 2], ys: [u32; 2]| {
+        let darkest = |img: &evodesign_render::Rendered, xs: [u32; 2], ys: [u32; 2]| {
             (xs[0]..xs[1]).flat_map(|x| (ys[0]..ys[1]).map(move |y| (x, y))).map(|(x, y)| img.pixel(x, y)[0]).min().unwrap()
         };
         let off = render(&app);
@@ -5469,7 +5469,7 @@ mod tests {
     /// focused widget (e.g. the status bar's spread buttons) while typing still reaches the text.
     #[test]
     fn arrow_keys_and_tab_keep_keyboard_focus_on_the_canvas() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 3})).unwrap();
         let f = app.run("frame.create", json!({"rect": [36, 36, 300, 200], "content": "text", "text": "Hello"})).unwrap();
         app.select_tool("type");
@@ -5507,7 +5507,7 @@ mod tests {
 
     #[test]
     fn rulers_open_no_units_menu_without_a_document() {
-        let mut h = harness(DesignApp::new(designcraft_engine::Session::new(), crate::Services::default()));
+        let mut h = harness(DesignApp::new(evodesign_engine::Session::new(), crate::Services::default()));
         let Some(rect) = h.state().canvas_rect else { return };
         right_click(&mut h, pos2(rect.center().x, rect.min.y - RULER / 2.0));
         assert!(h.query_by_label("   Points").is_none());
@@ -5530,7 +5530,7 @@ mod tests {
     #[test]
     fn edits_patch_the_canvas_only_at_full_resolution() {
         for (max_side, patches) in [(None, true), (Some(1024), false)] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             let ctx = egui::Context::default();
             let frame = |app: &mut DesignApp| {
                 // Wider than the limit (egui's font atlas needs at least 1024).
@@ -5588,14 +5588,14 @@ mod tests {
     #[test]
     #[allow(deprecated)] // `ImeEvent::Enabled` / `Disabled`: egui no longer sends them, other integrations may.
     fn ime_events_compose_in_the_story_with_the_candidate_window_at_the_caret() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         let sid = typing_app(&mut app, &ctx, "曲:");
         // At a text caret the IME is allowed, its window on the caret as the canvas draws it.
         let ime = ime_frame(&mut app, &ctx, vec![]).expect("IME allowed at a text caret");
         let (top, bottom) = {
             let st = app.session.active().unwrap();
-            let cs = app.session.cache.get(&st.doc, designcraft_doc::StoryId(sid.as_u64().unwrap()), None);
+            let cs = app.session.cache.get(&st.doc, evodesign_doc::StoryId(sid.as_u64().unwrap()), None);
             let (fi, x, bl, asc, desc) = compose::caret(&cs, "曲:".len()).unwrap();
             let fid = cs.frames[fi].frame;
             let (a, _) = item_canvas_xf(&st.doc, &CanvasLayout::new(&st.doc, st.editing_parents), fid).unwrap();
@@ -5646,7 +5646,7 @@ mod tests {
     /// types them.
     #[test]
     fn a_split_window_types_once() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         let sid = typing_app(&mut app, &ctx, "ab");
         app.run("window.split", json!({"on": true})).unwrap();
@@ -5669,7 +5669,7 @@ mod tests {
 
     #[test]
     fn clicking_away_mid_composition_keeps_the_text_and_interrupts_the_ime() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         let sid = typing_app(&mut app, &ctx, "");
         ime_frame(&mut app, &ctx, vec![preedit("しょうこ", 4)]);
@@ -5711,7 +5711,7 @@ mod tests {
     #[test]
     fn enter_or_tab_in_a_panel_field_leave_the_selected_text_alone() {
         for key in [egui::Key::Enter, egui::Key::Tab] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({})).unwrap();
             let f = app.run("frame.create", json!({"rect": [36, 36, 300, 200], "content": "text", "text": "Hello"})).unwrap();
             app.select_tool("type");
@@ -5737,7 +5737,7 @@ mod tests {
     #[test]
     fn trailing_spaces_show_dots_before_the_paragraph_mark() {
         let text = "ab  \ncd  ";
-        let mut d = Document::new(&designcraft_doc::build::NewDocument::default());
+        let mut d = Document::new(&evodesign_doc::build::NewDocument::default());
         let lid = d.default_layer();
         let rect = DRect::new(0.0, 0.0, 300.0, 100.0);
         let (_, sid) = d.add_text_frame(SpreadRef::Doc(0), rect, lid, text, Default::default()).unwrap();
@@ -5778,7 +5778,7 @@ mod pencil_preview_tests {
 
     #[test]
     fn the_pencil_stroke_shows_while_drawing() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", serde_json::json!({})).unwrap();
         app.run("tool.select", serde_json::json!({"tool": "pencil"})).unwrap();
         let mut h = crate::test_window::open(app, vec2(1400.0, 900.0));
@@ -5822,7 +5822,7 @@ mod scrollbar_tests {
     use crate::test_window::{Window, open, wheel};
 
     fn window() -> Harness<'static, Window> {
-        let mut h = open(DesignApp::new(designcraft_engine::Session::new(), crate::Services::default()), vec2(1440.0, 900.0));
+        let mut h = open(DesignApp::new(evodesign_engine::Session::new(), crate::Services::default()), vec2(1440.0, 900.0));
         // Zoomed in so both axes scroll.
         set_zoom(&mut h.state_mut().app, 2.0);
         h.run_steps(3);

@@ -1,7 +1,7 @@
 # Shared PDF backend
 
-DesignCraft pins `craft-pdf`, patched Krilla 0.8.2 and the five Hayro reader crates (with
-`hayro-cmap`) to craft-libs revision `9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef`. Existing `craft-ui` and `craft-print` revisions
+EvoDesign pins `evo-pdf`, patched Krilla 0.8.2 and the five Hayro reader crates (with
+`hayro-cmap`) to evo-libs revision `9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef`. Existing `evo-ui` and `evo-print` revisions
 remain unchanged. The reader migration is reviewed on top of the separate writer change.
 
 ## Writing
@@ -9,7 +9,7 @@ remain unchanged. The reader migration is reviewed on top of the separate writer
 The `write-pdf` capability is required for placed PDF pages and book merging.
 
 The shared library supplies fallible font copying/preparation, metadata setup, version and
-archival configuration, final serialization and a native unwind guard. DesignCraft retains
+archival configuration, final serialization and a native unwind guard. EvoDesign retains
 layout, shaping, font choice/licensing, fallback warnings, image caches, links, tagging,
 bleed/marks, PDF/X postprocessing and export presets. A shared writer does not improve the
 format-conformance or product-parity claims by itself.
@@ -28,8 +28,8 @@ facade at the same full immutable commit, including Krilla reached through `kril
 Local path replacements are suitable only for development and should not be committed.
 
 The vendored Krilla patch ledger, per-file hashes, licence texts and four unchanged CC0
-Compact ICC profiles live in craft-libs (`vendor/krilla`, `licenses/pdf-writer`, and
-`ATTRIBUTION.md`). No fonts or binary PDF fixtures are added to DesignCraft by this migration.
+Compact ICC profiles live in evo-libs (`vendor/krilla`, `licenses/pdf-writer`, and
+`ATTRIBUTION.md`). No fonts or binary PDF fixtures are added to EvoDesign by this migration.
 
 Tests cover metadata key presence, hostile page selection, successful PDF export and native
 subprocess recovery for all three export entry points. Native/WASM export comparisons and
@@ -38,15 +38,15 @@ Windows/Linux runtime and PDF/A/PDF/X certification remain separate acceptance w
 
 ## Reading
 
-Placed-PDF geometry, layers and raster output use `craft-pdf` with its explicit `raster`
-feature. The facade and four patched Hayro crates are pinned to one immutable craft-libs
-revision. The backend source was transferred from PdfCraft revision
-`7437bde378f43856eada40af25b983812e615e8a`; the per-crate `vendor/SOURCE.json` manifests and `vendor/README.craft-reader.md`
-record the transfer and subsequent craft-libs patches. Asset provenance and hashes
+Placed-PDF geometry, layers and raster output use `evo-pdf` with its explicit `raster`
+feature. The facade and four patched Hayro crates are pinned to one immutable evo-libs
+revision. The backend source was transferred from EvoPdf revision
+`7437bde378f43856eada40af25b983812e615e8a`; the per-crate `vendor/SOURCE.json` manifests and `vendor/README.evo-reader.md`
+record the transfer and subsequent evo-libs patches. Asset provenance and hashes
 are recorded separately in ASSETS.md.
 `cargo xtask pdf-deps` checks unique resolved packages, exact versions and sources.
 
-DesignCraft retains placement, layer-name policy, document state and the application render
+EvoDesign retains placement, layer-name policy, document state and the application render
 cache. Render output is premultiplied RGBA8. Page boxes use the same crop, rotation and
 UserUnit transform as raster output, including fractional placed-PDF dimensions.
 Layer choices are validated for every selected PDF before any document/undo state changes;
@@ -59,11 +59,11 @@ Layered-PDF export stops on failed layer rewriting, missing pages or reported in
 content rather than saving an unchanged or incomplete placed page. Shared diagnostics only
 report known backend warnings; they do not certify all PDF fidelity.
 
-DesignCraft uses a 512 MiB reader input bound, checked before parsing or copying.
+EvoDesign uses a 512 MiB reader input bound, checked before parsing or copying.
 Raster output has shared geometry/allocation bounds. Native unwind guards turn escaped
 backend panics into errors; WASM aborts and process-wide allocation failures are not recoverable.
 Application fonts, image assets, editing and export presets remain app-owned. Existing
-craft-ui/craft-print versions are preserved. The reader migration builds on the independently qualified writer change.
+evo-ui/evo-print versions are preserved. The reader migration builds on the independently qualified writer change.
 
 The shared commit must be published before a fresh public checkout can resolve these pins.
 No sibling checkout is required. Licences and existing backend asset notices are recorded in

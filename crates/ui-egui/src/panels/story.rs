@@ -23,7 +23,7 @@ pub fn show(app: &mut DesignApp, ui: &mut egui::Ui) {
             }
             let field = NumField::number("storyOpticalMarginSize", options["opticalMarginSize"].as_f64(), " pt", 2)
                 .width(72.0)
-                .range(designcraft_doc::OpticalMargin::MIN_SIZE, designcraft_doc::OpticalMargin::MAX_SIZE);
+                .range(evodesign_doc::OpticalMargin::MIN_SIZE, evodesign_doc::OpticalMargin::MAX_SIZE);
             if let Some(size) = crate::chrome::icon_field(ui, "font-size", &tr("Optical Margin Size"), field) {
                 let _ = app.run("story.options", json!({"opticalMarginSize": size}));
             }
@@ -57,8 +57,8 @@ mod tests {
         h
     }
 
-    fn optical_margin(h: &Harness<'static, DesignApp>, story: u64) -> designcraft_doc::OpticalMargin {
-        h.state().session.active().unwrap().doc.story(designcraft_doc::StoryId(story)).unwrap().optical_margin
+    fn optical_margin(h: &Harness<'static, DesignApp>, story: u64) -> evodesign_doc::OpticalMargin {
+        h.state().session.active().unwrap().doc.story(evodesign_doc::StoryId(story)).unwrap().optical_margin
     }
 
     fn size_field_text(h: &Harness<'static, DesignApp>) -> Option<String> {
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn story_panel_sets_and_shows_the_storys_optical_margin() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let story =
             app.run("frame.create", json!({"rect": [72, 72, 300, 200], "content": "text", "text": "“Hung”", "caret": true})).unwrap()["story"]
@@ -86,7 +86,7 @@ mod tests {
         h.event(egui::Event::Text("18".into()));
         h.key_press(egui::Key::Enter);
         h.run_steps(3);
-        assert_eq!(optical_margin(&h, story), designcraft_doc::OpticalMargin { on: true, size: 18.0 });
+        assert_eq!(optical_margin(&h, story), evodesign_doc::OpticalMargin { on: true, size: 18.0 });
         // A value set elsewhere shows in the panel.
         h.state_mut().run("story.options", json!({"opticalMarginSize": 30})).unwrap();
         h.run_steps(3);
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn story_panel_is_disabled_without_text() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let mut h = harness(app);
         assert!(h.get_by_label("Optical Margin Alignment").accesskit_node().is_disabled());

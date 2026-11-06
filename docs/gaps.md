@@ -1,4 +1,4 @@
-# Where DesignCraft falls short of InDesign
+# Where EvoDesign falls short of InDesign
 
 > **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-24 · **Change:** minor (placed graphic layer-option preservation and explicit rendering warnings; gap 16: Convert Variable to Text; gap 28 added: placed-PDF font repair remains after visible unembedded font detection, #909; gap 26 shrunk: autoflow fills the following pages before it adds pages at the end; gap 6 shrunk: Type › Reload Fonts reads fonts installed, edited or removed while running (#328); gap 3: Package links are relative, #340; gap 27 closed: the loaded text cursor threads into a frame inside a group (#1075); .indd and .indt open through indd-utils; gap 0 shrunk: text threads by hand; threading gaps added; Optical kerning from outlines (#181); gap 6: macOS lists fonts that font services and managers activate; shared print spooler; image clipping paths from IDML; Tabs panel listed as present (#343); book chapter update safety; gap 16: Based on Parent leftovers; bounded control click/drag input; swatches on placed greyscale and bitmap images) · **Target:** Adobe InDesign 2026 (21.6)
 
@@ -42,19 +42,19 @@ Kind: **F** feature · **U** UI/UX · **T** typography · **FF** file format · 
 ### 2. INDD opening isn't measured on real files (FF)
 - **Missing:** a real-file corpus test of opening `.indd` and `.indt`. They open through
   [storytold/indd-utils](https://github.com/storytold/indd-utils), which converts them to IDML in
-  memory for the IDML importer, but DesignCraft's own tests use synthetic bytes only. INDB and
+  memory for the IDML importer, but EvoDesign's own tests use synthetic bytes only. INDB and
   INDL are still not read.
 - **Evidence:** #21, #114 (PR #98 proposed another converter). indd-utils reports 96.9% of
   InDesign's IDML values reproduced on ~650 INDD/IDML pairs and 0 failures on ~4,300 files; what
-  DesignCraft draws from those files is unmeasured, and it inherits the IDML importer's open bugs
+  EvoDesign draws from those files is unmeasured, and it inherits the IDML importer's open bugs
   (gap 3).
 - **Impact:** a client's `.indd` opens, but nobody knows how close it comes to the original.
-- **Estimate:** 10–30 h (corpus pinned in a sibling of `storytold/photocraft-corpus`, metric,
+- **Estimate:** 10–30 h (corpus pinned in a sibling of `tazerty/evophoto-corpus`, metric,
   fixes in indd-utils or the IDML importer).
 - **Doc:** [file-format-parity.md](file-format-parity.md)
 
 ### 3. IDML round-trip isn't proven on real files (FF)
-- **Missing:** a corpus test of real InDesign-authored IDML (via `storytold/photocraft-corpus` or
+- **Missing:** a corpus test of real InDesign-authored IDML (via `tazerty/evophoto-corpus` or
   a sibling) measuring what survives import → export → reopen in InDesign. Open bugs: frames not
   rendered without a warning (#193), `$ID/` font names reported missing (#338), no
   `PDFAttribute` on export (#339), drag-drop open of IDML on the app icon (#211).
@@ -67,7 +67,7 @@ Kind: **F** feature · **U** UI/UX · **T** typography · **FF** file format · 
 
 ### 4. Composition isn't compared with InDesign (T)
 - **Missing:** an oracle harness: the same synthetic stories set by InDesign 2026 (observed
-  black-box, results kept under `plan/`) and by DesignCraft, comparing line breaks, overset and
+  black-box, results kept under `plan/`) and by EvoDesign, comparing line breaks, overset and
   frame fit. Known differences: optical kerning is an outline-based approximation, not Adobe's
   algorithm (#181); a frame goes overset when descenders don't fit, InDesign needs only the baseline
   (#180); setting the text language was missing (#130; Language is now in Properties, #145, the issue is still open); "hyphenation doesn't work"
@@ -82,7 +82,7 @@ Kind: **F** feature · **U** UI/UX · **T** typography · **FF** file format · 
   AMD OpenGL driver crash on Windows (#167), launch failures (#273, #220, #192, #166), blank or
   frozen canvas after graphics loss (#90).
 - **Evidence:** a backend fallback landed 2026-10-10 (#297: DirectX 12 on Windows, `gpu.json`
-  skip list); then VectorCraft's adapter choice (the GPU that drives the display), restart on the
+  skip list); then EvoVector's adapter choice (the GPU that drives the display), restart on the
   next adapter or backend when one fails or hangs at start-up, the indirect-call check off (the
   first Metal error of #334) and a logged reason when the app stops (#273). Not yet confirmed by
   the reporters. Still open for #334: wgpu asks an old macOS's Metal compiler for a language
@@ -98,7 +98,7 @@ Kind: **F** feature · **U** UI/UX · **T** typography · **FF** file format · 
   Adobe Fonts and font managers activate are listed (#261, #327, 2026-10-11); not yet confirmed
   by the reporters.
 - **Impact:** documents set in the client's fonts render in Source Sans 3: wrong everywhere.
-- **Estimate:** 10–20 h (VectorCraft has a port, #261).
+- **Estimate:** 10–20 h (EvoVector has a port, #261).
 - **Doc:** [typography-parity.md](typography-parity.md)
 
 ### 7. No CI runs the tests on pull requests (S)
@@ -138,7 +138,7 @@ Kind: **F** feature · **U** UI/UX · **T** typography · **FF** file format · 
 ### 10. Printing (H, F)
 - **Missing:** PostScript, a printer-driver options UI, separations to device, print presets, or trapping.
 - **Have:** `file.print` exports selected pages/spreads with marks and bleed, then submits through
-  craft-print: CUPS on macOS/Linux and the Windows PDF raster spooler. Physical printer fidelity
+  evo-print: CUPS on macOS/Linux and the Windows PDF raster spooler. Physical printer fidelity
   remains a hardware check.
 - **Estimate:** 25–45 h. **Doc:** [hardware-parity.md](hardware-parity.md)
 
@@ -206,7 +206,7 @@ Kind: **F** feature · **U** UI/UX · **T** typography · **FF** file format · 
 
 ### 19. Placed graphics depth (FF)
 - **Have:** per-placement IDML graphic-layer settings survive IDML/native round trips; native format 4 guards older readers. Unsupported layer visibility is reported by import, preflight and PDF export. See [graphic-layer-options.md](graphic-layer-options.md).
-- **Still missing:** DesignCraft does not apply retained IDML graphic-layer visibility to raster or PDF output; layer-comp choices and the layer-options UI are also missing. Metadata preservation does not establish visual fidelity. Placed-PDF layer choices are applied (see **Layer choices** below).
+- **Still missing:** EvoDesign does not apply retained IDML graphic-layer visibility to raster or PDF output; layer-comp choices and the layer-options UI are also missing. Metadata preservation does not establish visual fidelity. Placed-PDF layer choices are applied (see **Layer choices** below).
 - **Safety:** PDF visibility variants preserve catalog/configuration entries and nonzero-generation
   references, redefining the existing catalog rather than choosing an arbitrary object number.
   Encrypted, hybrid-reference and over-budget rewrites are rejected; no print-fidelity claim.

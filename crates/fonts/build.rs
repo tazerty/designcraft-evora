@@ -1,33 +1,33 @@
-//! Optional craft-fonts build input (https://github.com/storytold/craft-fonts, recipe from its
-//! `docs/integration.md`). With `CRAFT_FONTS_DIR=<checkout>` the fonts in its
-//! `fonts/manifest.txt` are embedded as `CRAFT_FONTS`; unset, `CRAFT_FONTS` is empty. Web
+//! Optional evo-fonts build input (https://github.com/tazerty/evo-fonts, recipe from its
+//! `docs/integration.md`). With `EVO_FONTS_DIR=<checkout>` the fonts in its
+//! `fonts/manifest.txt` are embedded as `EVO_FONTS`; unset, `EVO_FONTS` is empty. Web
 //! (wasm32) builds embed only the UI faces, BIZ UDPGothic Regular and Noto Sans Georgian Regular, to stay within the web size
 //! budget. It only reads the local checkout: no network.
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo::rerun-if-env-changed=CRAFT_FONTS_DIR");
-    println!("cargo::rerun-if-env-changed=CRAFT_FONTS_REQUIRED");
-    let mut src = String::from("pub static CRAFT_FONTS: &[CraftFont] = &[\n");
-    if let Some(dir) = std::env::var_os("CRAFT_FONTS_DIR").map(PathBuf::from) {
-        match craft_fonts(&dir) {
+    println!("cargo::rerun-if-env-changed=EVO_FONTS_DIR");
+    println!("cargo::rerun-if-env-changed=EVO_FONTS_REQUIRED");
+    let mut src = String::from("pub static EVO_FONTS: &[EvoFont] = &[\n");
+    if let Some(dir) = std::env::var_os("EVO_FONTS_DIR").map(PathBuf::from) {
+        match evo_fonts(&dir) {
             Ok(entries) => src.push_str(&entries),
-            Err(e) if std::env::var_os("CRAFT_FONTS_REQUIRED").is_some() => {
-                println!("cargo::error=CRAFT_FONTS_DIR={}: {e}", dir.display());
+            Err(e) if std::env::var_os("EVO_FONTS_REQUIRED").is_some() => {
+                println!("cargo::error=EVO_FONTS_DIR={}: {e}", dir.display());
             }
-            Err(e) => println!("cargo::warning=building without craft-fonts: CRAFT_FONTS_DIR={}: {e}", dir.display()),
+            Err(e) => println!("cargo::warning=building without evo-fonts: EVO_FONTS_DIR={}: {e}", dir.display()),
         }
     }
     src.push_str("];\n");
-    let out = PathBuf::from(std::env::var_os("OUT_DIR").unwrap_or_default()).join("craft_fonts.rs");
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").unwrap_or_default()).join("evo_fonts.rs");
     if let Err(e) = std::fs::write(&out, src) {
         println!("cargo::error=writing {}: {e}", out.display());
     }
 }
 
-/// One `CraftFont { .. }` initialiser per manifest line.
-fn craft_fonts(dir: &std::path::Path) -> Result<String, String> {
+/// One `EvoFont { .. }` initialiser per manifest line.
+fn evo_fonts(dir: &std::path::Path) -> Result<String, String> {
     let manifest = dir.join("fonts/manifest.txt");
     println!("cargo::rerun-if-changed={}", manifest.display());
     let text = std::fs::read_to_string(&manifest).map_err(|e| format!("{}: {e}", manifest.display()))?;
@@ -46,7 +46,7 @@ fn craft_fonts(dir: &std::path::Path) -> Result<String, String> {
         let scripts: Vec<String> = scripts.split(',').map(|s| format!("{:?}", s.trim())).collect();
         let _ = writeln!(
             out,
-            "    CraftFont {{ family: {family:?}, style: {style:?}, scripts: &[{}], bytes: include_bytes!({:?}) }},",
+            "    EvoFont {{ family: {family:?}, style: {style:?}, scripts: &[{}], bytes: include_bytes!({:?}) }},",
             scripts.join(", "),
             path.display().to_string(),
         );

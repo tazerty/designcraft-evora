@@ -1,0 +1,41 @@
+[package]
+edition = "2024"
+rust-version = "1.92"
+name = "hayro-interpret"
+version = "0.7.0"
+authors = ["Laurenz Stampfl <laurenz.stampfl@gmail.com>"]
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+description = "A crate for interpreting PDF files."
+readme = "README.md"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/LaurenzV/hayro"
+resolver = "2"
+
+[features]
+default = ["embed-fonts", "embed-cmaps"]
+embed-cmaps = ["hayro-cmap/embed-cmaps"]
+embed-fonts = []
+logging = ["dep:log", "hayro-syntax/logging"]
+
+[lib]
+name = "hayro_interpret"
+path = "src/lib.rs"
+
+[dependencies]
+bitflags = { version = "2.10" }
+hayro-cmap = { version = "0.1.0", default-features = false }
+hayro-syntax = { version = "0.7.0", features = ["std", "images", "unsafe"], default-features = false }
+kurbo = { version = "0.13.0" }
+log = { version = "0.4", optional = true }
+moxcms = { version = "0.8.1" }
+phf = { version = "0.13.1", features = ["macros"], default-features = false }
+rustc-hash = { version = "2" }
+siphasher = { version = "1" }
+skrifa = { version = "0.47.0" }
+smallvec = { version = "1" }
+yoke = { version = "0.8", features = ["derive"] }
+

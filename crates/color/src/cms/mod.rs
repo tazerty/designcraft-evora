@@ -1,7 +1,7 @@
 //! Colour management: working spaces, RGB ↔ CMYK ↔ Lab conversions with rendering intents,
 //! gamut checks and soft-proof transforms.
 //!
-//! * **ICC profiles** go through `craft-cms`: the built-in RGB working spaces (sRGB, Adobe RGB
+//! * **ICC profiles** go through `evo-cms`: the built-in RGB working spaces (sRGB, Adobe RGB
 //!   (1998) compatible, Display P3, ProPhoto RGB), the default CMYK space [`COATED_FOGRA39`],
 //!   and any `.icc` the user loads. Display output is sRGB; CMYK is shown relative colorimetric
 //!   with the settings' black point compensation, as placed CMYK images are.
@@ -31,9 +31,9 @@ pub const SRGB: &str = "sRGB IEC61966-2.1";
 pub const ADOBE_RGB: &str = "Adobe RGB (1998) compatible";
 pub const DISPLAY_P3: &str = "Display P3";
 pub const PROPHOTO_RGB: &str = "ProPhoto RGB";
-/// craft-cms's coated offset profile fitted to the FOGRA39 characterisation data: the default
+/// evo-cms's coated offset profile fitted to the FOGRA39 characterisation data: the default
 /// CMYK working space.
-pub const COATED_FOGRA39: &str = craft_cms::builtin::COATED_FOGRA39_DESCRIPTION;
+pub const COATED_FOGRA39: &str = evo_cms::builtin::COATED_FOGRA39_DESCRIPTION;
 /// Our parametric press model (see [`generic`]). Not an Adobe/ECI profile.
 pub const GENERIC_CMYK: &str = "Cicero Generic CMYK (SWOP-like)";
 /// What follows the build's name in [`GENERIC_CMYK`]: a document or preference saved by another
@@ -86,13 +86,13 @@ impl Intent {
     }
 }
 
-impl From<Intent> for craft_cms::Intent {
+impl From<Intent> for evo_cms::Intent {
     fn from(i: Intent) -> Self {
         match i {
-            Intent::Perceptual => craft_cms::Intent::Perceptual,
-            Intent::RelativeColorimetric => craft_cms::Intent::RelativeColorimetric,
-            Intent::Saturation => craft_cms::Intent::Saturation,
-            Intent::AbsoluteColorimetric => craft_cms::Intent::AbsoluteColorimetric,
+            Intent::Perceptual => evo_cms::Intent::Perceptual,
+            Intent::RelativeColorimetric => evo_cms::Intent::RelativeColorimetric,
+            Intent::Saturation => evo_cms::Intent::Saturation,
+            Intent::AbsoluteColorimetric => evo_cms::Intent::AbsoluteColorimetric,
         }
     }
 }
@@ -189,7 +189,7 @@ enum RgbSpace {
     Icc(Arc<IccProfile>),
 }
 
-/// The built-in Coated FOGRA39 space; `None` only if craft-cms can't use its own profile.
+/// The built-in Coated FOGRA39 space; `None` only if evo-cms can't use its own profile.
 fn fogra39() -> Option<Arc<IccProfile>> {
     static P: OnceLock<Option<Arc<IccProfile>>> = OnceLock::new();
     P.get_or_init(|| icc::coated_fogra39().map(Arc::new)).clone()
@@ -231,7 +231,7 @@ fn cmyk_space(name: &str) -> Result<CmykSpace, CmsError> {
             Some(p) if p.kind == ProfileKind::Cmyk => Ok(CmykSpace::Icc(p)),
             Some(_) => Err(CmsError::Unsupported(format!("{name} is not a CMYK profile"))),
             // Names of the profiles the built-in stands in for (Coated FOGRA39 (ISO 12647-2:2004), ISO Coated v2 (ECI) …).
-            None if craft_cms::Builtin::stand_in_for(name) == Some(craft_cms::Builtin::CoatedFogra39) => Ok(default_cmyk()),
+            None if evo_cms::Builtin::stand_in_for(name) == Some(evo_cms::Builtin::CoatedFogra39) => Ok(default_cmyk()),
             // The generic model under the name another build gave it (see `GENERIC_CMYK_SUFFIX`).
             None if name.ends_with(GENERIC_CMYK_SUFFIX) => Ok(CmykSpace::Generic(generic())),
             None => Err(CmsError::UnknownProfile(name.into())),
@@ -322,10 +322,10 @@ impl Cms {
 
     /// The working CMYK space as an ICC profile, for converting CMYK pixels in bulk. `None` for
     /// Device CMYK, which has no profile (the `(1−c)(1−k)` formula).
-    pub fn cmyk_icc_profile(&self) -> Option<Arc<craft_cms::Profile>> {
+    pub fn cmyk_icc_profile(&self) -> Option<Arc<evo_cms::Profile>> {
         match &self.cmyk {
             CmykSpace::Generic(_) => {
-                static P: OnceLock<Option<Arc<craft_cms::Profile>>> = OnceLock::new();
+                static P: OnceLock<Option<Arc<evo_cms::Profile>>> = OnceLock::new();
                 P.get_or_init(|| icc_out::generic_cmyk_profile().ok().map(|p| Arc::new(p.clone()))).clone()
             }
             CmykSpace::Device => None,
@@ -338,7 +338,7 @@ impl Cms {
     pub fn output_intent(&self) -> Result<OutputIntent, CmsError> {
         Ok(match &self.cmyk {
             CmykSpace::Icc(p) if p.name == COATED_FOGRA39 => {
-                OutputIntent { icc: Cow::Borrowed(craft_cms::builtin::COATED_FOGRA39_ICC), identifier: "FOGRA39", condition: COATED_FOGRA39.into() }
+                OutputIntent { icc: Cow::Borrowed(evo_cms::builtin::COATED_FOGRA39_ICC), identifier: "FOGRA39", condition: COATED_FOGRA39.into() }
             }
             CmykSpace::Icc(p) => OutputIntent { icc: Cow::Owned(p.profile().to_bytes().to_vec()), identifier: "Custom", condition: p.name.clone() },
             CmykSpace::Generic(_) | CmykSpace::Device => {

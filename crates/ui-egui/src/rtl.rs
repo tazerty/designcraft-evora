@@ -69,7 +69,7 @@ pub fn label(ui: &mut egui::Ui, text: impl Into<WidgetText>) -> egui::Response {
 /// Isolate a user-provided name when embedding it in LTR chrome/metadata.
 /// A Latin product name or suffix must not change the name's internal reading order.
 pub fn isolate(text: &str) -> String {
-    if text.chars().any(designcraft_fonts::is_rtl) { format!("\u{2068}{text}\u{2069}") } else { text.to_owned() }
+    if text.chars().any(evodesign_fonts::is_rtl) { format!("\u{2068}{text}\u{2069}") } else { text.to_owned() }
 }
 
 pub fn plain(ctx: &egui::Context, text: &str, font: FontId, color: Color32) -> Arc<Galley> {
@@ -133,7 +133,7 @@ fn visual_line(job: &LayoutJob, bidi: &BidiInfo<'_>, line: Range<usize>) -> Layo
                 }
             }
             let text = &job.text[range];
-            if rtl && !text.chars().any(designcraft_fonts::is_rtl) {
+            if rtl && !text.chars().any(evodesign_fonts::is_rtl) {
                 // Neutral-only RTL runs have no script for the shaper to infer a direction.
                 // Apply UBA L4 mirroring here; Arabic runs are mirrored by the shaper.
                 let neutral: String = text.chars().rev().map(|c| unicode_bidi_mirroring::get_mirrored(c).unwrap_or(c)).collect();
@@ -200,7 +200,7 @@ fn layout(ctx: &egui::Context, job: LayoutJob) -> Arc<Galley> {
         return layout_uncached(ctx, job);
     }
     let token = ctx.fonts_mut(|fonts| fonts.layout_no_wrap(String::new(), FontId::default(), Color32::TRANSPARENT));
-    let id = egui::Id::new("designcraft.rtl.layout-cache");
+    let id = egui::Id::new("evodesign.rtl.layout-cache");
     let key = egui::util::hash(&job);
     let cached = ctx.data_mut(|data| data.get_temp_mut_or_default::<LayoutCache>(id).lookup(token, key, &job));
     if let Some(galley) = cached {
@@ -310,7 +310,7 @@ mod tests {
         let ctx = egui::Context::default();
         // The built-in faces only: installed fonts (the CJK fallbacks) would make the glyphs
         // measured here depend on the machine.
-        ctx.set_fonts(crate::theme::font_definitions(designcraft_fonts::CRAFT_FONTS, "ar"));
+        ctx.set_fonts(crate::theme::font_definitions(evodesign_fonts::EVO_FONTS, "ar"));
         ctx.begin_pass(egui::RawInput { max_texture_side: Some(8192), ..Default::default() });
         test(&ctx);
         let mut output = ctx.end_pass();

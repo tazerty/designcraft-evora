@@ -1,19 +1,19 @@
-# Driving DesignCraft from agents and scripts
+# Driving EvoDesign from agents and scripts
 
-Every user-visible action in DesignCraft is a command (`crates/engine/src/cmd`), and every command is reachable
+Every user-visible action in EvoDesign is a command (`crates/engine/src/cmd`), and every command is reachable
 three ways — pick whichever fits the agent:
 
 | Surface | Use it when | Entry point |
 |---|---|---|
-| **CLI** | One-shot jobs, shell pipelines, CI: build or edit a document and export it | `designcraft-cli run`, `script`, `app`, `describe`, `commands` |
-| **MCP** | Claude and other MCP clients; images of pages and the window come back as content | `designcraft-cli mcp` ([mcp.md](mcp.md)) |
-| **Control channel** | Your own client driving the running app (JSON lines over TCP) | `designcraft --control 7979` ([control-protocol.md](control-protocol.md)) |
+| **CLI** | One-shot jobs, shell pipelines, CI: build or edit a document and export it | `evodesign-cli run`, `script`, `app`, `describe`, `commands` |
+| **MCP** | Claude and other MCP clients; images of pages and the window come back as content | `evodesign-cli mcp` ([mcp.md](mcp.md)) |
+| **Control channel** | Your own client driving the running app (JSON lines over TCP) | `evodesign --control 7979` ([control-protocol.md](control-protocol.md)) |
 
 ## Discover commands
 
 ```sh
-designcraft-cli commands footnote        # every command whose id/label/menu mentions "footnote"
-designcraft-cli describe xref.insert     # label, menu path, shortcut and parameters of one command
+evodesign-cli commands footnote        # every command whose id/label/menu mentions "footnote"
+evodesign-cli describe xref.insert     # label, menu path, shortcut and parameters of one command
 ```
 
 Parameters are documented on each command (`params`), e.g. `{anchor? | paragraph?: text to find | story? + para?, format?}`.
@@ -27,7 +27,7 @@ step) and the path goes through result fields and array indices (`"$1.story"`, `
 interpolates inside longer strings. Any other string starting with `$` stays as written (`"$1-$2"`, `"$5 off"`), and
 `$$` writes a literal `$` anywhere (`"$$1"` passes `$1`, a GREP group). In text parameters `\n` starts a new paragraph and `\u2028` is a forced line
 break (`\u000b`, Word's line break, is read as one too). Most commands ignore parameters they don't know instead of rejecting them, so check names with `describe`.
-`designcraft-cli script --help` prints this reference.
+`evodesign-cli script --help` prints this reference.
 
 ```sh
 cat > page.dcs <<'DCS'
@@ -38,8 +38,8 @@ frame.create {"rect": [72, 320, 540, 500], "content": "text", "text": "See ."}
 text.select  {"story": "$3.story", "anchor": 4, "focus": 4}
 xref.insert  {"paragraph": "Results", "format": "Paragraph Text & Page Number"}
 DCS
-designcraft-cli script page.dcs --save page.designcraft --export page.pdf --export page.png
-designcraft-cli script page.dcs --connect 7979      # the same steps, live in the running app
+evodesign-cli script page.dcs --save page.evodesign --export page.pdf --export page.png
+evodesign-cli script page.dcs --connect 7979      # the same steps, live in the running app
 ```
 
 The result is JSON: `{"completed": n, "results": [...]}`, plus `failedIndex` / `failedCommand` / `error` when a step
@@ -50,7 +50,7 @@ same references, and MCP's `batch` tool takes `commands` or `script` text with t
 `--all-pages` that follow them, so one run can write several sizes
 (`run --sample --scale 0.5 --export small.png --scale 2 --export large.png`); one with no export after it is an error.
 
-`--export` writes the file type its extension names: `.png` or `.jpg` (a page), `.pdf`, `.designcraft`, `.idml`,
+`--export` writes the file type its extension names: `.png` or `.jpg` (a page), `.pdf`, `.evodesign`, `.idml`,
 `.epub`, `.html`, and `.rtf` or `.txt` (the story being edited or of the selected frame). A name with no extension
 is a PNG of the page; another extension is an error, and nothing runs.
 
@@ -65,7 +65,7 @@ in the Swatches panel menu with one image selected. Cancel keeps the document un
 
 ## PDF/X-4 validation
 
-`designcraft-cli validate-pdf FILE.pdf` prints JSON with `valid` and `issues`, and exits non-zero
+`evodesign-cli validate-pdf FILE.pdf` prints JSON with `valid` and `issues`, and exits non-zero
 when a built-in check fails. Checks cover PDF version, output intent and profile, Info and XMP
 identification, image interpolation, encryption, trim boxes, Type 3 fonts, device RGB under a CMYK
 output intent, and unembedded fonts drawing visible text (including placed PDF forms). Render
@@ -84,15 +84,15 @@ fitting; `data.preview {record}` / `data.preview.stop` show one record without s
 appended pages to the template, is an error). It uses the linked source, or inline `csv` / `rows` / `path` / `bytes`:
 
 ```sh
-echo 'data.merge {"path": "people.csv", "records": "range", "range": "1-20"}' | designcraft-cli script - --in template.designcraft --save merged.designcraft
+echo 'data.merge {"path": "people.csv", "records": "range", "range": "1-20"}' | evodesign-cli script - --in template.evodesign --save merged.evodesign
 ```
 
 ## The running app
 
 ```sh
-designcraft --sample --control 7979 &
-designcraft-cli app type.changeCase '{"case": "title"}'            # any command
-designcraft-cli app --method ui.screenshot '{"path": "/tmp/w.png"}' # any control-channel method
+evodesign --sample --control 7979 &
+evodesign-cli app type.changeCase '{"case": "title"}'            # any command
+evodesign-cli app --method ui.screenshot '{"path": "/tmp/w.png"}' # any control-channel method
 ```
 
 `ui.menu.invoke {command}` without params acts like choosing the menu item: a command labelled "…" opens its

@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use craft_pdf::syntax::Pdf;
-use craft_pdf::syntax::object::{Array, Dict, MaybeRef, Name, ObjRef, Object, ObjectIdentifier};
+use evo_pdf::syntax::Pdf;
+use evo_pdf::syntax::object::{Array, Dict, MaybeRef, Name, ObjRef, Object, ObjectIdentifier};
 
 /// (object reference, name, on by default) of each layer.
 fn ocgs(pdf: &Pdf) -> Vec<(ObjRef, String, bool)> {
@@ -25,7 +25,7 @@ fn ocgs(pdf: &Pdf) -> Vec<(ObjRef, String, bool)> {
         .filter_map(|r| {
             let d = xref.get::<Dict<'_>>(ObjectIdentifier::from(r))?;
             let name = d
-                .get::<craft_pdf::syntax::object::String<'_>>(b"Name")
+                .get::<evo_pdf::syntax::object::String<'_>>(b"Name")
                 .map(|s| String::from_utf8_lossy(s.as_bytes()).to_string())
                 .unwrap_or_default();
             let visible = if base_off { on.contains(&r) } else { !off.contains(&r) };
@@ -46,13 +46,13 @@ pub(crate) fn has_optional_content(pdf: &Pdf) -> bool {
 
 /// The layers of a placed PDF: (name, visible by default).
 pub fn pdf_layers(bytes: &[u8]) -> Vec<(String, bool)> {
-    craft_pdf::open_slice(bytes, None).map(|p| ocgs(&p).into_iter().map(|(_, n, v)| (n, v)).collect()).unwrap_or_default()
+    evo_pdf::open_slice(bytes, None).map(|p| ocgs(&p).into_iter().map(|(_, n, v)| (n, v)).collect()).unwrap_or_default()
 }
 
 // Copy untouched dictionary entries as raw PDF tokens. In particular, do not reinterpret
 // strings, numbers or unknown extension keys. The parser bounds container nesting.
 fn patch_dict(dict: &Dict<'_>, updates: &[(&[u8], &[u8])]) -> Option<Vec<u8>> {
-    use craft_pdf::syntax::reader::{Reader, ReaderExt};
+    use evo_pdf::syntax::reader::{Reader, ReaderExt};
     let data = if dict.is_empty() { b"<<>>".as_slice() } else { dict.data() };
     if data.len() > 4 * 1024 * 1024 {
         return None;
@@ -92,7 +92,7 @@ fn patch_dict(dict: &Dict<'_>, updates: &[(&[u8], &[u8])]) -> Option<Vec<u8>> {
 }
 
 fn trailer_at(bytes: &[u8], offset: usize) -> Option<Dict<'_>> {
-    use craft_pdf::syntax::reader::{Reader, ReaderExt};
+    use evo_pdf::syntax::reader::{Reader, ReaderExt};
     const MAX_TABLE_BYTES: usize = 4 * 1024 * 1024;
     let data = bytes.get(offset..)?;
     // Bound even whitespace/comment scanning and context-free dictionary parsing.
@@ -154,7 +154,7 @@ fn has_non_null_entry(dict: &Dict<'_>, key: &[u8]) -> bool {
 /// Untouched catalog/configuration entries and full object references are preserved.
 pub fn pdf_hide_layers(bytes: &[u8], hidden: &[String]) -> Option<Vec<u8>> {
     crate::check_pdf_input_size(bytes.len()).ok()?;
-    let pdf = craft_pdf::open_slice(bytes, None).ok()?;
+    let pdf = evo_pdf::open_slice(bytes, None).ok()?;
     let layers = ocgs(&pdf);
     if layers.is_empty() {
         return None;
@@ -252,7 +252,7 @@ pub(crate) fn layered(data: &Arc<Vec<u8>>, hidden: &[String]) -> Option<Arc<Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use craft_pdf::syntax::reader::{Reader, ReaderExt};
+    use evo_pdf::syntax::reader::{Reader, ReaderExt};
 
     #[test]
     fn trailer_lookup_does_not_take_guard_values_from_xref_comments() {

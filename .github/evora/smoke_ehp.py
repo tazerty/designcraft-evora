@@ -27,7 +27,7 @@ juge chaque étiquette :
                    → invalid_content, document intact ; document ouvert d'octets, document neuf modifié → conflict,
                    document intact ; la commande n'est jamais au catalogue (EVORA-CIC-26)
   MODIFY           une commande du catalogue (Nouveau gabarit…, Entrée) : evora:dirty true
-  SAVE-REQ         evora:request-save : un evora:save conforme (re, docRef, .designcraft, zip)
+  SAVE-REQ         evora:request-save : un evora:save conforme (re, docRef, .evodesign, zip)
   S-ACK-1          aucun evora:dirty false tant que la coquille n'a pas répondu
   S-ACK-2          evora:saved {ok: true} : evora:dirty false
   S-ACK-3          une seconde demande : evora:ack {ok: true, code: clean}
@@ -70,7 +70,7 @@ juge chaque étiquette :
                    terme de la liste de l'équipe propre (terms.txt, mot entier, casse ignorée) (EVORA-CIC-11, B10)
   FR-COVERAGE      couverture du français mesurée par le moteur ; les chaînes propres d'Evora toutes traduites
                    (EVORA-CIC-19 ; toutes les langues : couverture-langues.json)
-  FONT             evora:font d'une police de craft-fonts : accusé, famille listée
+  FONT             evora:font d'une police de evo-fonts : accusé, famille listée
   FONT-INVALID     des octets qui ne sont pas une police : invalid_content
   PURGE            une clé posée dans le stockage du moteur ; evora:purge : accusé, stockage vide
                    (localStorage, sessionStorage, IndexedDB, Cache Storage, OPFS)
@@ -301,8 +301,8 @@ DOWNLOAD_PROBE = """(() => { if (window.__evoraDl) return; const D = window.__ev
   window.open = function () { D.opens++; return open.apply(this, arguments); };
 })()"""
 
-ENGINE_PROBE = """(() => { const c = document.getElementById('designcraft_canvas');
-  return JSON.stringify({loading: !!document.getElementById('designcraft_loading'), w: c ? c.width : 0}); })()"""
+ENGINE_PROBE = """(() => { const c = document.getElementById('evodesign_canvas');
+  return JSON.stringify({loading: !!document.getElementById('evodesign_loading'), w: c ? c.width : 0}); })()"""
 
 STORAGE_PROBE = """(async () => {
   const out = {local: localStorage.length, session: sessionStorage.length, idb: -1, caches: -1, opfs: -1};
@@ -619,7 +619,7 @@ class Banc:
                       and after.get("documents") == 1)
         notes["octets"] = {"reponse": p, "uid": [before.get("uid"), after.get("uid")]}
         doc3 = "01JD0000000000000000000003"
-        a = self.answer(self.send("evora:open", f"{{docRef: '{doc3}', name: 'Affiche.designcraft', new: true}}"))
+        a = self.answer(self.send("evora:open", f"{{docRef: '{doc3}', name: 'Affiche.evodesign', new: true}}"))
         opened = bool(a and a["payload"].get("ok"))
         self.click_canvas()
         ok, why = self.modify()
@@ -684,7 +684,7 @@ class Banc:
 
         # Document neuf de la coquille.
         doc1 = "01JD0000000000000000000001"
-        i = self.send("evora:open", f"{{docRef: '{doc1}', name: 'Plaquette.designcraft', new: true}}")
+        i = self.send("evora:open", f"{{docRef: '{doc1}', name: 'Plaquette.evodesign', new: true}}")
         a = self.answer(i)
         d = self.diag()
         dirty0 = self.wait(lambda m: m.get("type") == "evora:dirty" and m["payload"].get("docRef") == doc1)
@@ -727,7 +727,7 @@ class Banc:
         rs = self.send("evora:request-save", "{reason: 'user'}")
         save = self.wait(lambda m: m.get("type") == "evora:save" and m.get("re") == rs)
         sp = (save or {}).get("payload", {})
-        self.set("SAVE-REQ", save is not None and sp.get("docRef") == doc1 and str(sp.get("name", "")).endswith(".designcraft")
+        self.set("SAVE-REQ", save is not None and sp.get("docRef") == doc1 and str(sp.get("name", "")).endswith(".evodesign")
                  and sp.get("saveAs") is False and (sp.get("bytes") or {}).get("head", "").startswith("504b0304"), sp)
         if not save:
             return
@@ -762,7 +762,7 @@ class Banc:
         # Ouverture d'octets : remplace le document (un seul par éditeur).
         doc2 = "01JD0000000000000000000002"
         i = self.js(f"(() => {{ const b = window.__copy({json.dumps(saved_bytes_id)}); return b ? window.__send('evora:open', "
-                    f"{{docRef: '{doc2}', name: 'Plaquette copie.designcraft', bytes: b}}) : null; }})()")
+                    f"{{docRef: '{doc2}', name: 'Plaquette copie.evodesign', bytes: b}}) : null; }})()")
         a = self.answer(i) if i else None
         d = self.diag()
         dirty2 = self.wait(lambda m: m.get("type") == "evora:dirty" and m["payload"].get("docRef") == doc2)

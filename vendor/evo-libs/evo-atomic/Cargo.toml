@@ -1,0 +1,12 @@
+[package]
+name = "evo-atomic"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.95"
+repository = "vendor/evo-libs"
+description = "Crash-safe atomic file writing and replacement for the Evo suite"
+
+[target."cfg(target_vendor = \"apple\")".dependencies]
+rustix = { version = "1.1", default-features = false, features = ["std", "fs"] }
+

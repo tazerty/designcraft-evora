@@ -1,18 +1,18 @@
-# DesignCraft — the desktop app (`designcraft`) and the CLI/MCP server (`designcraft-cli`), built from this
+# EvoDesign — the desktop app (`evodesign`) and the CLI/MCP server (`evodesign-cli`), built from this
 # repository:
 #
-#   nix build          # → ./result/bin/designcraft, ./result/bin/designcraft-cli
+#   nix build          # → ./result/bin/evodesign, ./result/bin/evodesign-cli
 #
 # Kept in step with the release workflow (.github/workflows/release.yml) and packaging/:
 #   * `Cargo.lock` drives the dependencies (`cargoLock`), so there is no vendorHash to bump. The
-#     git sources (storytold/craft-libs) are fetched at the revision the lock file pins;
+#     git sources (vendor/evo-libs) are fetched at the revision the lock file pins;
 #   * the desktop file, hicolor icons, MIME types and AppStream metadata are the same files the
-#     .deb/.rpm ship (packaging/linux/), so `apt` and NixOS users see one identical DesignCraft;
-#   * `CRAFT_FONTS_DIR` embeds the fonts from storytold/craft-fonts (the `craft-fonts` flake input, pinned to
+#     .deb/.rpm ship (packaging/linux/), so `apt` and NixOS users see one identical EvoDesign;
+#   * `EVO_FONTS_DIR` embeds the fonts from tazerty/evo-fonts (the `evo-fonts` flake input, pinned to
 #     the revision the release workflow uses); without it everything builds and runs, but some
 #     scripts (e.g. Japanese, Chinese) have no glyphs;
 #   * `doCheck` is off: the test suite needs corpora and a GPU the Nix sandbox cannot provide
-#     (`cargo xtask ci` is the gate). `pkgs.designcraft.overrideAttrs { doCheck = true; }` runs it.
+#     (`cargo xtask ci` is the gate). `pkgs.evodesign.overrideAttrs { doCheck = true; }` runs it.
 #
 # Everything in the product is pure Rust, so this needs no build system beyond cargo plus the
 # libraries winit/wgpu `dlopen` at run time (see `runtimeLibs`).
@@ -49,8 +49,8 @@
   # Adds the driver search path (/run/opengl-driver/lib) to the binaries' RPATH so wgpu finds the
   # installed Vulkan/GL driver on NixOS. Optional: harmless on nixpkgs without it.
   autoAddDriverRunpath ? null,
-  # storytold/craft-fonts checkout (flake input). `null` builds without the embedded fonts.
-  craft-fonts ? null,
+  # tazerty/evo-fonts checkout (flake input). `null` builds without the embedded fonts.
+  evo-fonts ? null,
   # Release date for the AppStream metadata (YYYY-MM-DD); the flake derives it from its own commit.
   buildDate ? "1970-01-01",
 }:
@@ -64,7 +64,7 @@ let
   isLinux = stdenv.hostPlatform.isLinux;
 
   # AppStream id: also the desktop file name, and the icon name in share/icons/hicolor.
-  appId = "ai.storyteller.designcraft";
+  appId = "ai.storyteller.evodesign";
 
   # Libraries the binaries open at run time with dlopen(): nothing links them, so no RPATH points at
   # them. winit loads libwayland-client, libxkbcommon(-x11) and the X11 libraries; wgpu loads the
@@ -83,15 +83,15 @@ let
     dbus
   ];
 
-  # The two native binaries. The wasm app (apps/designcraft-web) is built by `cargo xtask`, not here.
+  # The two native binaries. The wasm app (apps/evodesign-web) is built by `cargo xtask`, not here.
   binaries = [
-    "designcraft"
-    "designcraft-cli"
+    "evodesign"
+    "evodesign-cli"
   ];
 
 in
 rustPlatform.buildRustPackage {
-  pname = "designcraft";
+  pname = "evodesign";
   inherit version;
 
   src = lib.cleanSourceWith {
@@ -116,9 +116,9 @@ rustPlatform.buildRustPackage {
   cargoBuildFlags = [
     "--locked"
     "-p"
-    "designcraft"
+    "evodesign"
     "-p"
-    "designcraft-cli"
+    "evodesign-cli"
   ];
 
   doCheck = false;
@@ -146,10 +146,10 @@ rustPlatform.buildRustPackage {
     libxrandr
   ];
 
-  env = lib.optionalAttrs (craft-fonts != null) {
-    CRAFT_FONTS_DIR = toString craft-fonts;
+  env = lib.optionalAttrs (evo-fonts != null) {
+    EVO_FONTS_DIR = toString evo-fonts;
     # A malformed font input must fail the build rather than silently ship without glyphs.
-    CRAFT_FONTS_REQUIRED = "1";
+    EVO_FONTS_REQUIRED = "1";
   };
 
   postInstall = ''
@@ -164,7 +164,7 @@ rustPlatform.buildRustPackage {
       --subst-var-by DATE ${buildDate}
 
     # Licences for everything embedded in the binaries.
-    doc=$out/share/doc/designcraft
+    doc=$out/share/doc/evodesign
     for f in README.md LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md assets/ATTRIBUTION.md; do
       if [ -f "$f" ]; then install -Dm644 "$f" "$doc/$(basename "$f")"; fi
     done
@@ -172,8 +172,8 @@ rustPlatform.buildRustPackage {
       if [ -f "$f" ]; then install -Dm644 "$f" "$doc/$(basename "$f")"; fi
     done
   ''
-  + lib.optionalString (craft-fonts != null) ''
-    for lic in ${toString craft-fonts}/fonts/*/OFL.txt; do
+  + lib.optionalString (evo-fonts != null) ''
+    for lic in ${toString evo-fonts}/fonts/*/OFL.txt; do
       install -Dm644 "$lic" "$doc/OFL-$(basename "$(dirname "$lic")").txt"
     done
   ''
@@ -196,11 +196,11 @@ rustPlatform.buildRustPackage {
   meta = {
     description = "Page layout and publishing application";
     longDescription = ''
-      DesignCraft is a page layout and publishing application: multi-page documents, styles,
-      masters, typography and print output. It ships with designcraft-cli, a headless command runner
+      EvoDesign is a page layout and publishing application: multi-page documents, styles,
+      masters, typography and print output. It ships with evodesign-cli, a headless command runner
       and MCP server for AI agents.
     '';
-    homepage = "https://getartcraft.com/apps/designcraft";
+    homepage = "https://evora.st";
     license = with lib.licenses; [
       mit
       asl20
@@ -208,6 +208,6 @@ rustPlatform.buildRustPackage {
     sourceProvenance = with lib.sourceTypes; [ fromSource ];
     platforms = lib.platforms.linux ++ lib.platforms.darwin;
     # `nix run` and the desktop entry both start the GUI.
-    mainProgram = "designcraft";
+    mainProgram = "evodesign";
   };
 }

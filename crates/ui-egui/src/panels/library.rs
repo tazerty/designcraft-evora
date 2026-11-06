@@ -33,7 +33,7 @@ pub fn show(app: &mut DesignApp, ui: &mut egui::Ui) {
     ui.separator();
     ui.horizontal(|ui| {
         if ui.button(crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, "New Library…"))).clicked() {
-            let path = app.pick_save("Library.dclib");
+            let path = app.pick_save("Library.evodesignlib");
             let _ = app.run("library.new", json!({"path": path}));
         }
         if ui.button(crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, "Open…"))).clicked()

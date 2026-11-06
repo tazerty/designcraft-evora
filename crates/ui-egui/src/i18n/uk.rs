@@ -1,6 +1,6 @@
 //! Ukrainian interface translations; publishing terms are reviewed in context.
-//! Common phrases are adapted from the MIT OR Apache-2.0 ArtCraft sibling catalogs
-//! (VectorCraft, PhotoCraft, WordCraft and DeckCraft); see ASSETS.md for pinned sources.
+//! Common phrases are adapted from the MIT OR Apache-2.0 Upstream sibling catalogs
+//! (EvoVector, EvoPhoto, EvoWord and EvoDeck); see ASSETS.md for pinned sources.
 pub(super) const TABLE: &[(&str, &str)] = &[
     ("File", "Файл"),
     ("Edit", "Редагування"),

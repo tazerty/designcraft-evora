@@ -1,6 +1,6 @@
 //! `object.stroke` keeps `tint` and `gapTint` within 0..1, so a saved document always reloads.
-use designcraft_doc::ItemId;
-use designcraft_engine::Session;
+use evodesign_doc::ItemId;
+use evodesign_engine::Session;
 use serde_json::json;
 
 fn stroked(tint: f64, gap_tint: f64) -> (Session, ItemId) {
@@ -19,7 +19,7 @@ fn out_of_range_stroke_tints_are_clamped_and_the_saved_file_reloads() {
         let doc = &s.doc().unwrap().doc;
         let st = &doc.item(id).unwrap().stroke;
         assert_eq!((st.tint, st.gap_tint), (want_tint, want_gap), "tint {tint}, gapTint {gap}");
-        let bytes = designcraft_format::save(doc).unwrap();
-        designcraft_format::load(&bytes).expect("reload what we just saved");
+        let bytes = evodesign_format::save(doc).unwrap();
+        evodesign_format::load(&bytes).expect("reload what we just saved");
     }
 }

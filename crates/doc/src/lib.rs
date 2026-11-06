@@ -1,4 +1,4 @@
-//! The DesignCraft document model (pure data + serde).
+//! The EvoDesign document model (pure data + serde).
 //!
 //! A [`Document`] holds spreads of pages, parent ("master") spreads, layers, stories, styles,
 //! swatches, sections and embedded assets. Spreads, items and stories are `Arc`-shared so an
@@ -49,8 +49,8 @@ pub use datamerge::{
     DataField, DataFieldKind, DataMerge, DataSource, Delimiter, Fingerprint, MergeOptions, Placeholder, PlaceholderAnchor, PlaceholderRole,
     SourceStatus,
 };
-pub use designcraft_color as color;
-pub use designcraft_geom as geom;
+pub use evodesign_color as color;
+pub use evodesign_geom as geom;
 pub use edit::{ItemLoc, ItemPath, SpreadRef, hit_descendant, item_hit as edit_hit};
 pub use endnotes::{ENDNOTE_REF, EditorialNote, EndnoteOptions, NOTE_MARK};
 pub use flex::{FlexAlign, FlexDirection, FlexJustify, FlexLayout, FlexSize};
@@ -65,8 +65,8 @@ pub use styles::*;
 pub use table::*;
 pub use xref::{ANCHOR_MARK, CrossRef, TextAnchor, XREF_MARK, XrefFormat};
 
-use designcraft_color::Swatch;
-use designcraft_geom::Unit;
+use evodesign_color::Swatch;
+use evodesign_geom::Unit;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -577,7 +577,7 @@ pub struct Asset {
     /// Where the `pdf_crop` box sits on the page as rendered (its visible crop box, rotated as it
     /// displays): left, top, right, bottom as fractions of the page's width and height. Graphic
     /// space (0,0)-(w,h) spans this box. `None`: the whole page, or a Bounding Box crop not
-    /// measured yet (`designcraft_render::shown_box` measures it when the graphic is drawn).
+    /// measured yet (`evodesign_render::shown_box` measures it when the graphic is drawn).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pdf_box: Option<[f64; 4]>,
 }
@@ -958,8 +958,8 @@ impl Document {
         if global { self.settings.global_light } else { angle }
     }
 
-    pub fn resolve_color(&self, swatch: &str, tint: f32) -> Option<designcraft_color::Color> {
-        designcraft_color::swatch::resolve(&self.swatches, swatch, tint)
+    pub fn resolve_color(&self, swatch: &str, tint: f32) -> Option<evodesign_color::Color> {
+        evodesign_color::swatch::resolve(&self.swatches, swatch, tint)
     }
 
     /// Validate structural invariants (ids unique, threads consistent, stories well-formed).

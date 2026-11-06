@@ -1,9 +1,9 @@
 # MCP server
 
-`designcraft-cli mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server that lets Claude and
-other agents drive DesignCraft: create documents, lay out frames and text, apply styles, place images, and look at
+`evodesign-cli mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server that lets Claude and
+other agents drive EvoDesign: create documents, lay out frames and text, apply styles, place images, and look at
 the result as PNG images. It speaks newline-delimited JSON-RPC 2.0 on stdin/stdout (protocol `2025-06-18`, also
-`2025-03-26` and `2024-11-05`); logs go to stderr. The implementation is the `designcraft-mcp` crate.
+`2025-03-26` and `2024-11-05`); logs go to stderr. The implementation is the `evodesign-mcp` crate.
 
 ## Register it
 
@@ -12,7 +12,7 @@ the result as PNG images. It speaks newline-delimited JSON-RPC 2.0 on stdin/stdo
 With Rust and Cargo installed, run this from the repository root:
 
 ```sh
-cargo install --path apps/designcraft-cli --locked
+cargo install --path apps/evodesign-cli --locked
 ```
 
 Cargo copies the executable into its installation root's `bin` directory, normally
@@ -25,7 +25,7 @@ Ensure that directory is on `PATH`. For a default install in a POSIX shell:
 
 ```sh
 export PATH="$HOME/.cargo/bin:$PATH"
-designcraft-cli --help
+evodesign-cli --help
 ```
 
 Persist the PATH setting in your shell configuration (on Windows, add the directory
@@ -40,11 +40,11 @@ After installation, register the CLI by name:
 
 ```sh
 # Headless: an in-process engine, no window
-claude mcp add designcraft -- designcraft-cli mcp
+claude mcp add evodesign -- evodesign-cli mcp
 
 # Drive the running desktop app (install/start the desktop app separately)
-designcraft --control 7979
-claude mcp add designcraft-app -- designcraft-cli mcp --connect 7979
+evodesign --control 7979
+claude mcp add evodesign-app -- evodesign-cli mcp --connect 7979
 ```
 
 Other MCP clients use the same command line, e.g. in a JSON config:
@@ -52,8 +52,8 @@ Other MCP clients use the same command line, e.g. in a JSON config:
 ```json
 {
   "mcpServers": {
-    "designcraft": {
-      "command": "designcraft-cli",
+    "evodesign": {
+      "command": "evodesign-cli",
       "args": ["mcp"]
     }
   }
@@ -64,47 +64,47 @@ If the client cannot find the CLI on PATH, substitute the absolute installed pat
 (not a path under `target/`), for example:
 
 ```sh
-claude mcp add designcraft -- /absolute/install/root/bin/designcraft-cli mcp
+claude mcp add evodesign -- /absolute/install/root/bin/evodesign-cli mcp
 ```
 
 ### From an installed release
 
-The release packages ship `designcraft-cli` alongside the desktop app, so no build is needed:
+The release packages ship `evodesign-cli` alongside the desktop app, so no build is needed:
 
 | Install | CLI |
 |---|---|
-| Windows (MSI) | `C:\Program Files\DesignCraft\designcraft-cli.exe` by default (wherever you installed it otherwise), not on `PATH` |
-| Linux (deb, rpm) | `/usr/bin/designcraft-cli` |
-| macOS | the separate `designcraft-cli-<version>-macos-<arch>.zip` release asset (the `.app` holds only the desktop app) |
+| Windows (MSI) | `C:\Program Files\EvoDesign\evodesign-cli.exe` by default (wherever you installed it otherwise), not on `PATH` |
+| Linux (deb, rpm) | `/usr/bin/evodesign-cli` |
+| macOS | the separate `evodesign-cli-<version>-macos-<arch>.zip` release asset (the `.app` holds only the desktop app) |
 
 ```sh
 # Windows, default install folder
-claude mcp add designcraft -- "C:\Program Files\DesignCraft\designcraft-cli.exe" mcp
+claude mcp add evodesign -- "C:\Program Files\EvoDesign\evodesign-cli.exe" mcp
 # Linux, or macOS with the CLI unzipped onto PATH
-claude mcp add designcraft -- designcraft-cli mcp
+claude mcp add evodesign -- evodesign-cli mcp
 ```
 
 ## Confining file access
 
 ```sh
-designcraft-cli mcp --automation-read-root /work/project --automation-write-root /work/project/out
-designcraft-cli mcp --automation-read-root /work/project --automation-read-root /work/shared-assets \
+evodesign-cli mcp --automation-read-root /work/project --automation-write-root /work/project/out
+evodesign-cli mcp --automation-read-root /work/project --automation-read-root /work/shared-assets \
   --automation-write-root /work/project/out --automation-write-root /tmp/scratch
 ```
 
 ```json
-{"mcpServers": {"designcraft": {"command": "designcraft-cli",
+{"mcpServers": {"evodesign": {"command": "evodesign-cli",
   "args": ["mcp", "--automation-read-root", "/work/project", "--automation-write-root", "/work/project/out"]}}}
 ```
 
-The two flags (VectorCraft, PhotoCraft and the other Craft apps take the same ones, so one client
+The two flags (EvoVector, EvoPhoto and the other Evo apps take the same ones, so one client
 config works across the suite) keep the agent to the folders you give it:
 
 - Every file a command reads must lie inside a **read root**: `open_document`, `file.open`,
   `file.openIdml`, `place_image` and `file.place` / `place.load` / `media.options` with a `path`,
   `links.relink`, `links.relinkFolder`, `color.loadProfile`, `swatch.load`, `library.open`,
   `book.open`, `data.source.select`, `data.merge` and `file.importXml` / `xml.loadDtd` with a `path`,
-  and `file.recovery.list` / `file.recovery.open` with a `dir`. A DesignCraft document names more
+  and `file.recovery.list` / `file.recovery.open` with a `dir`. A EvoDesign document names more
   files than the agent does: linked images, data sources, book chapters, the `Document Fonts` folder
   beside a document, an IDML package's linked images and the files an image cell of a merge names.
   Those are read through the same checks, so a path in a document that leads outside the read roots
@@ -132,15 +132,15 @@ config works across the suite) keep the agent to the folders you give it:
   inside `/work`. On Windows case is ignored, UNC paths (`\\server\share\...`) are resolved like
   drive-letter ones, and device names (`CON`, `NUL`, `COM1`...) are refused.
 - A refused path is an ordinary tool error the agent can read and correct, for example
-  `automation path rejected: outside the write root /work/project/out: /etc/x.designcraft` (with
+  `automation path rejected: outside the write root /work/project/out: /etc/x.evodesign` (with
   several, `outside the write roots /work/project/out, /tmp/scratch: ...`) or
-  `automation filesystem access is not granted: write authority is absent: /work/project/out/x.designcraft`.
+  `automation filesystem access is not granted: write authority is absent: /work/project/out/x.evodesign`.
 - The roots must be existing folders; a missing one stops the server with an error. Each flag takes
   one folder per use (`--flag <dir>` or `--flag=<dir>`) and may be used again for more.
 
 The flags confine the in-process server, so `--connect` together with them is an error: the server
-would otherwise talk to an app that isn't confined. DesignCraft's desktop app has no equivalent flags
-yet, so a running app (`designcraft --control`) is not confined. `--sample` is the operator's own
+would otherwise talk to an app that isn't confined. EvoDesign's desktop app has no equivalent flags
+yet, so a running app (`evodesign --control`) is not confined. `--sample` is the operator's own
 choice and is opened before the roots apply.
 
 What the roots do not cover: commands that take no path still read and change the open document,
@@ -163,8 +163,8 @@ files it was given rather than guarding against other software on the computer.
 
 | | Headless (`mcp`) | Connected (`mcp --connect PORT` or `HOST:PORT`) |
 |---|---|---|
-| Engine | In-process `designcraft_engine::Session`, starts with an empty Letter document (`--sample` opens the sample magazine) | The app's session, through its loopback control channel ([control-protocol.md](control-protocol.md)) |
-| Rendering | `designcraft-render` (CPU) | The app's renderer |
+| Engine | In-process `evodesign_engine::Session`, starts with an empty Letter document (`--sample` opens the sample magazine) | The app's session, through its loopback control channel ([control-protocol.md](control-protocol.md)) |
+| Rendering | `evodesign-render` (CPU) | The app's renderer |
 | Window tools (`screenshot`, `click`, `drag`, `menu_list`, `ui_inspect`, `ui_set`, `dialog_*`) | Return an error explaining how to connect | Work |
 | UI-only commands via `execute` (`view.*`, `window.*`, `help.*`, `edit.dynamicSpelling`, and `app.*` except `app.links`) | Error | Work |
 
@@ -225,7 +225,7 @@ Use `execute` with `object.fit` to fit a selected graphic frame (or pass `ids`):
 | `get_story` | Text, frames, paragraphs, lines, overset of a story (`story` or text `frame`) |
 | `set_story_text` | Replace a story's text (`\n` = new paragraph) |
 | `new_document` | `file.new` (preset, intent, units, width, height, pages, startPage, facingPages, columns, gutter, margins, bleed, slug, title, primaryTextFrame) or `sample: true` |
-| `open_document` / `save_document` | Native `.designcraft` files |
+| `open_document` / `save_document` | Native `.evodesign` files |
 | `place_image` | Image from `path` or `base64` into `frame`, the selected frame, or a new frame at x, y, width |
 | `render_page` | Render a page → MCP image content (PNG, base64); optional `path` to also save it |
 | `export_png` | Write a page as PNG (or JPEG by extension) |
@@ -240,7 +240,7 @@ Use `execute` with `object.fit` to fit a selected graphic frame (or pass `ids`):
 | `dialog_set` / `dialog_confirm` / `dialog_cancel` | Fill in and close the open dialog (connected only) |
 
 Tool failures come back as results with `isError: true` and a message the model can act on; protocol errors use
-JSON-RPC error codes. Resources: `designcraft://document` (document.inspect) and `designcraft://commands`.
+JSON-RPC error codes. Resources: `evodesign://document` (document.inspect) and `evodesign://commands`.
 
 ## Example
 
@@ -265,4 +265,4 @@ key        {"key": "Escape"}
 
 ## Community links
 
-`app.links` returns the ArtCraft Discord (https://discord.gg/artcraft), the website (https://getartcraft.com), DesignCraft's app page (https://getartcraft.com/apps/designcraft), its GitHub repository (https://github.com/storytold/designcraft) and the issue tracker. In the running app, the UI commands `help.discord`, `help.appPage`, `help.github`, `help.issues`, `help.website`, `help.app {app}` open them in the browser and `help.about {tab?}` shows the About window (tabs `about`, `contributors`, `models`). The server's `serverInfo.websiteUrl` is the app page.
+`app.links` returns the Upstream Discord (https://evora.st), the website (https://evora.st), EvoDesign's app page (https://evora.st), its GitHub repository (https://github.com/tazerty/evodesign) and the issue tracker. In the running app, the UI commands `help.discord`, `help.appPage`, `help.github`, `help.issues`, `help.website`, `help.app {app}` open them in the browser and `help.about {tab?}` shows the About window (tabs `about`, `contributors`, `models`). The server's `serverInfo.websiteUrl` is the app page.

@@ -1,0 +1,29 @@
+[package]
+edition = "2024"
+name = "hayro-cmap"
+version = "0.1.0"
+authors = ["Laurenz Stampfl <laurenz.stampfl@gmail.com>"]
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+description = "A parser for CMap files."
+readme = "README.md"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/LaurenzV/hayro"
+resolver = "2"
+
+[features]
+default = ["embed-cmaps"]
+embed-cmaps = ["std", "dep:brotli"]
+std = []
+
+[lib]
+name = "hayro_cmap"
+path = "src/lib.rs"
+
+[dependencies]
+brotli = { version = "8", features = ["std", "std"], optional = true, default-features = false }
+hayro-postscript = { version = "0.1.0", default-features = false }
+

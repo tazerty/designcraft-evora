@@ -3,8 +3,8 @@
 //! its attributes to the selection, or a placed image to colour the selection (text or objects)
 //! with the image's colour under the pointer.
 
-use designcraft_doc::SpreadRef;
-use designcraft_geom::{Point, Rect};
+use evodesign_doc::SpreadRef;
+use evodesign_geom::{Point, Rect};
 use serde_json::json;
 
 use crate::{Action, Cursor, Gesture, Mods, Overlay, PointerEvent, PointerKind, SnapRequest, Tool, ToolContext};
@@ -253,8 +253,8 @@ fn positive_pad(v: f64) -> f64 {
 /// The spread and spread point under `p` when a placed raster shows there. Other graphic formats
 /// still block an image behind them, but use attribute matching instead of pixel sampling.
 fn image_under(cx: &ToolContext, p: Point) -> Option<(SpreadRef, Point)> {
-    use designcraft_doc::{Content, Item};
-    fn shows(d: &designcraft_doc::Document, it: &Item, outer: designcraft_geom::Affine, at: Point, depth: usize) -> Option<bool> {
+    use evodesign_doc::{Content, Item};
+    fn shows(d: &evodesign_doc::Document, it: &Item, outer: evodesign_geom::Affine, at: Point, depth: usize) -> Option<bool> {
         if it.hidden || depth > 64 {
             return None;
         }
@@ -269,7 +269,7 @@ fn image_under(cx: &ToolContext, p: Point) -> Option<(SpreadRef, Point)> {
         if !graphic && it.fill.is_none() {
             return None;
         }
-        if !designcraft_doc::edit_hit(it, outer.inverse() * at, 0.0) {
+        if !evodesign_doc::edit_hit(it, outer.inverse() * at, 0.0) {
             return None;
         }
         Some(match &it.content {
@@ -285,7 +285,7 @@ fn image_under(cx: &ToolContext, p: Point) -> Option<(SpreadRef, Point)> {
         .into_iter()
         .rev()
         .filter(|it| cx.doc.layer(it.layer).is_none_or(|l| l.visible))
-        .find_map(|it| shows(cx.doc, it, designcraft_geom::Affine::IDENTITY, at, 0))?;
+        .find_map(|it| shows(cx.doc, it, evodesign_geom::Affine::IDENTITY, at, 0))?;
     image.then_some((sr, at))
 }
 

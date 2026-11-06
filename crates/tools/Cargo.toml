@@ -1,17 +1,17 @@
 [package]
-name = "designcraft-tools"
+name = "evodesign-tools"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "DesignCraft tools: pointer events in, commands and overlays out (Selection, Direct Selection, frames, Type, Hand, Zoom…)"
+description = "EvoDesign tools: pointer events in, commands and overlays out (Selection, Direct Selection, frames, Type, Hand, Zoom…)"
 
 [lints]
 workspace = true
 
 [dependencies]
-designcraft-geom = { workspace = true }
-designcraft-color = { workspace = true }
-designcraft-doc = { workspace = true }
-designcraft-compose = { workspace = true }
+evodesign-geom = { workspace = true }
+evodesign-color = { workspace = true }
+evodesign-doc = { workspace = true }
+evodesign-compose = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -2,8 +2,8 @@
 
 use serde_json::json;
 
-use designcraft_engine::Session;
-use designcraft_engine::cmd::{base64_decode, base64_encode};
+use evodesign_engine::Session;
+use evodesign_engine::cmd::{base64_decode, base64_encode};
 
 fn pdf(objects: &[String]) -> Vec<u8> {
     let mut bytes = b"%PDF-1.7\n".to_vec();
@@ -39,9 +39,9 @@ fn layered_pdf_with_box(second_name: &str, page_box: &str) -> Vec<u8> {
     ])
 }
 
-fn rendered(bytes: &[u8]) -> designcraft_render::Rendered {
-    let pm = designcraft_render::render_pdf_page(bytes, 0, 100).expect("render synthetic PDF");
-    designcraft_render::Rendered {
+fn rendered(bytes: &[u8]) -> evodesign_render::Rendered {
+    let pm = evodesign_render::render_pdf_page(bytes, 0, 100).expect("render synthetic PDF");
+    evodesign_render::Rendered {
         width: pm.width().into(),
         height: pm.height().into(),
         pixels: pm.data().iter().flat_map(|p| [p.r, p.g, p.b, p.a]).collect(),
@@ -50,7 +50,7 @@ fn rendered(bytes: &[u8]) -> designcraft_render::Rendered {
 
 // Optional local evidence output; no binary fixtures are checked in.
 fn evidence(name: &str, bytes: &[u8]) {
-    if let Some(dir) = std::env::var_os("CRAFT_PDF_EVIDENCE_DIR") {
+    if let Some(dir) = std::env::var_os("EVO_PDF_EVIDENCE_DIR") {
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(std::path::Path::new(&dir).join(name), bytes).unwrap();
     }
@@ -64,7 +64,7 @@ fn placed_pdf_preserves_transparent_background_and_layer_choices() {
     assert_eq!(img.pixel(2, 2), [0, 0, 0, 0]);
     assert_eq!(img.pixel(25, 50), [0, 0, 255, 255]);
     assert_eq!(img.pixel(75, 50), [255, 0, 0, 255]);
-    let hidden = designcraft_render::pdf_hide_layers(&bytes, &["Red".into()]).unwrap();
+    let hidden = evodesign_render::pdf_hide_layers(&bytes, &["Red".into()]).unwrap();
     let img = rendered(&hidden);
     assert_eq!(img.pixel(75, 50), [0, 0, 0, 0]);
     assert_eq!(img.pixel(25, 50), [0, 0, 255, 255]);
@@ -76,8 +76,8 @@ fn placed_pdf_preserves_transparent_background_and_layer_choices() {
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn duplicate_layer_names_keep_name_based_hiding() {
     let bytes = layered_pdf("Blue");
-    assert_eq!(designcraft_render::pdf_layers(&bytes).len(), 2);
-    let hidden = designcraft_render::pdf_hide_layers(&bytes, &["Blue".into()]).unwrap();
+    assert_eq!(evodesign_render::pdf_layers(&bytes).len(), 2);
+    let hidden = evodesign_render::pdf_hide_layers(&bytes, &["Blue".into()]).unwrap();
     let img = rendered(&hidden);
     assert_eq!(img.pixel(25, 50), [0, 0, 0, 0]);
     assert_eq!(img.pixel(75, 50), [0, 0, 0, 0]);
@@ -93,8 +93,8 @@ fn crop_box_and_rotation_keep_placed_dimensions() {
         "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".into(),
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 120 100] /CropBox [10 20 110 80] /Rotate 90 >>".into(),
     ]);
-    assert_eq!(designcraft_render::pdf_page_count(&bytes), Some(1));
-    assert_eq!(designcraft_render::pdf_page_size(&bytes, 0), Some((60.0, 100.0)));
+    assert_eq!(evodesign_render::pdf_page_count(&bytes), Some(1));
+    assert_eq!(evodesign_render::pdf_page_size(&bytes, 0), Some((60.0, 100.0)));
     let img = rendered(&bytes);
     assert_eq!((img.width, img.height), (60, 100));
     assert_eq!(img.pixel(20, 20), [0, 0, 0, 0]);
@@ -198,14 +198,14 @@ fn failed_layer_rewrite_aborts_export_instead_of_revealing_hidden_content() {
         "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".into(),
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>".into(),
     ]);
-    assert!(designcraft_render::render_pdf_page(&bytes, 0, 100).is_some());
-    assert!(designcraft_render::pdf_hide_layers(&bytes, &["Red".into()]).is_none());
+    assert!(evodesign_render::render_pdf_page(&bytes, 0, 100).is_some());
+    assert!(evodesign_render::pdf_hide_layers(&bytes, &["Red".into()]).is_none());
     let mut session = Session::new();
     session.execute("file.new", &json!({"width": 100, "height": 100, "pages": 1})).unwrap();
     let placed =
         session.execute("file.place", &json!({"base64": base64_encode(&bytes), "name": "missing-layers.pdf", "x": 0, "y": 0, "width": 100})).unwrap();
     // Commands now reject unrewritable choices. Simulate stale persisted state after relinking.
-    let id: designcraft_doc::ItemId = serde_json::from_value(placed["id"].clone()).unwrap();
+    let id: evodesign_doc::ItemId = serde_json::from_value(placed["id"].clone()).unwrap();
     std::sync::Arc::make_mut(&mut session.doc_mut().unwrap().doc).item_mut(id).unwrap().pdf_hidden_layers = vec!["Red".into()];
     let before = session.execute("file.serialize", &json!({})).unwrap();
     let result = session.execute("file.exportPdf", &json!({}));
@@ -231,15 +231,15 @@ fn placed_standard_font_text_renders_ink_on_a_transparent_background() {
     assert!(ink > 100, "standard-font glyphs must paint visible ink: {ink}");
     assert_eq!(img.pixel(2, 2), [0, 0, 0, 0]);
     assert_eq!(img.pixel(50, 80), [0, 0, 0, 0]);
-    assert!(designcraft_render::pdf_page_png_checked(&bytes, 0, 100, &[], None).is_ok());
+    assert!(evodesign_render::pdf_page_png_checked(&bytes, 0, 100, &[], None).is_ok());
     evidence("standard-font-text.png", &img.to_png());
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn unavailable_placed_page_reports_the_page_and_recovery_action() {
-    let error = designcraft_render::pdf_page_png_checked(&layered_pdf("Red"), 2, 100, &["Red".into()], None).unwrap_err();
-    assert!(matches!(error, designcraft_render::PdfRasterError::MissingPage { page: 3 }));
+    let error = evodesign_render::pdf_page_png_checked(&layered_pdf("Red"), 2, 100, &["Red".into()], None).unwrap_err();
+    assert!(matches!(error, evodesign_render::PdfRasterError::MissingPage { page: 3 }));
     assert!(error.to_string().contains("place the replacement PDF again"));
 }
 
@@ -277,11 +277,11 @@ fn hidden_layers_work_with_an_xref_stream_and_compressed_catalog() {
     bytes.extend_from_slice(&entries);
     bytes.extend_from_slice(format!("\nendstream\nendobj\nstartxref\n{}\n%%EOF\n", offsets[8]).as_bytes());
     assert_eq!(rendered(&bytes).pixel(75, 50), [255, 0, 0, 255]);
-    let hidden = designcraft_render::pdf_hide_layers(&bytes, &["Red".into()]).unwrap();
+    let hidden = evodesign_render::pdf_hide_layers(&bytes, &["Red".into()]).unwrap();
     let img = rendered(&hidden);
     assert_eq!(img.pixel(75, 50), [0, 0, 0, 0]);
     assert_eq!(img.pixel(25, 50), [0, 0, 255, 255]);
-    assert!(designcraft_render::pdf_page_png_checked(&bytes, 0, 100, &["Red".into()], None).is_ok());
+    assert!(evodesign_render::pdf_page_png_checked(&bytes, 0, 100, &["Red".into()], None).is_ok());
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -289,11 +289,11 @@ fn hidden_layers_work_with_an_xref_stream_and_compressed_catalog() {
 fn trailing_whitespace_does_not_prevent_layer_hiding() {
     let mut bytes = layered_pdf("Red");
     bytes.extend_from_slice(&[b' '; 96]);
-    let hidden = designcraft_render::pdf_hide_layers(&bytes, &["Red".into()]).expect("trailing whitespace is accepted by the layer rewriter");
+    let hidden = evodesign_render::pdf_hide_layers(&bytes, &["Red".into()]).expect("trailing whitespace is accepted by the layer rewriter");
     let img = rendered(&hidden);
     assert_eq!(img.pixel(75, 50), [0, 0, 0, 0]);
     assert_eq!(img.pixel(25, 50), [0, 0, 255, 255]);
-    assert!(designcraft_render::pdf_page_png_checked(&bytes, 0, 100, &["Red".into()], None).is_ok());
+    assert!(evodesign_render::pdf_page_png_checked(&bytes, 0, 100, &["Red".into()], None).is_ok());
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]

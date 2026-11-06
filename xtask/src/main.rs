@@ -187,7 +187,7 @@ fn cmd_i18n_report() -> Result<(), String> {
     if nextest_available() {
         c.args(["nextest", "run", "--cargo-quiet"]).args(TEST_TARGETS);
         c.args(["--run-ignored", "only", "--no-capture", "--status-level", "fail", "--final-status-level", "fail", "-E"]);
-        c.arg(format!("package(designcraft-ui-egui) & test(={REPORT})"));
+        c.arg(format!("package(evodesign-ui-egui) & test(={REPORT})"));
     } else {
         c.args(["test", "-q"]).args(TEST_TARGETS).args(["--", "--ignored", "--exact", REPORT, "--nocapture"]);
     }
@@ -256,7 +256,7 @@ fn cmd_corpus(download: bool) -> Result<(), String> {
         "Test corpora live under {} (git-ignored, never committed).
 Tests that use a corpus skip cleanly when it is absent.
 
-  corpus/pngsuite/   PngSuite (public domain) — designcraft-codecs compares every file
+  corpus/pngsuite/   PngSuite (public domain) — evodesign-codecs compares every file
                      against the `image` crate. Fetch: cargo xtask corpus --download
   corpus/psd/        PSD samples from MIT/BSD projects (ag-psd, psd-tools test data).
                      Copy files in manually; licences must be MIT/BSD/CC0.

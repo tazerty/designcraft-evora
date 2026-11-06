@@ -1,33 +1,33 @@
-//! Help › About DesignCraft: tabs About · Contributors · Models. About is the splash with the
-//! ArtCraft mark, version, and community links (Discord first and largest), plus the other ArtCraft
+//! Help › About EvoDesign: tabs About · Contributors · Models. About is the splash with the
+//! Upstream mark, version, and community links (Discord first and largest), plus the other Upstream
 //! apps; Contributors and Models are the compiled-in credits (`crate::credits`).
 
-use designcraft_engine::links;
+use evodesign_engine::links;
 use egui::{Color32, Rect, Sense, Stroke, pos2, vec2};
 use serde_json::json;
 
 use crate::DesignApp;
 use crate::theme::{Tokens, semibold};
 
-/// ArtCraft brand blue (from `docs/brand/artcraft-mark.svg`).
+/// Upstream brand blue (from `docs/brand/upstream-mark.svg`).
 pub const BRAND: Color32 = Color32::from_rgb(0x4e, 0x7b, 0xfb);
 /// Discord's brand colour, used for the "Join our Discord" buttons (colour only; no Discord artwork).
 pub const DISCORD: Color32 = Color32::from_rgb(0x58, 0x65, 0xf2);
 
-/// The ArtCraft mark outline (viewBox -10 -19.42 136.34 136.34), from `docs/brand/artcraft-mark.svg`.
+/// The Upstream mark outline (viewBox -10 -19.42 136.34 136.34), from `docs/brand/upstream-mark.svg`.
 // Evora build (patch EVORA-CIC-01, E1): the upstream mark is not drawn; no path is served.
 const MARK_PATH: &str = "";
 
-/// The other ArtCraft apps (app-page slug, name, what it is) — same list as the README.
+/// The other Upstream apps (app-page slug, name, what it is) — same list as the README.
 // Evora build (patch EVORA-CIC-01, E1): no list of the upstream suite's other apps.
 pub const SIBLINGS: &[(&str, &str, &str)] = &[];
 
 /// The About window's tabs, in `UiState::about_tab` order (`help.about {tab}` names them in lowercase).
 pub const ABOUT_TABS: [&str; 3] = ["About", "Contributors", "Models"];
 
-/// Paint the ArtCraft mark into `rect` (square), rasterised once per size and cached.
+/// Paint the Upstream mark into `rect` (square), rasterised once per size and cached.
 pub fn paint_mark(ui: &egui::Ui, rect: Rect, color: Color32) {
-    use designcraft_render::vello_cpu::{self, kurbo, peniko};
+    use evodesign_render::vello_cpu::{self, kurbo, peniko};
     let ctx = ui.ctx();
     let ppp = ctx.pixels_per_point();
     let px = ((rect.width().min(rect.height()) * ppp).round() as u32).clamp(8, 1024);

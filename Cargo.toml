@@ -1,37 +1,37 @@
 [workspace]
+exclude = ["vendor/evo-libs"]
 resolver = "3"
 members = ["crates/*", "apps/*", "xtask"]
-default-members = ["crates/*", "apps/designcraft", "apps/designcraft-cli", "xtask"]
+default-members = ["crates/*", "apps/evodesign", "apps/evodesign-cli", "xtask"]
 
 [workspace.package]
 version = "0.13.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.95"
-repository = "https://github.com/storytold/designcraft"
+repository = "https://github.com/tazerty/evodesign"
 
 [workspace.dependencies]
 # Shared reader and writer; publish the immutable revision before this consumer.
-craft-pdf = { git = "https://github.com/storytold/craft-libs", rev = "9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef", version = "=0.1.0", default-features = false }
+evo-pdf = { path = "vendor/evo-libs/evo-pdf", default-features = false }
 # internal
-designcraft-geom = { path = "crates/geom" }
-designcraft-color = { path = "crates/color" }
-designcraft-doc = { path = "crates/doc" }
-designcraft-fonts = { path = "crates/fonts" }
-designcraft-compose = { path = "crates/compose" }
-designcraft-images = { path = "crates/images" }
-designcraft-render = { path = "crates/render" }
-designcraft-pdf = { path = "crates/pdf" }
-designcraft-idml = { path = "crates/idml" }
-designcraft-epub = { path = "crates/epub" }
-designcraft-pptx = { path = "crates/pptx" }
-designcraft-textimport = { path = "crates/textimport" }
-designcraft-format = { path = "crates/format" }
-designcraft-tools = { path = "crates/tools" }
-designcraft-engine = { path = "crates/engine" }
-designcraft-ui-egui = { path = "crates/ui-egui" }
-designcraft-mcp = { path = "crates/mcp" }
-designcraft-testkit = { path = "crates/testkit" }
+evodesign-geom = { path = "crates/geom" }
+evodesign-color = { path = "crates/color" }
+evodesign-doc = { path = "crates/doc" }
+evodesign-fonts = { path = "crates/fonts" }
+evodesign-compose = { path = "crates/compose" }
+evodesign-images = { path = "crates/images" }
+evodesign-render = { path = "crates/render" }
+evodesign-pdf = { path = "crates/pdf" }
+evodesign-idml = { path = "crates/idml" }
+evodesign-epub = { path = "crates/epub" }
+evodesign-pptx = { path = "crates/pptx" }
+evodesign-textimport = { path = "crates/textimport" }
+evodesign-format = { path = "crates/format" }
+evodesign-tools = { path = "crates/tools" }
+evodesign-engine = { path = "crates/engine" }
+evodesign-ui-egui = { path = "crates/ui-egui" }
+evodesign-mcp = { path = "crates/mcp" }
 
 # foundation
 kurbo = { version = "0.13", features = ["serde"] }
@@ -74,19 +74,19 @@ zip = { version = "3", default-features = false, features = ["deflate"] }
 # (MIT OR Apache-2.0, no dependencies, builds for wasm).
 indd = { git = "https://github.com/storytold/indd-utils", branch = "main" }
 
-# Which paths stored in documents may be followed (craft-libs).
-craft-docpath = { version = "0.1.0", git = "https://github.com/storytold/craft-libs", rev = "82a24b006eefa036b43c09a67fb9a3fbd17ffe63" }
-# Atomic file replacement for saves and exports (craft-libs).
-craft-atomic = { version = "0.1.0", git = "https://github.com/storytold/craft-libs", rev = "e9546e191dd62f2bc1d61eca45dbdc2f1b3c1d8e" }
-# File › Print through the system print spooler (craft-libs).
-craft-print = { version = "0.1.0", git = "https://github.com/storytold/craft-libs", rev = "d991bf6792f8ade99c51358bf3c1d902c8cd96b5" }
+# Which paths stored in documents may be followed (evo-libs).
+evo-docpath = { path = "vendor/evo-libs/evo-docpath" }
+# Atomic file replacement for saves and exports (evo-libs).
+evo-atomic = { path = "vendor/evo-libs/evo-atomic" }
+# File › Print through the system print spooler (evo-libs).
+evo-print = { path = "vendor/evo-libs/evo-print" }
 
-# ICC colour management: working spaces, transforms, black point compensation (craft-libs).
-craft-cms = { version = "0.1.0", git = "https://github.com/storytold/craft-libs", rev = "e9546e191dd62f2bc1d61eca45dbdc2f1b3c1d8e" }
+# ICC colour management: working spaces, transforms, black point compensation (evo-libs).
+evo-cms = { path = "vendor/evo-libs/evo-cms" }
 
 # ui
 # Shared frontend components; keep this dependency above the engine boundary.
-craft-ui = { version = "0.1.0", git = "https://github.com/storytold/craft-libs", rev = "5c874d51eeb3de70e735c8ce87a59a7dedd47675", features = ["serde"] }
+evo-ui = { path = "vendor/evo-libs/evo-ui", features = ["serde"] }
 egui = "0.36"
 egui_extras = { version = "0.36", default-features = false, features = ["svg"] }
 eframe = { version = "0.36", default-features = false }
@@ -122,10 +122,10 @@ debug = 0
 
 # Opt-in cancelable macOS termination on the pinned winit 0.30 line.
 [patch.crates-io]
-krilla = { git = "https://github.com/storytold/craft-libs", rev = "9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef", version = "=0.8.2" }
+krilla = { path = "vendor/evo-libs/krilla" }
 winit = { git = "https://github.com/storytold/winit.git", rev = "3d51077fd1a966f84df9ef287839dc84fd5b4ca7" }
-hayro = { git = "https://github.com/storytold/craft-libs", rev = "9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef", version = "=0.7.1" }
-hayro-interpret = { git = "https://github.com/storytold/craft-libs", rev = "9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef", version = "=0.7.0" }
-hayro-syntax = { git = "https://github.com/storytold/craft-libs", rev = "9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef", version = "=0.7.2" }
-hayro-jbig2 = { git = "https://github.com/storytold/craft-libs", rev = "9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef", version = "=0.3.0" }
-hayro-cmap = { git = "https://github.com/storytold/craft-libs", rev = "9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef", version = "=0.1.0" }
+hayro = { path = "vendor/evo-libs/hayro" }
+hayro-interpret = { path = "vendor/evo-libs/hayro-interpret" }
+hayro-syntax = { path = "vendor/evo-libs/hayro-syntax" }
+hayro-jbig2 = { path = "vendor/evo-libs/hayro-jbig2" }
+hayro-cmap = { path = "vendor/evo-libs/hayro-cmap" }

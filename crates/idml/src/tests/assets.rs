@@ -2,7 +2,7 @@
 
 use std::cell::Cell;
 
-use designcraft_doc::{AssetId, Content, PdfCrop};
+use evodesign_doc::{AssetId, Content, PdfCrop};
 
 use super::*;
 
@@ -144,7 +144,7 @@ fn malformed_native_graphic_layer_parents_cannot_cycle_or_overflow_xml_depth() {
     let Content::Graphic(g) = &mut std::sync::Arc::make_mut(&mut std::sync::Arc::make_mut(&mut d.spreads[0]).items[0]).content else {
         panic!("graphic")
     };
-    let mut options = designcraft_doc::GraphicLayerOptions::default();
+    let mut options = evodesign_doc::GraphicLayerOptions::default();
     for i in 0..300usize {
         options.layers.push(std::collections::BTreeMap::from([("Name".into(), format!("Layer {i}"))]));
         options.parents.push(Some(i.saturating_sub(1)));
@@ -161,7 +161,7 @@ fn closed_graphic_layer_subtrees_cannot_reorder_native_layers() {
     let Content::Graphic(g) = &mut std::sync::Arc::make_mut(&mut std::sync::Arc::make_mut(&mut d.spreads[0]).items[0]).content else {
         panic!("graphic")
     };
-    g.layer_options = Some(designcraft_doc::GraphicLayerOptions {
+    g.layer_options = Some(evodesign_doc::GraphicLayerOptions {
         layers: ["A", "B", "C", "D"].into_iter().map(|name| std::collections::BTreeMap::from([("Name".into(), name.into())])).collect(),
         parents: vec![None, None, Some(0), Some(2)],
         ..Default::default()
@@ -184,7 +184,7 @@ fn graphic_layer_attributes_from_native_data_cannot_inject_xml_or_self_ids() {
         ("xmlns".into(), "urn:injected".into()),
         ("bad\" injected=\"true".into(), "invalid".into()),
     ]);
-    g.layer_options = Some(designcraft_doc::GraphicLayerOptions { attributes: attributes.clone(), layers: vec![attributes], ..Default::default() });
+    g.layer_options = Some(evodesign_doc::GraphicLayerOptions { attributes: attributes.clone(), layers: vec![attributes], ..Default::default() });
     let out = export_idml(&d);
     let xml = zip_text(&out, "Spreads/");
     assert!(!xml.contains("injected-id") && !xml.contains("injected=") && !xml.contains("urn:injected"));
@@ -194,8 +194,8 @@ fn graphic_layer_attributes_from_native_data_cannot_inject_xml_or_self_ids() {
 }
 
 /// (asset, crop, transform) of each graphic, left to right.
-fn placements(d: &Document) -> Vec<(AssetId, [f64; 4], designcraft_geom::Affine)> {
-    let mut out: Vec<(f64, AssetId, [f64; 4], designcraft_geom::Affine)> = d.spreads[0]
+fn placements(d: &Document) -> Vec<(AssetId, [f64; 4], evodesign_geom::Affine)> {
+    let mut out: Vec<(f64, AssetId, [f64; 4], evodesign_geom::Affine)> = d.spreads[0]
         .items
         .iter()
         .filter_map(|i| match &i.content {
@@ -371,14 +371,14 @@ fn the_swatch_applied_to_an_image_is_kept() {
         v.sort_by(|a, b| a.0.total_cmp(&b.0));
         v.into_iter().map(|(_, f)| f).collect::<Vec<_>>()
     };
-    let none = || (designcraft_color::swatch::NONE.to_string(), 1.0);
+    let none = || (evodesign_color::swatch::NONE.to_string(), 1.0);
     let want = vec![
         ("Brand".to_string(), 0.5),
         none(),
         none(),
         none(),
         ("C=10 M=20 Y=30 K=40".to_string(), 1.0),
-        (designcraft_color::swatch::BLACK.to_string(), 0.4),
+        (evodesign_color::swatch::BLACK.to_string(), 0.4),
     ];
     let d = import_idml_with(&package(&frames), &reader).unwrap();
     assert_eq!(fills(&d), want);

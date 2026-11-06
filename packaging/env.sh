@@ -3,10 +3,10 @@
 #
 # Exports:
 #   ROOT                    workspace root
-#   VERSION                 [workspace.package] version from Cargo.toml (override: DESIGNCRAFT_VERSION)
+#   VERSION                 [workspace.package] version from Cargo.toml (override: EVODESIGN_VERSION)
 #   DIST                    output directory for release artifacts (default: $ROOT/dist/release)
-#   DESIGNCRAFT_BUILD_SHA    git commit baked into the binaries (see crates/engine/src/build_info.rs)
-#   DESIGNCRAFT_BUILD_DATE   UTC build date, YYYY-MM-DD
+#   EVODESIGN_BUILD_SHA    git commit baked into the binaries (see crates/engine/src/build_info.rs)
+#   EVODESIGN_BUILD_DATE   UTC build date, YYYY-MM-DD
 #   CARGO_TARGET_DIR        cargo's target dir (default: $ROOT/target)
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,7 +22,7 @@ workspace_version() {
   return
 }
 
-VERSION="${DESIGNCRAFT_VERSION:-$(workspace_version)}"
+VERSION="${EVODESIGN_VERSION:-$(workspace_version)}"
 if [[ -z "$VERSION" ]]; then
   echo "error: could not read [workspace.package] version from $ROOT/Cargo.toml" >&2
   exit 1
@@ -33,11 +33,11 @@ DIST="${DIST:-$ROOT/dist/release}"
 mkdir -p "$DIST"
 export DIST
 
-if [[ -z "${DESIGNCRAFT_BUILD_SHA:-}" ]]; then
-  DESIGNCRAFT_BUILD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
+if [[ -z "${EVODESIGN_BUILD_SHA:-}" ]]; then
+  EVODESIGN_BUILD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
 fi
-export DESIGNCRAFT_BUILD_SHA
-export DESIGNCRAFT_BUILD_DATE="${DESIGNCRAFT_BUILD_DATE:-$(date -u +%Y-%m-%d)}"
+export EVODESIGN_BUILD_SHA
+export EVODESIGN_BUILD_DATE="${EVODESIGN_BUILD_DATE:-$(date -u +%Y-%m-%d)}"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$ROOT/target}"
 
 # Emit a GitHub Actions warning (plain stderr outside Actions).
@@ -56,12 +56,12 @@ copy_docs() {
   return
 }
 
-# Builds made with craft-fonts (CRAFT_FONTS_DIR, set by the release workflow) embed its fonts, so
-# the package carries their licences as OFL-<family-dir>.txt. Nothing without CRAFT_FONTS_DIR.
+# Builds made with evo-fonts (EVO_FONTS_DIR, set by the release workflow) embed its fonts, so
+# the package carries their licences as OFL-<family-dir>.txt. Nothing without EVO_FONTS_DIR.
 copy_font_licences() {
   local dest="$1" f
-  [[ -n "${CRAFT_FONTS_DIR:-}" ]] || return 0
-  for f in "$CRAFT_FONTS_DIR"/fonts/*/OFL.txt; do
+  [[ -n "${EVO_FONTS_DIR:-}" ]] || return 0
+  for f in "$EVO_FONTS_DIR"/fonts/*/OFL.txt; do
     if [[ -f "$f" ]]; then cp "$f" "$dest/OFL-$(basename "$(dirname "$f")").txt"; fi
   done
 }

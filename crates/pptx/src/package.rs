@@ -296,7 +296,7 @@ fn core(p: &Package) -> String {
 /// matching the old `civil`), then the year is clamped — never a silent reset to the epoch.
 fn civil(t: i64) -> (i64, u32, u32, u32, u32, u32) {
     use chrono::{Datelike, Timelike};
-    let (y, t) = designcraft_doc::time::utc_parts(t, 0);
+    let (y, t) = evodesign_doc::time::utc_parts(t, 0);
     (y.clamp(0, 9999), t.month(), t.day(), t.hour(), t.minute(), t.second())
 }
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Build and package DesignCraft for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
+# Build and package EvoDesign for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
 #
-#   $DIST/designcraft-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
-#   $DIST/designcraft-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
-#   $DIST/designcraft-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
-#   $DIST/designcraft-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
-#   $DIST/designcraft-<version>-linux-<arch>.pkg.tar.zst  Arch, Manjaro, EndeavourOS, ...
-#   $DIST/designcraft-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
+#   $DIST/evodesign-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
+#   $DIST/evodesign-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
+#   $DIST/evodesign-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
+#   $DIST/evodesign-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
+#   $DIST/evodesign-<version>-linux-<arch>.pkg.tar.zst  Arch, Manjaro, EndeavourOS, ...
+#   $DIST/evodesign-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
 #
 # Usage: packaging/linux/package.sh [--skip-build] [--formats "appimage deb rpm arch tar"]
 #
@@ -18,7 +18,7 @@ set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 HERE="$ROOT/packaging/linux"
-APP_ID=ai.storyteller.designcraft
+APP_ID=ai.storyteller.evodesign
 
 SKIP_BUILD=0
 FORMATS="appimage deb rpm arch tar"
@@ -38,16 +38,16 @@ case "$ARCH" in
   aarch64 | arm64) ARCH=aarch64; DEB_ARCH=arm64 ;;
   *) echo "unsupported architecture $ARCH" >&2; exit 2 ;;
 esac
-export DESIGNCRAFT_MAINTAINER="${DESIGNCRAFT_MAINTAINER:-DesignCraft maintainers <designcraft@storyteller.ai>}"
-BASENAME="designcraft-$VERSION-linux-$ARCH"
+export EVODESIGN_MAINTAINER="${EVODESIGN_MAINTAINER:-EvoDesign maintainers <evodesign@storyteller.ai>}"
+BASENAME="evodesign-$VERSION-linux-$ARCH"
 
-echo "==> DesignCraft $VERSION for Linux $ARCH ($FORMATS)"
+echo "==> EvoDesign $VERSION for Linux $ARCH ($FORMATS)"
 
 if [[ "$SKIP_BUILD" = 0 ]]; then
   if [[ -n "${CROSS_TARGET:-}" ]]; then
-    (cd "$ROOT" && cargo build --release --locked -p designcraft -p designcraft-cli --target "$CROSS_TARGET")
+    (cd "$ROOT" && cargo build --release --locked -p evodesign -p evodesign-cli --target "$CROSS_TARGET")
   else
-    (cd "$ROOT" && cargo build --release --locked -p designcraft -p designcraft-cli)
+    (cd "$ROOT" && cargo build --release --locked -p evodesign -p evodesign-cli)
   fi
 fi
 BIN="$CARGO_TARGET_DIR/${CROSS_TARGET:+$CROSS_TARGET/}release"
@@ -56,18 +56,18 @@ STAGE="$WORK/root"
 rm -rf "$WORK"
 
 # ---- stage an FHS tree (shared by every format) -------------------------------------------------
-install -Dm755 "$BIN/designcraft" "$STAGE/usr/bin/designcraft"
-install -Dm755 "$BIN/designcraft-cli" "$STAGE/usr/bin/designcraft-cli"
-"${CROSS_COMPILE:-}strip" "$STAGE/usr/bin/designcraft" "$STAGE/usr/bin/designcraft-cli" 2>/dev/null || true
+install -Dm755 "$BIN/evodesign" "$STAGE/usr/bin/evodesign"
+install -Dm755 "$BIN/evodesign-cli" "$STAGE/usr/bin/evodesign-cli"
+"${CROSS_COMPILE:-}strip" "$STAGE/usr/bin/evodesign" "$STAGE/usr/bin/evodesign-cli" 2>/dev/null || true
 install -Dm644 "$HERE/$APP_ID.desktop" "$STAGE/usr/share/applications/$APP_ID.desktop"
 install -Dm644 "$HERE/$APP_ID.mime.xml" "$STAGE/usr/share/mime/packages/$APP_ID.xml"
 mkdir -p "$STAGE/usr/share/metainfo"
-sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$DESIGNCRAFT_BUILD_DATE/g" \
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$EVODESIGN_BUILD_DATE/g" \
   "$HERE/$APP_ID.metainfo.xml.in" >"$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
 mkdir -p "$STAGE/usr/share/icons"
 cp -R "$ROOT/assets/app-icon/hicolor" "$STAGE/usr/share/icons/"
-mkdir -p "$STAGE/usr/share/doc/designcraft"
-copy_docs "$STAGE/usr/share/doc/designcraft"
+mkdir -p "$STAGE/usr/share/doc/evodesign"
+copy_docs "$STAGE/usr/share/doc/evodesign"
 
 if command -v desktop-file-validate >/dev/null; then
   desktop-file-validate "$STAGE/usr/share/applications/$APP_ID.desktop"
@@ -102,9 +102,9 @@ if has deb || has rpm || has arch; then
   # The Arch package is named by the bundle id (see `archlinux` in nfpm.yaml), which nfpm can't
   # override per format, and `archlinux.packager` isn't env-expanded, so both are written here.
   if has arch; then
-    sed "s|^name: designcraft\$|name: $APP_ID|" "$WORK/nfpm.yaml" >"$WORK/nfpm-arch.yaml"
+    sed "s|^name: evodesign\$|name: $APP_ID|" "$WORK/nfpm.yaml" >"$WORK/nfpm-arch.yaml"
     grep -qx "name: $APP_ID" "$WORK/nfpm-arch.yaml" || { echo "error: couldn't rename the Arch package" >&2; exit 1; }
-    printf 'archlinux:\n  packager: "%s"\n' "$DESIGNCRAFT_MAINTAINER" >>"$WORK/nfpm-arch.yaml"
+    printf 'archlinux:\n  packager: "%s"\n' "$EVODESIGN_MAINTAINER" >>"$WORK/nfpm-arch.yaml"
     # nfpm (2.47, 2.48) writes Go's directory bit into the mode of each directory a `type: tree`
     # entry walks (0o20000000755), and pacman then warns "directory permissions differ" on every
     # shared directory under /usr/share. List the tree's files one by one instead: nfpm gives their
@@ -140,10 +140,10 @@ if has appimage; then
     # No pinned download (e.g. riscv64): set APPIMAGETOOL or put appimagetool on PATH.
     *) APPIMAGETOOL_SHA256="" ;;
   esac
-  APPDIR="$WORK/DesignCraft.AppDir"
+  APPDIR="$WORK/EvoDesign.AppDir"
   cp -R "$STAGE" "$APPDIR"
   mv "$APPDIR/usr/share/doc" "$WORK/doc-unused"
-  ln -s usr/bin/designcraft "$APPDIR/AppRun"
+  ln -s usr/bin/evodesign "$APPDIR/AppRun"
   cp "$HERE/$APP_ID.desktop" "$APPDIR/$APP_ID.desktop"
   cp "$ROOT/assets/app-icon/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/$APP_ID.png"
   ln -s "$APP_ID.png" "$APPDIR/.DirIcon"
@@ -172,8 +172,8 @@ if has appimage; then
   # fetch only the blocks that changed in a newer release, through the .zsync published next to
   # each AppImage on GitHub Releases. `latest` is the newest published release that is not a
   # pre-release. A fork's builds point at its own releases through GITHUB_REPOSITORY.
-  REPO="${GITHUB_REPOSITORY:-storytold/designcraft}"
-  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|designcraft-*-linux-$ARCH.AppImage.zsync"
+  REPO="${GITHUB_REPOSITORY:-tazerty/evodesign}"
+  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|evodesign-*-linux-$ARCH.AppImage.zsync"
   # Extract-and-run: works without FUSE (containers, CI). The output embeds the static runtime,
   # so users don't need libfuse2 either. With zsyncmake on the host (CI installs the zsync
   # package) appimagetool also writes the .zsync, into its working directory, hence the cd.
@@ -187,9 +187,9 @@ if has appimage; then
 fi
 
 if [[ -z "${CROSS_TARGET:-}" ]]; then
-  "$STAGE/usr/bin/designcraft-cli" --version
+  "$STAGE/usr/bin/evodesign-cli" --version
 elif [[ -n "${EMULATOR:-}" ]]; then
-  "$EMULATOR" "$STAGE/usr/bin/designcraft-cli" --version
+  "$EMULATOR" "$STAGE/usr/bin/evodesign-cli" --version
 fi
 echo "==> done"
 ls -lh "$DIST"

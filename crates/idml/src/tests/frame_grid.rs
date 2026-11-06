@@ -44,7 +44,7 @@ fn frame_grid_doc_relative(relative: Option<&str>) -> Document {
 fn baselines(d: &Document) -> Vec<f64> {
     let sid = *d.stories.keys().next().unwrap();
     let top = d.spreads[0].items[0].text_area().y0;
-    let cs = designcraft_compose::compose_story(d, sid, &Default::default());
+    let cs = evodesign_compose::compose_story(d, sid, &Default::default());
     cs.frames.iter().flat_map(|f| f.lines.iter()).map(|l| l.baseline - top).collect()
 }
 
@@ -52,7 +52,7 @@ fn baselines(d: &Document) -> Vec<f64> {
 fn custom_frame_grid_sets_lines_from_its_start_by_its_increment() {
     let d = frame_grid_doc();
     let grid = d.spreads[0].items[0].text_frame().unwrap().options.baseline_grid;
-    assert_eq!(grid, Some(designcraft_doc::FrameBaselineGrid::new(6.0, 14.0)));
+    assert_eq!(grid, Some(evodesign_doc::FrameBaselineGrid::new(6.0, 14.0)));
     let b = baselines(&d);
     assert_eq!(b.len(), 4, "{b:?}");
     for y in &b {
@@ -78,7 +78,7 @@ fn custom_frame_grid_round_trips() {
 
 #[test]
 fn custom_frame_grid_relative_to_round_trips() {
-    use designcraft_doc::FrameGridRelative as R;
+    use evodesign_doc::FrameGridRelative as R;
     let relative = |d: &Document| d.spreads[0].items[0].text_frame().unwrap().options.baseline_grid.map(|g| g.relative_to);
     for (attr, want) in [
         ("TopOfPageOfBaselineFrameGridRelativeOption", R::TopOfPage),

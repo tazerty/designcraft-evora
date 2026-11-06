@@ -5,8 +5,8 @@
 
 use std::sync::OnceLock;
 
-use craft_cms::profile::{Lut, LutKind};
-use craft_cms::{Builtin, Clut, Curve, Intent as CmsIntent, Profile, pipeline::Stage};
+use evo_cms::profile::{Lut, LutKind};
+use evo_cms::{Builtin, Clut, Curve, Intent as CmsIntent, Profile, pipeline::Stage};
 
 use super::lab::Lab;
 use super::{CmsError, Intent};
@@ -40,7 +40,7 @@ pub fn generic_cmyk_profile() -> Result<&'static Profile, CmsError> {
 }
 
 fn build_generic_cmyk() -> Result<Profile, CmsError> {
-    let bad = |e: craft_cms::CmsError| CmsError::BadProfile(format!("{}: {e}", super::GENERIC_CMYK));
+    let bad = |e: evo_cms::CmsError| CmsError::BadProfile(format!("{}: {e}", super::GENERIC_CMYK));
     let g = super::generic();
     // CMYK → Lab (media-relative).
     let a2b = Clut::sample(vec![A2B_GRID; 4], 3, |inp, out| {
@@ -55,7 +55,7 @@ fn build_generic_cmyk() -> Result<Profile, CmsError> {
     })
     .map_err(bad)?;
     let (a2b, b2a) = (lut16(a2b), lut16(b2a));
-    // craft-cms profiles can't be constructed field by field outside the crate, so the
+    // evo-cms profiles can't be constructed field by field outside the crate, so the
     // tables replace those of a built-in CMYK output profile and the result is re-encoded.
     let mut p = Builtin::CoatedCmyk.profile().clone();
     p.rendering_intent = CmsIntent::RelativeColorimetric;

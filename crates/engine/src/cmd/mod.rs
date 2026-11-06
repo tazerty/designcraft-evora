@@ -66,8 +66,8 @@ mod variables;
 mod xml;
 mod xref;
 
-use designcraft_doc::{ItemId, SpreadRef};
-use designcraft_geom::{Point, Rect};
+use evodesign_doc::{ItemId, SpreadRef};
+use evodesign_geom::{Point, Rect};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -267,7 +267,7 @@ pub(crate) fn text_param(p: &Value, key: &str) -> String {
         .unwrap_or("")
         .replace("\r\n", "\n")
         .replace('\r', "\n")
-        .replace('\u{B}', designcraft_doc::story::FORCED_LINE_BREAK.encode_utf8(&mut [0; 4]))
+        .replace('\u{B}', evodesign_doc::story::FORCED_LINE_BREAK.encode_utf8(&mut [0; 4]))
 }
 pub(crate) fn id_param(p: &Value, key: &str) -> Option<ItemId> {
     p.get(key).and_then(Value::as_u64).map(ItemId)
@@ -338,10 +338,10 @@ pub(crate) fn ok() -> Result<Value> {
     Ok(Value::Null)
 }
 
-pub fn file_bytes(d: &designcraft_doc::Document) -> Result<Vec<u8>> {
+pub fn file_bytes(d: &evodesign_doc::Document) -> Result<Vec<u8>> {
     file::to_bytes(d)
 }
-pub fn file_from(b: &[u8]) -> Result<designcraft_doc::Document> {
+pub fn file_from(b: &[u8]) -> Result<evodesign_doc::Document> {
     file::from_bytes(b)
 }
 pub(crate) use datamerge::sync_placeholders;

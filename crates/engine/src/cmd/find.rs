@@ -4,9 +4,9 @@
 use std::ops::Range;
 use std::sync::{Arc, Weak};
 
-use designcraft_compose::grep::{Grep, GrepOptions, translate_replacement};
-use designcraft_doc::story::floor_char_boundary;
-use designcraft_doc::{CellAddr, Document, Selection, StoryId, TextSel};
+use evodesign_compose::grep::{Grep, GrepOptions, translate_replacement};
+use evodesign_doc::story::floor_char_boundary;
+use evodesign_doc::{CellAddr, Document, Selection, StoryId, TextSel};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, bool_or, cmd, has_doc, str_param};
@@ -21,7 +21,7 @@ pub fn specs() -> Vec<CommandSpec> {
             let ids = find_objects(&s.doc()?.doc, p);
             if p.get("select").and_then(Value::as_bool).unwrap_or(true) && !ids.is_empty() {
                 let st = s.doc_mut()?;
-                st.selection = designcraft_doc::Selection::items(ids.clone());
+                st.selection = evodesign_doc::Selection::items(ids.clone());
                 st.bump_revision();
             }
             Ok(json!({"ids": ids.iter().map(|i| i.0).collect::<Vec<_>>()}))
@@ -44,7 +44,7 @@ pub fn specs() -> Vec<CommandSpec> {
                     for id in &ids {
                         let Some(it) = d.item_mut(*id) else { continue };
                         if let Some(f) = ch.get("fill").and_then(Value::as_str) {
-                            it.fill = designcraft_doc::Fill::swatch(f);
+                            it.fill = evodesign_doc::Fill::swatch(f);
                         }
                         if let Some(c) = ch.get("stroke").and_then(Value::as_str) {
                             it.stroke.swatch = c.to_string();
@@ -96,7 +96,7 @@ fn metachars(s: &str) -> String {
     out
 }
 
-/// The search pattern: GREP (in the documents' dialect, see `designcraft_compose::grep`) or
+/// The search pattern: GREP (in the documents' dialect, see `evodesign_compose::grep`) or
 /// literal text with metacharacters.
 fn build(p: &Value) -> Result<Grep> {
     let f = str_param(p, "find").ok_or_else(|| bad("find", "missing `find`"))?;
@@ -329,7 +329,7 @@ fn change(s: &mut Session, p: &Value) -> Result<Value> {
     let rep = replacement(p);
     let first_only = bool_or(p, "first", false);
     let attrs = p.get("attrs").cloned();
-    let mut over = designcraft_doc::CharAttrs::default();
+    let mut over = evodesign_doc::CharAttrs::default();
     if let Some(o) = attrs.as_ref().and_then(Value::as_object) {
         for (k, v) in o {
             over.set_json(k, v).map_err(|e| bad("find.change", e))?;
@@ -475,18 +475,18 @@ mod tests {
         }
     }
 
-    fn scope_session(text: &str) -> (Session, designcraft_doc::StoryId) {
+    fn scope_session(text: &str) -> (Session, evodesign_doc::StoryId) {
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         let frame = s.execute("frame.create", &json!({"rect": [36, 36, 100, 100], "content": "text", "text": text})).unwrap();
-        (s, designcraft_doc::StoryId(frame["story"].as_u64().unwrap()))
+        (s, evodesign_doc::StoryId(frame["story"].as_u64().unwrap()))
     }
 
-    fn scope_select(s: &mut Session, sid: designcraft_doc::StoryId, a: usize, b: usize) {
+    fn scope_select(s: &mut Session, sid: evodesign_doc::StoryId, a: usize, b: usize) {
         s.execute("text.select", &json!({"story": sid.0, "anchor": a, "focus": b})).unwrap();
     }
 
-    fn scope_hit(s: &mut Session, p: &serde_json::Value, sid: designcraft_doc::StoryId, a: usize, b: usize) {
+    fn scope_hit(s: &mut Session, p: &serde_json::Value, sid: evodesign_doc::StoryId, a: usize, b: usize) {
         assert_eq!(s.execute("find.next", p).unwrap(), json!({"story": sid.0, "start": a, "end": b}));
         let selected = s.doc().unwrap().selection.text.unwrap();
         assert_eq!((selected.story, selected.range(), selected.cell), (sid, a..b, None));
@@ -509,7 +509,7 @@ mod tests {
             let mut sids = vec![sid];
             for text in texts.iter().skip(1) {
                 let frame = s.execute("frame.create", &json!({"rect": [120, 36, 200, 100], "content": "text", "text": text})).unwrap();
-                sids.push(designcraft_doc::StoryId(frame["story"].as_u64().unwrap()));
+                sids.push(evodesign_doc::StoryId(frame["story"].as_u64().unwrap()));
             }
             assert_eq!(s.doc().unwrap().doc.stories.keys().copied().collect::<Vec<_>>(), sids);
             // Document Change keeps canonical target order even with a later story current.
@@ -557,7 +557,7 @@ mod tests {
         // Identical replacement is still one counted match, not a reason to visit another story.
         let (mut s, sid) = scope_session("red red");
         let other = s.execute("frame.create", &json!({"rect": [120, 36, 200, 100], "content": "text", "text": "red"})).unwrap();
-        let other_sid = designcraft_doc::StoryId(other["story"].as_u64().unwrap());
+        let other_sid = evodesign_doc::StoryId(other["story"].as_u64().unwrap());
         scope_select(&mut s, other_sid, 0, 3);
         let before = s.doc().unwrap().doc.clone();
         let selection = s.doc().unwrap().selection.clone();
@@ -573,7 +573,7 @@ mod tests {
         for reverse in [false, true] {
             let (mut s, sid) = scope_session("éX X");
             let other = s.execute("frame.create", &json!({"rect": [120, 36, 200, 100], "content": "text", "text": "X"})).unwrap();
-            let other_sid = designcraft_doc::StoryId(other["story"].as_u64().unwrap());
+            let other_sid = evodesign_doc::StoryId(other["story"].as_u64().unwrap());
             scope_select(&mut s, sid, if reverse { 3 } else { 2 }, if reverse { 2 } else { 3 });
             let before = s.doc().unwrap().doc.clone();
             let mut selection = s.doc().unwrap().selection.clone();
@@ -711,7 +711,7 @@ mod tests {
             let (mut s, sid) = scope_session("éX");
             let frame = s.doc().unwrap().selection.text.unwrap().frame.unwrap();
             let other = s.execute("frame.create", &json!({"rect": [120, 36, 200, 100], "content": "text", "text": "a"})).unwrap();
-            let other_sid = designcraft_doc::StoryId(other["story"].as_u64().unwrap());
+            let other_sid = evodesign_doc::StoryId(other["story"].as_u64().unwrap());
             scope_select(&mut s, sid, 3, 2);
             let before = s.doc().unwrap().selection.clone();
             let mut p = json!({"find": "a", "change": "🙂", "scope": "document"});
@@ -811,7 +811,7 @@ mod tests {
             s.execute("edit.redo", &json!({})).unwrap();
             assert_eq!(s.doc().unwrap().doc.story(sid).unwrap(), &changed);
             let native = s.execute("file.serialize", &json!({})).unwrap();
-            s.execute("file.openBytes", &json!({"name": "scope.designcraft", "base64": native["base64"]})).unwrap();
+            s.execute("file.openBytes", &json!({"name": "scope.evodesign", "base64": native["base64"]})).unwrap();
             assert_eq!(serde_json::to_value(s.doc().unwrap().doc.story(sid).unwrap()).unwrap(), serde_json::to_value(&changed).unwrap());
             assert!(s.find_context.is_none());
         }
@@ -860,10 +860,10 @@ mod tests {
         let point = {
             let st = s.doc().unwrap();
             let cs = s.cache.get(&st.doc, sid, None);
-            let (fi, x, baseline, ascent, _) = designcraft_compose::caret(&cs, 1).unwrap();
-            let inner = designcraft_geom::Point::new(x, baseline - ascent * 0.5);
+            let (fi, x, baseline, ascent, _) = evodesign_compose::caret(&cs, 1).unwrap();
+            let inner = evodesign_geom::Point::new(x, baseline - ascent * 0.5);
             assert_eq!(cs.frames[fi].frame, frame);
-            assert_eq!(designcraft_compose::hit(&cs, fi, inner), Some(1), "real point lies inside the current hit");
+            assert_eq!(evodesign_compose::hit(&cs, fi, inner), Some(1), "real point lies inside the current hit");
             let loc = st.doc.find(frame).unwrap();
             st.doc.parent_xf(&loc) * st.doc.text_xf(st.doc.item(frame).unwrap()) * inner
         };
@@ -891,7 +891,7 @@ mod tests {
     fn find_scope_story_explicit_story_document_order_and_scope_changes() {
         let (mut s, a) = scope_session("black red");
         let other = s.execute("frame.create", &json!({"rect": [150, 36, 100, 100], "content": "text", "text": "red"})).unwrap();
-        let b = designcraft_doc::StoryId(other["story"].as_u64().unwrap());
+        let b = evodesign_doc::StoryId(other["story"].as_u64().unwrap());
         scope_select(&mut s, a, 0, 9);
         let story = json!({"find": "red", "scope": "story"});
         assert_eq!(s.execute("find.next", &story).unwrap(), serde_json::Value::Null, "Story does not enter B or wrap to its prefix");
@@ -945,7 +945,7 @@ mod tests {
         assert_eq!(s.doc().unwrap().doc.story(sid).unwrap().text, "scat é🙂 blue");
         for range in [6..7, 0..usize::MAX] {
             let st = s.doc_mut().unwrap();
-            st.selection = designcraft_doc::Selection::text(designcraft_doc::TextSel {
+            st.selection = evodesign_doc::Selection::text(evodesign_doc::TextSel {
                 story: sid,
                 anchor: range.start,
                 focus: range.end,
@@ -1011,7 +1011,7 @@ mod tests {
         // Install a viewport selection in the real preview. text.select is journaled
         // and would itself restore the template before selecting.
         let st = s.doc_mut().unwrap();
-        st.selection = designcraft_doc::Selection::text(designcraft_doc::TextSel { story: sid, anchor: 0, focus: 7, frame: None, cell: None });
+        st.selection = evodesign_doc::Selection::text(evodesign_doc::TextSel { story: sid, anchor: 0, focus: 7, frame: None, cell: None });
         st.bump_revision();
         let p = json!({"find": "red", "change": "blue", "scope": "selection"});
         assert_eq!(s.execute("find.find", &p).unwrap().as_array().unwrap().len(), 2);
@@ -1042,7 +1042,7 @@ mod tests {
         s.execute("table.setCell", &json!({"row": 0, "col": 1, "text": "Ore 12.15"})).unwrap();
         // The caret sits in the first cell, so Find Next goes to the second cell, then the story.
         let p = json!({"find": "Ore 12.15", "scope": "document"});
-        let cell = designcraft_doc::CellAddr { table, row: 0, col: 1 };
+        let cell = evodesign_doc::CellAddr { table, row: 0, col: 1 };
         assert_eq!(s.execute("find.next", &p).unwrap(), json!({"story": sid.0, "start": 0, "end": 9, "cell": {"table": table, "row": 0, "col": 1}}));
         assert_eq!(s.doc().unwrap().selection.text.map(|t| (t.story, t.range(), t.cell)), Some((sid, 0..9, Some(cell))));
         let next = s.execute("find.next", &p).unwrap();
@@ -1059,7 +1059,7 @@ mod tests {
         assert_eq!(s.execute("find.find", &json!({"find": "13.00", "scope": "document"})).unwrap().as_array().unwrap().len(), 2);
     }
 
-    fn child_scope_session(note: bool, child: &str) -> (Session, designcraft_doc::StoryId, designcraft_doc::TextSel) {
+    fn child_scope_session(note: bool, child: &str) -> (Session, evodesign_doc::StoryId, evodesign_doc::TextSel) {
         let (mut s, sid) = scope_session("red");
         scope_select(&mut s, sid, 3, 3);
         if note {
@@ -1079,7 +1079,7 @@ mod tests {
                 let (mut s, sid, mut selected) = child_scope_session(note, child);
                 selected.anchor = 0;
                 selected.focus = child.len();
-                s.doc_mut().unwrap().selection = designcraft_doc::Selection::text(selected);
+                s.doc_mut().unwrap().selection = evodesign_doc::Selection::text(selected);
                 let before = s.doc().unwrap().doc.clone();
                 let selection = s.doc().unwrap().selection.clone();
                 let history = s.doc().unwrap().history.undo.len();
@@ -1136,7 +1136,7 @@ mod tests {
         let (mut s, sid) = scope_session(&text);
         let a = s.doc().unwrap().doc.story(sid).unwrap().frames[0];
         let next = s.execute("frame.create", &json!({"rect": [150, 36, 20, 1], "content": "text"})).unwrap();
-        let b = designcraft_doc::ItemId(next["id"].as_u64().unwrap());
+        let b = evodesign_doc::ItemId(next["id"].as_u64().unwrap());
         s.edit(|d, _| Ok(d.thread(a, b)?)).unwrap();
         assert_eq!(s.doc().unwrap().doc.story(sid).unwrap().frames.len(), 2);
         scope_select(&mut s, sid, 0, 0);
@@ -1165,7 +1165,7 @@ mod tests {
     #[test]
     fn find_scope_revert_releases_context_with_same_document_uid() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("scope.designcraft");
+        let path = dir.path().join("scope.evodesign");
         let (mut s, sid) = scope_session("red red | red");
         s.execute("file.save", &json!({"path": path.to_string_lossy()})).unwrap();
         scope_select(&mut s, sid, 0, 7);
@@ -1184,8 +1184,8 @@ mod tests {
 }
 
 /// Objects matching Find/Change › Object criteria, in document order (nested ones included).
-fn find_objects(d: &designcraft_doc::Document, p: &Value) -> Vec<designcraft_doc::ItemId> {
-    use designcraft_doc::{Content, Shape};
+fn find_objects(d: &evodesign_doc::Document, p: &Value) -> Vec<evodesign_doc::ItemId> {
+    use evodesign_doc::{Content, Shape};
     let fill = str_param(p, "fill");
     let stroke = str_param(p, "stroke");
     let weight = p.get("strokeWeight").and_then(Value::as_f64);

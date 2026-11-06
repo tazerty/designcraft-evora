@@ -1,30 +1,30 @@
 [package]
-name = "designcraft-engine"
+name = "evodesign-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "DesignCraft engine: session, documents, history, selection, command registry, tool hosting"
+description = "EvoDesign engine: session, documents, history, selection, command registry, tool hosting"
 
 [lints]
 workspace = true
 
 [dependencies]
-craft-print = { workspace = true }
-craft-docpath = { workspace = true }
-designcraft-images = { workspace = true }
-designcraft-geom = { workspace = true }
-designcraft-color = { workspace = true }
-designcraft-doc = { workspace = true }
-designcraft-fonts = { workspace = true }
-designcraft-compose = { workspace = true }
-designcraft-render = { workspace = true }
-designcraft-format = { workspace = true }
-designcraft-epub = { workspace = true }
-designcraft-pptx = { workspace = true }
-designcraft-textimport = { workspace = true }
-designcraft-pdf = { workspace = true }
-designcraft-tools = { workspace = true }
-designcraft-idml = { workspace = true }
+evo-print = { workspace = true }
+evo-docpath = { workspace = true }
+evodesign-images = { workspace = true }
+evodesign-geom = { workspace = true }
+evodesign-color = { workspace = true }
+evodesign-doc = { workspace = true }
+evodesign-fonts = { workspace = true }
+evodesign-compose = { workspace = true }
+evodesign-render = { workspace = true }
+evodesign-format = { workspace = true }
+evodesign-epub = { workspace = true }
+evodesign-pptx = { workspace = true }
+evodesign-textimport = { workspace = true }
+evodesign-pdf = { workspace = true }
+evodesign-tools = { workspace = true }
+evodesign-idml = { workspace = true }
 indd = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -35,14 +35,14 @@ caseless = { workspace = true }
 unicode-segmentation = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-craft-atomic = { workspace = true }
+evo-atomic = { workspace = true }
 tempfile = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 same-file = { workspace = true }
 
 [dev-dependencies]
-designcraft-fonts = { workspace = true, features = ["testing"] }
+evodesign-fonts = { workspace = true, features = ["testing"] }
 zip = { workspace = true }
 hayro-syntax = "0.7.2"
 hayro-interpret = { version = "0.7.0", default-features = false, features = ["embed-fonts"] }

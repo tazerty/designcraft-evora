@@ -4814,7 +4814,7 @@ pub fn count_label(lang: &str, noun: &str, count: usize) -> String {
 /// Localize reserved built-in style names only; user-defined names are document data.
 pub fn style_name<'a>(lang: &str, name: &'a str) -> &'a str {
     match name {
-        designcraft_doc::NO_PARA_STYLE | designcraft_doc::BASIC_PARAGRAPH | designcraft_doc::NO_CHAR_STYLE => tr(lang, name),
+        evodesign_doc::NO_PARA_STYLE | evodesign_doc::BASIC_PARAGRAPH | evodesign_doc::NO_CHAR_STYLE => tr(lang, name),
         _ => name,
     }
 }
@@ -5029,7 +5029,7 @@ mod tests {
     #[test]
     fn only_built_in_style_and_workspace_names_are_translated() {
         for (code, _) in LANGUAGES {
-            for name in [designcraft_doc::NO_PARA_STYLE, designcraft_doc::BASIC_PARAGRAPH, designcraft_doc::NO_CHAR_STYLE] {
+            for name in [evodesign_doc::NO_PARA_STYLE, evodesign_doc::BASIC_PARAGRAPH, evodesign_doc::NO_CHAR_STYLE] {
                 assert_eq!(style_name(code, name), tr(code, name), "{code}");
             }
             assert_eq!(workspace_name(code, "Essentials"), tr(code, "Essentials"), "{code}");
@@ -5060,13 +5060,13 @@ mod tests {
     fn interface_strings() -> HashSet<&'static str> {
         let mut keys = HashSet::new();
         // Command labels and menu names reach `tr` from the engine and the UI command table.
-        for spec in designcraft_engine::command_specs() {
+        for spec in evodesign_engine::command_specs() {
             keys.insert(spec.label);
             keys.extend(spec.menu.iter().copied());
         }
         keys.extend(crate::menus::UI_COMMANDS.iter().map(|(_, label, _, _)| *label));
         // Tool names reach `tr` from the Tools panel.
-        keys.extend(designcraft_tools::TOOL_GROUPS.iter().flat_map(|group| group.iter()).map(|tool| tool.label));
+        keys.extend(evodesign_tools::TOOL_GROUPS.iter().flat_map(|group| group.iter()).map(|tool| tool.label));
         // So do the About window's tab names, app descriptions and the credits' column and sort labels.
         keys.extend(crate::about::ABOUT_TABS);
         keys.extend(crate::about::SIBLINGS.iter().map(|(_, _, what)| *what));

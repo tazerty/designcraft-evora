@@ -1,8 +1,8 @@
 //! Modal dialogs. Each dialog keeps its fields in a JSON map so the control channel can set them
 //! (`ui.dialog.set {field, value}`) and confirm them (`ui.dialog.confirm`) like a user would.
 
-use designcraft_doc::SpreadRef;
-use designcraft_geom::{Unit, format_measure, units::parse_measure};
+use evodesign_doc::SpreadRef;
+use evodesign_geom::{Unit, format_measure, units::parse_measure};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
@@ -32,7 +32,7 @@ impl Dialog {
         let defaults = match id {
             "newDocument" => crate::new_document::defaults(),
             "goToPage" => json!({"page": "1"}),
-            "epubExport" => json!({"split": false, "mode": "style", "style": designcraft_doc::BASIC_PARAGRAPH}),
+            "epubExport" => json!({"split": false, "mode": "style", "style": evodesign_doc::BASIC_PARAGRAPH}),
             "qrCode" => json!({"type": "url", "content": "https://", "color": "[Black]"}),
             "insertTable" => json!({"bodyRows": 4, "columns": 4, "headerRows": 0, "footerRows": 0}),
             "insertXref" => json!({"linkTo": "paragraph", "style": "", "target": "", "format": ""}),
@@ -93,7 +93,7 @@ impl Dialog {
             (self.id == "findChange" && matches!(key, "scope" | "story" | "objectMode")).then(|| (self.b("objectMode"), find_change_params(self)));
         self.fields.insert(key.into(), value);
         before.is_some_and(|(object_mode, params)| {
-            object_mode != self.b("objectMode") || !designcraft_engine::cmd::same_find_domain(&params, &find_change_params(self))
+            object_mode != self.b("objectMode") || !evodesign_engine::cmd::same_find_domain(&params, &find_change_params(self))
         })
     }
 
@@ -177,7 +177,7 @@ mod color_theme_tests {
 
     #[test]
     fn color_theme_cancel_is_read_only_and_confirm_adds_the_preview() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let before = app.session.active().unwrap().doc.clone();
         let theme = json!({"name":"Fashion", "colors":["#102030", "#f0a020"]});
@@ -282,7 +282,7 @@ fn keyboard_shortcuts(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
         }
     }
     let ql = q.to_lowercase();
-    let mut rows: Vec<(String, String, String)> = designcraft_engine::command_specs()
+    let mut rows: Vec<(String, String, String)> = evodesign_engine::command_specs()
         .iter()
         .filter(|c| !c.menu.is_empty() || c.shortcut.is_some())
         .map(|c| (c.id.to_string(), c.label.to_string(), c.menu.join(" › ")))
@@ -359,7 +359,7 @@ pub fn open_pdf_export(app: &mut DesignApp) {
 /// File › Export EPUB…: the EPUB Export Options dialog, seeded from the document's Split
 /// Document setting.
 pub fn open_epub_export(app: &mut DesignApp) {
-    use designcraft_doc::EpubSplit;
+    use evodesign_doc::EpubSplit;
     let split = app.session.active().map(|st| st.doc.settings.epub_split.clone()).unwrap_or_default();
     let fields = match split {
         EpubSplit::Off => json!({}),
@@ -370,8 +370,8 @@ pub fn open_epub_export(app: &mut DesignApp) {
 }
 
 /// The Split Document setting the EPUB Export Options dialog's fields describe.
-fn epub_export_split(d: &Dialog) -> designcraft_doc::EpubSplit {
-    use designcraft_doc::EpubSplit;
+fn epub_export_split(d: &Dialog) -> evodesign_doc::EpubSplit {
+    use evodesign_doc::EpubSplit;
     if !d.b("split") {
         EpubSplit::Off
     } else if d.s("mode") == "exportTags" {
@@ -386,7 +386,7 @@ fn epub_export(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
     let styles: Vec<String> = app
         .session
         .active()
-        .map(|st| st.doc.styles.paragraph.iter().map(|s| s.name.clone()).filter(|n| n != designcraft_doc::NO_PARA_STYLE).collect())
+        .map(|st| st.doc.styles.paragraph.iter().map(|s| s.name.clone()).filter(|n| n != evodesign_doc::NO_PARA_STYLE).collect())
         .unwrap_or_default();
     check(ui, d, "split", crate::i18n::tr(lang, "Split Document"));
     ui.add_enabled_ui(d.b("split"), |ui| {
@@ -563,7 +563,7 @@ fn selected_frame_width(app: &DesignApp) -> Option<f64> {
 }
 
 /// The options of the selected text frame (the first selected item, or the frame of the caret).
-fn selected_frame_options(app: &DesignApp) -> Option<designcraft_doc::TextFrameOptions> {
+fn selected_frame_options(app: &DesignApp) -> Option<evodesign_doc::TextFrameOptions> {
     let st = app.session.active()?;
     let fid = st.selection.items.first().copied().or_else(|| st.selection.text.and_then(|t| t.frame))?;
     st.doc.item(fid)?.text_frame().map(|t| t.options.clone())
@@ -583,7 +583,7 @@ fn seed_text_frame_options(app: &DesignApp, d: &mut Dialog) {
     let inner = selected_frame_width(app).map(|w| w - o.inset[1] - o.inset[3]).unwrap_or(0.0);
     let n = o.columns.max(1) as f64;
     let width = match o.columns_kind {
-        designcraft_doc::ColumnsKind::FixedWidth if o.column_width > 0.0 => o.column_width,
+        evodesign_doc::ColumnsKind::FixedWidth if o.column_width > 0.0 => o.column_width,
         _ => ((inner - o.gutter * (n - 1.0)) / n).max(0.0),
     };
     let kind = |v: Value| v.as_str().unwrap_or_default().to_string();
@@ -591,10 +591,10 @@ fn seed_text_frame_options(app: &DesignApp, d: &mut Dialog) {
     let grid = o.baseline_grid.unwrap_or_else(|| {
         let g = app.session.active().map(|s| s.doc.settings.baseline_grid.clone()).unwrap_or_default();
         let relative_to = match g.relative_to {
-            designcraft_doc::GridRelative::TopOfPage => designcraft_doc::FrameGridRelative::TopOfPage,
-            designcraft_doc::GridRelative::TopMargin => designcraft_doc::FrameGridRelative::TopMargin,
+            evodesign_doc::GridRelative::TopOfPage => evodesign_doc::FrameGridRelative::TopOfPage,
+            evodesign_doc::GridRelative::TopMargin => evodesign_doc::FrameGridRelative::TopMargin,
         };
-        designcraft_doc::FrameBaselineGrid { start: g.start, increment: g.increment, relative_to }
+        evodesign_doc::FrameBaselineGrid { start: g.start, increment: g.increment, relative_to }
     });
     let shown = json!({
         "columns": o.columns, "gutter": fm(o.gutter),
@@ -607,7 +607,7 @@ fn seed_text_frame_options(app: &DesignApp, d: &mut Dialog) {
         "columnRuleTint": percent(o.column_rule_tint), "columnRuleTopInset": fm(o.column_rule_top_inset),
         "columnRuleBottomInset": fm(o.column_rule_bottom_inset), "columnRuleOffset": fm(o.column_rule_offset),
         "autoSize": serde_json::to_value(o.auto_size).unwrap_or(Value::Null),
-        "autoSizeReference": designcraft_engine::autosize::REFERENCES.get(usize::from(o.auto_size_ref)).copied().unwrap_or("topCenter"),
+        "autoSizeReference": evodesign_engine::autosize::REFERENCES.get(usize::from(o.auto_size_ref)).copied().unwrap_or("topCenter"),
         "useMinimumHeight": o.auto_size_use_min_height, "minimumHeight": fm(o.auto_size_min_height),
         "useMinimumWidth": o.auto_size_use_min_width, "minimumWidth": fm(o.auto_size_min_width),
         "noLineBreaks": o.auto_size_no_line_breaks,
@@ -776,7 +776,7 @@ fn column_rules(app: &DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
             s.doc
                 .swatches
                 .iter()
-                .filter(|w| !matches!(w.value, designcraft_color::swatch::SwatchValue::Gradient { .. }))
+                .filter(|w| !matches!(w.value, evodesign_color::swatch::SwatchValue::Gradient { .. }))
                 .map(|w| w.name.clone())
                 .collect()
         })
@@ -841,7 +841,7 @@ fn reference_point(ui: &mut egui::Ui, d: &mut Dialog, key: &str) {
     let cur = d.s(key);
     let (r, _) = ui.allocate_exact_size(egui::vec2(46.0, 46.0), egui::Sense::hover());
     ui.painter().rect_stroke(r.shrink(5.0), 0.0, egui::Stroke::new(1.0, t.field_border), egui::StrokeKind::Inside);
-    for (i, name) in designcraft_engine::autosize::REFERENCES.iter().enumerate() {
+    for (i, name) in evodesign_engine::autosize::REFERENCES.iter().enumerate() {
         let c = r.min + egui::vec2(5.0 + 18.0 * (i % 3) as f32, 5.0 + 18.0 * (i / 3) as f32);
         let dot = egui::Rect::from_center_size(c, egui::vec2(8.0, 8.0));
         let resp = ui.interact(dot.expand(2.0), ui.id().with((key, i)), egui::Sense::click());
@@ -1392,7 +1392,7 @@ fn setup_spin(ui: &mut egui::Ui, d: &mut Dialog, key: &str, width: f32, min: f64
     let seg = egui::Rect::from_min_size(r.min, egui::vec2(18.0, h));
     ui.painter().line_segment([seg.right_top(), seg.right_bottom()], egui::Stroke::new(1.0, t.field_border));
     let units = setup_units(d);
-    let step = if matches!(units, Unit::Millimeters | Unit::Centimeters) { designcraft_geom::units::PT_PER_MM } else { 1.0 };
+    let step = if matches!(units, Unit::Millimeters | Unit::Centimeters) { evodesign_geom::units::PT_PER_MM } else { 1.0 };
     let mut changed = false;
     for (dir, half) in [
         (1.0, egui::Rect::from_min_max(seg.min, egui::pos2(seg.max.x, seg.center().y))),
@@ -1531,7 +1531,7 @@ fn document_setup(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) -> 
     ui.add_space(4.0);
     // Page Size.
     let (w, h) = (setup_measure(d, "width").unwrap_or(612.0), setup_measure(d, "height").unwrap_or(792.0));
-    let preset = designcraft_doc::build::PRESETS
+    let preset = evodesign_doc::build::PRESETS
         .iter()
         .find(|p| ((p.width - w).abs() < 0.5 && (p.height - h).abs() < 0.5) || ((p.width - h).abs() < 0.5 && (p.height - w).abs() < 0.5))
         .map_or_else(|| tr("Custom").to_string(), |p| tr(p.name).to_string());
@@ -1539,7 +1539,7 @@ fn document_setup(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) -> 
         setup_row(ui, rtl, |ui| {
             crate::rtl::label(ui, egui::RichText::new(tr("Page Size:")).color(t.text_strong));
             egui::ComboBox::from_id_salt("ds_preset").selected_text(crate::rtl::widget(ui, &preset)).width(260.0).show_ui(ui, |ui| {
-                for p in designcraft_doc::build::PRESETS {
+                for p in evodesign_doc::build::PRESETS {
                     if ui.selectable_label(tr(p.name) == preset, crate::rtl::widget(ui, tr(p.name))).clicked() {
                         // Keep the orientation; the preset's size in the document's units.
                         let units = setup_units(d);
@@ -1823,7 +1823,7 @@ fn preferences(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog, max_he
                     ui.horizontal(|ui| {
                         crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Number of Recent Items to Display:"));
                         let mut v = d.n("recentFilesMax").unwrap_or(20.0);
-                        if ui.add(egui::DragValue::new(&mut v).range(0.0..=f64::from(designcraft_engine::MAX_RECENT_FILES)).speed(0.2)).changed() {
+                        if ui.add(egui::DragValue::new(&mut v).range(0.0..=f64::from(evodesign_engine::MAX_RECENT_FILES)).speed(0.2)).changed() {
                             d.fields.insert("recentFilesMax".into(), json!(v.round()));
                         }
                     });
@@ -2220,7 +2220,7 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
         "colorGroupOptions" => crate::i18n::tr(&app.ui.language, "Color Group Options"),
         "layerSettings" => crate::i18n::tr(&app.ui.language, "Layer Options"),
         crate::effects_dialog::ID => crate::i18n::tr(&app.ui.language, "Effects"),
-        id => match id.strip_prefix("cmd:").and_then(designcraft_engine::find_command) {
+        id => match id.strip_prefix("cmd:").and_then(evodesign_engine::find_command) {
             Some(c) => crate::i18n::tr(&app.ui.language, c.label.trim_end_matches('…')),
             None => crate::i18n::tr(&app.ui.language, "Dialog"),
         },
@@ -2534,7 +2534,7 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
                                 _ => crate::i18n::tr(&app.ui.language, "Crop"),
                             };
                             egui::ComboBox::from_id_salt("pdf_crop").selected_text(crate::rtl::widget(ui, label(&cur))).show_ui(ui, |ui| {
-                                for v in designcraft_doc::PdfCrop::ALL.map(designcraft_doc::PdfCrop::name) {
+                                for v in evodesign_doc::PdfCrop::ALL.map(evodesign_doc::PdfCrop::name) {
                                     if ui.selectable_label(label(&cur) == label(v), label(v)).clicked() {
                                         d.fields.insert("crop".into(), json!(v));
                                     }
@@ -2585,10 +2585,10 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
                             egui::ComboBox::from_id_salt("ws_intent")
                                 .selected_text(crate::rtl::widget(
                                     ui,
-                                    crate::i18n::tr(&app.ui.language, designcraft_color::cms::Intent::parse(&cur).map_or("", |i| i.label())),
+                                    crate::i18n::tr(&app.ui.language, evodesign_color::cms::Intent::parse(&cur).map_or("", |i| i.label())),
                                 ))
                                 .show_ui(ui, |ui| {
-                                    for i in designcraft_color::cms::Intent::ALL {
+                                    for i in evodesign_color::cms::Intent::ALL {
                                         if ui
                                             .selectable_label(i.id() == cur, crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, i.label())))
                                             .clicked()
@@ -3313,7 +3313,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
             let replace = d.s("replaceWith");
             app.run(
                 "style.paragraph.delete",
-                json!({"name": name, "replaceWith": if replace.is_empty() { json!(designcraft_doc::BASIC_PARAGRAPH) } else { json!(replace) }}),
+                json!({"name": name, "replaceWith": if replace.is_empty() { json!(evodesign_doc::BASIC_PARAGRAPH) } else { json!(replace) }}),
             )
         }
         "paragraphLocal" => {
@@ -3378,14 +3378,14 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
                 // A new style sets only what was filled in.
                 chars.retain(|_, v| !v.is_null());
                 let mut params = json!({"name": if rename.is_empty() { "Character Style 1" } else { rename.as_str() }, "chars": chars});
-                if let Some(b) = based.filter(|b| b != designcraft_doc::NO_CHAR_STYLE) {
+                if let Some(b) = based.filter(|b| b != evodesign_doc::NO_CHAR_STYLE) {
                     params["basedOn"] = json!(b);
                 }
                 app.run("style.character.create", params)
             } else {
                 let mut params = json!({"name": name, "chars": chars});
                 if let Some(b) = based {
-                    params["basedOn"] = if b == designcraft_doc::NO_CHAR_STYLE { Value::Null } else { json!(b) };
+                    params["basedOn"] = if b == evodesign_doc::NO_CHAR_STYLE { Value::Null } else { json!(b) };
                 }
                 if !rename.is_empty() && rename != name {
                     params["rename"] = json!(rename);
@@ -3406,7 +3406,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
             let replace = d.s("replaceWith");
             app.run(
                 "style.character.delete",
-                json!({"name": name, "replaceWith": if replace.is_empty() { json!(designcraft_doc::NO_CHAR_STYLE) } else { json!(replace) }}),
+                json!({"name": name, "replaceWith": if replace.is_empty() { json!(evodesign_doc::NO_CHAR_STYLE) } else { json!(replace) }}),
             )
         }
         "swatchOptions" | "colorGroupOptions" | "layerSettings" => {
@@ -3446,7 +3446,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
         }
         "colorSettings" => {
             let r = app.run("color.settings", json!({"rgb": d.s("rgb"), "cmyk": d.s("cmyk"), "intent": d.s("intent"), "bpc": d.b("bpc")}))?;
-            app.ui.color_settings = Some(designcraft_color::cms::active_settings());
+            app.ui.color_settings = Some(evodesign_color::cms::active_settings());
             app.canvas.shown = None;
             Ok(r)
         }
@@ -3552,7 +3552,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
             let mut prefs = json!({"scaleStrokes": d.b("scaleStrokes"), "dimensionsIncludeStroke": d.b("dimensionsIncludeStroke"), "transformationsAreTotals": d.b("transformationsAreTotals"), "absolutePageNumbers": d.b("absolutePageNumbers"), "highlightHj": d.b("highlightHj"), "highlightKeeps": d.b("highlightKeeps"), "highlightCustomTracking": d.b("highlightCustomTracking"), "highlightSubstitutedFonts": d.b("highlightSubstitutedFonts"), "richBlackOutput": d.b("richBlackOutput"), "typographersQuotes": d.b("typographersQuotes"), "showFontNamesInEnglish": d.b("showFontNamesInEnglish"), "smartTextReflow": d.b("smartTextReflow"),
                     "autocorrect": d.b("autocorrect"), "showAddedText": d.b("showAddedText"), "showNoteAnchors": d.b("showNoteAnchors"),
                     "recoveryMinutes": d.n("recoveryMinutes").unwrap_or(0.5), "linkTextFiles": d.b("linkTextFiles"),
-                    "recentFilesMax": d.n("recentFilesMax").unwrap_or(20.0).clamp(0.0, f64::from(designcraft_engine::MAX_RECENT_FILES)) as u32,
+                    "recentFilesMax": d.n("recentFilesMax").unwrap_or(20.0).clamp(0.0, f64::from(evodesign_engine::MAX_RECENT_FILES)) as u32,
                     "autocorrectList": d.s("autocorrectText").lines().filter_map(|l| {
                         let (a, b) = l.split_once('→').or_else(|| l.split_once("->"))?;
                         let (a, b) = (a.trim().to_lowercase(), b.trim().to_string());
@@ -3813,7 +3813,7 @@ pub fn confirm(app: &mut DesignApp) -> Result<Value, String> {
         }
         id if id.starts_with("cmd:") => {
             let cid = &id[4..];
-            let doc = designcraft_engine::find_command(cid).map_or("", |c| c.params);
+            let doc = evodesign_engine::find_command(cid).map_or("", |c| c.params);
             let mut p = Map::new();
             for f in command_fields(doc) {
                 match d.fields.get(&f.key) {
@@ -3849,7 +3849,7 @@ fn grep_error(p: &str) -> Option<String> {
     if p.is_empty() {
         return None;
     }
-    designcraft_compose::grep::Grep::new(p, Default::default()).err().map(|e| e.to_string())
+    evodesign_compose::grep::Grep::new(p, Default::default()).err().map(|e| e.to_string())
 }
 
 /// The Justification spacing check of Paragraph Style Options, against what the section showed:
@@ -3897,7 +3897,7 @@ fn confirm_paragraph_style_options(app: &mut DesignApp, d: &mut Dialog) -> Resul
     let rename = d.s("rename").trim().to_string();
     let (r, style) = if d.b("new") {
         let mut params = json!({"name": if rename.is_empty() { "Paragraph Style 1" } else { rename.as_str() }, "para": para, "chars": chars});
-        if !based.is_empty() && based != designcraft_doc::NO_PARA_STYLE {
+        if !based.is_empty() && based != evodesign_doc::NO_PARA_STYLE {
             params["basedOn"] = json!(based);
         }
         let r = app.run("style.paragraph.create", params)?;
@@ -3906,7 +3906,7 @@ fn confirm_paragraph_style_options(app: &mut DesignApp, d: &mut Dialog) -> Resul
     } else {
         let mut params = json!({"name": name, "para": para, "chars": chars});
         if !based.is_empty() {
-            params["basedOn"] = if based == designcraft_doc::NO_PARA_STYLE { Value::Null } else { json!(based) };
+            params["basedOn"] = if based == evodesign_doc::NO_PARA_STYLE { Value::Null } else { json!(based) };
         }
         let renaming = !rename.is_empty() && rename != name;
         if renaming {
@@ -3985,7 +3985,7 @@ fn style_options_preview(app: &mut DesignApp, d: &mut Dialog) {
     fill_style_preview_fields(&mut params, d, paragraph);
     if let Some(based) = d.fields.get("basedOn") {
         params["basedOn"] = match based.as_str() {
-            Some(designcraft_doc::NO_PARA_STYLE | designcraft_doc::NO_CHAR_STYLE) => Value::Null,
+            Some(evodesign_doc::NO_PARA_STYLE | evodesign_doc::NO_CHAR_STYLE) => Value::Null,
             _ => based.clone(),
         };
     }
@@ -4013,7 +4013,7 @@ fn paragraph_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
     let new = d.b("new");
     let Some(doc) = app.session.active().map(|s| s.doc.clone()) else { return };
     let style = match doc.styles.para(&name) {
-        _ if new => designcraft_doc::ParagraphStyle {
+        _ if new => evodesign_doc::ParagraphStyle {
             name: String::new(),
             based_on: None,
             next_style: None,
@@ -4107,12 +4107,12 @@ fn paragraph_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
             "indents" => {
                 egui::Grid::new("psi").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
                     crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Alignment:"));
-                    let a: designcraft_doc::Align = serde_json::from_value(cur(d, "p.align", &pv["align"])).unwrap_or_default();
+                    let a: evodesign_doc::Align = serde_json::from_value(cur(d, "p.align", &pv["align"])).unwrap_or_default();
                     egui::ComboBox::from_id_salt("psalign")
                         .selected_text(crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, a.label())))
                         .width(240.0)
                         .show_ui(ui, |ui| {
-                            for al in designcraft_doc::Align::ALL {
+                            for al in evodesign_doc::Align::ALL {
                                 if ui.selectable_label(al == a, crate::rtl::widget(ui, crate::i18n::tr(&app.ui.language, al.label()))).clicked() {
                                     d.fields.insert("p.align".into(), serde_json::to_value(al).unwrap_or_default());
                                 }
@@ -4134,7 +4134,7 @@ fn paragraph_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
                         ui.end_row();
                     }
                     // The CJK Grid Settings section edits the same `p.gridAlign` field.
-                    use designcraft_doc::GridAlign;
+                    use evodesign_doc::GridAlign;
                     const GRID_ALIGN: [(GridAlign, &str); 3] =
                         [(GridAlign::None, "None"), (GridAlign::AllLines, "All Lines"), (GridAlign::FirstLineOnly, "First Line Only")];
                     crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Align to Grid:"));
@@ -4229,21 +4229,21 @@ fn paragraph_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
 
 /// Show what the style changes from its parent, including edits waiting for OK. Fully captured
 /// styles contain every default, so comparing resolved values keeps the summary readable.
-fn paragraph_style_summary(lang: &str, d: &Dialog, style: &designcraft_doc::ParagraphStyle, styles: &designcraft_doc::Styles) -> String {
-    let based = d.fields.get("basedOn").and_then(Value::as_str).or(style.based_on.as_deref()).unwrap_or(designcraft_doc::NO_PARA_STYLE);
+fn paragraph_style_summary(lang: &str, d: &Dialog, style: &evodesign_doc::ParagraphStyle, styles: &evodesign_doc::Styles) -> String {
+    let based = d.fields.get("basedOn").and_then(Value::as_str).or(style.based_on.as_deref()).unwrap_or(evodesign_doc::NO_PARA_STYLE);
     let (base_para, base_chars) = styles.resolve_para_style(based);
     let (mut para, mut chars) = (base_para.clone(), base_chars.clone());
     para.apply(&style.para);
     chars.apply(&style.chars);
     for (key, value) in &d.fields {
         if let Some(key) = key.strip_prefix("c.") {
-            let mut delta = designcraft_doc::CharAttrs::default();
+            let mut delta = evodesign_doc::CharAttrs::default();
             if delta.set_json(key, value).is_ok() {
                 chars.apply(&delta);
             }
         } else if let Some(key) = key.strip_prefix("p.") {
             let (key, value) = key.split_once('.').map_or((key, value.clone()), |(attr, field)| (attr, json!({field:value})));
-            let mut delta = designcraft_doc::ParaAttrs::default();
+            let mut delta = evodesign_doc::ParaAttrs::default();
             if delta.set_json_over(key, &value, &para).is_ok() {
                 para.apply(&delta);
             }
@@ -4302,7 +4302,7 @@ fn delete_paragraph_style(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog
     }
     ui.add_space(4.0);
     if !d.fields.contains_key("replaceWith") {
-        d.fields.insert("replaceWith".into(), json!(designcraft_doc::BASIC_PARAGRAPH));
+        d.fields.insert("replaceWith".into(), json!(evodesign_doc::BASIC_PARAGRAPH));
     }
     let replace = d.s("replaceWith");
     egui::ComboBox::from_id_salt("del_para_replace")
@@ -4319,11 +4319,11 @@ fn delete_paragraph_style(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog
 
 /// Paragraph Style Options › Tabs: the style's stops on a ruler as wide as the first page's
 /// column, edited in `p.tabs` (and the indents in `p.leftIndent`…) until OK.
-fn style_tabs(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &designcraft_doc::Document) {
+fn style_tabs(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &evodesign_doc::Document) {
     use crate::panels::tabs::{Ruler, RulerEdit, align_buttons, ruler, text_commit};
-    use designcraft_engine::cmd::tabs;
+    use evodesign_engine::cmd::tabs;
     let cur = |d: &Dialog, k: &str| d.fields.get(k).cloned().unwrap_or_else(|| pv[k.trim_start_matches("p.")].clone());
-    let mut list: Vec<designcraft_doc::TabStop> = serde_json::from_value(cur(d, "p.tabs")).unwrap_or_default();
+    let mut list: Vec<evodesign_doc::TabStop> = serde_json::from_value(cur(d, "p.tabs")).unwrap_or_default();
     tabs::sort(&mut list);
     let num = |d: &Dialog, k: &str| cur(d, k).as_f64().filter(|v| v.is_finite()).unwrap_or(0.0);
     let (left, first, right) = (num(d, "p.leftIndent"), num(d, "p.firstLineIndent"), num(d, "p.rightIndent"));
@@ -4348,7 +4348,7 @@ fn style_tabs(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &d
         if let Some(x) = crate::widgets::measure(ui, "pstabx", stop.as_ref().map(|s| s.position), unit, 72.0) {
             result = Some(match sel {
                 Some(i) => tabs::move_to(&mut list, i, x),
-                None => tabs::add(&mut list, designcraft_doc::TabStop { position: x, align, leader: String::new(), align_on: String::new() }),
+                None => tabs::add(&mut list, evodesign_doc::TabStop { position: x, align, leader: String::new(), align_on: String::new() }),
             });
         }
         crate::rtl::label(ui, crate::i18n::tr(lang, "Leader:"));
@@ -4356,7 +4356,7 @@ fn style_tabs(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &d
             result = Some(tabs::leader_value(&l, "tabs").map_err(|e| e.to_string()).and_then(|l| tabs::change(&mut list, i, None, Some(l), None)));
         }
         crate::rtl::label(ui, crate::i18n::tr(lang, "Align On:"));
-        let on_char = stop.as_ref().is_some_and(|s| s.align == designcraft_doc::TabAlign::Char);
+        let on_char = stop.as_ref().is_some_and(|s| s.align == evodesign_doc::TabAlign::Char);
         if let (Some(c), Some(i)) = (text_commit(ui, "psalignon", stop.as_ref().map_or("", |s| s.align_on.as_str()), 18.0, on_char), sel) {
             result = Some(tabs::align_on_value(&c, "tabs").map_err(|e| e.to_string()).and_then(|c| tabs::change(&mut list, i, None, None, Some(c))));
         }
@@ -4371,7 +4371,7 @@ fn style_tabs(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &d
     match ruler(ui, "style", &r) {
         Some(RulerEdit::Select(i)) => sel = Some(i),
         Some(RulerEdit::Add(x)) => {
-            result = Some(tabs::add(&mut list, designcraft_doc::TabStop { position: x, align, leader: String::new(), align_on: String::new() }))
+            result = Some(tabs::add(&mut list, evodesign_doc::TabStop { position: x, align, leader: String::new(), align_on: String::new() }))
         }
         Some(RulerEdit::Move(i, x)) => result = Some(tabs::move_to(&mut list, i, x)),
         Some(RulerEdit::Remove(i)) => result = Some(tabs::remove(&mut list, i)),
@@ -4470,7 +4470,7 @@ fn para_sides(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, key: &s
 
 /// A swatch menu with a colour chip per swatch (hidden swatches left out); returns the swatch
 /// picked.
-fn swatch_menu(ui: &mut egui::Ui, doc: &designcraft_doc::Document, id: impl egui::AsIdSalt, current: &str, width: f32) -> Option<String> {
+fn swatch_menu(ui: &mut egui::Ui, doc: &evodesign_doc::Document, id: impl egui::AsIdSalt, current: &str, width: f32) -> Option<String> {
     let mut picked = None;
     egui::ComboBox::from_id_salt(id).selected_text(current).width(width).show_ui(ui, |ui| {
         for w in doc.swatches.iter().filter(|w| !w.hidden) {
@@ -4492,8 +4492,8 @@ const BORDER_TYPES: [&str; 11] =
     ["solid", "dashed", "dotted", "thickThin", "thinThick", "thinThin", "thickThick", "thinThickThin", "thickThinThick", "wavy", "hashed"];
 
 /// The border's stroke type: a built-in type or one of the document's stroke styles.
-fn border_type_menu(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &designcraft_doc::Document) {
-    use designcraft_doc::StrokeType;
+fn border_type_menu(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &evodesign_doc::Document) {
+    use evodesign_doc::StrokeType;
     let cur: StrokeType = serde_json::from_value(para_value(d, pv, "borderType")).unwrap_or_default();
     let shown = match &cur {
         StrokeType::Style { name } => name.clone(),
@@ -4520,7 +4520,7 @@ fn border_type_menu(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, d
 /// Corner size and shape of a border or shading (`key` holds top left, top right, bottom right,
 /// bottom left); an edited corner stores all four.
 fn para_corners(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, key: &str, units: Unit) {
-    use designcraft_geom::corners::{Corner, CornerShape};
+    use evodesign_geom::corners::{Corner, CornerShape};
     let mut corners: [Corner; 4] = serde_json::from_value(para_value(d, pv, key)).unwrap_or_default();
     let mut changed = false;
     egui::Grid::new(("pscorners", key)).num_columns(3).spacing([8.0, 6.0]).show(ui, |ui| {
@@ -4555,7 +4555,7 @@ fn para_color_tint(
     ui: &mut egui::Ui,
     d: &mut Dialog,
     pv: &Value,
-    doc: &designcraft_doc::Document,
+    doc: &evodesign_doc::Document,
     keys: (&str, &str),
     labels: (&str, &str),
     enabled: bool,
@@ -4578,7 +4578,7 @@ fn para_color_tint(
 /// Paragraph Style Options › Paragraph Border / Paragraph Shading (and the Paragraph Borders and
 /// Shading dialog): on or off, the stroke (border) or colour (shading), corners, offsets, the
 /// edges and width the box follows, and the options for split and consecutive paragraphs.
-fn border_shading(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &designcraft_doc::Document, border: bool) {
+fn border_shading(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &evodesign_doc::Document, border: bool) {
     let key = |field: &str| format!("{}{field}", if border { "border" } else { "shading" });
     let on_key = key("On");
     para_check(ui, d, pv, &on_key, crate::i18n::tr(lang, if border { "Border" } else { "Shading" }));
@@ -4664,8 +4664,8 @@ fn drop_caps_and_nested_styles(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv
     crate::rtl::label(ui, egui::RichText::new(crate::i18n::tr(lang, "Drop Caps")).font(semibold(12.0)));
     egui::Grid::new("psdc").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
         for (label, key, max) in [
-            ("Lines:", "dropCapLines", designcraft_compose::MAX_DROP_CAP_LINES),
-            ("Characters:", "dropCapChars", designcraft_compose::MAX_DROP_CAP_CHARS),
+            ("Lines:", "dropCapLines", evodesign_compose::MAX_DROP_CAP_LINES),
+            ("Characters:", "dropCapChars", evodesign_compose::MAX_DROP_CAP_CHARS),
         ] {
             crate::rtl::label(ui, crate::i18n::tr(lang, label));
             let v = cur(d, &format!("p.{key}"), &pv[key]).as_f64();
@@ -4676,7 +4676,7 @@ fn drop_caps_and_nested_styles(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv
         }
         crate::rtl::label(ui, crate::i18n::tr(lang, "Character Style:"));
         let style = cur(d, "p.dropCapStyle", &pv["dropCapStyle"]).as_str().unwrap_or("").to_string();
-        let style = if style.is_empty() { designcraft_doc::NO_CHAR_STYLE.to_string() } else { style };
+        let style = if style.is_empty() { evodesign_doc::NO_CHAR_STYLE.to_string() } else { style };
         egui::ComboBox::from_id_salt("ps_dropcap_style")
             .selected_text(crate::rtl::widget(ui, crate::i18n::style_name(lang, &style)))
             .width(160.0)
@@ -4962,8 +4962,8 @@ fn keep_options(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value) {
 /// Paragraph Style Options › Span Columns (and the Span Columns dialog): one column, spanning
 /// columns (0 = all), or split into sub-columns with inside and outside gutters; the least space
 /// before and after a spanning or split paragraph.
-fn span_columns(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &designcraft_doc::Document) {
-    use designcraft_doc::SpanColumns;
+fn span_columns(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &evodesign_doc::Document) {
+    use evodesign_doc::SpanColumns;
     let cur: SpanColumns = serde_json::from_value(para_value(d, pv, "spanColumns")).unwrap_or_default();
     let same = |a: &SpanColumns, b: &SpanColumns| std::mem::discriminant(a) == std::mem::discriminant(b);
     let units = doc.settings.horizontal_units;
@@ -5063,14 +5063,14 @@ fn list_text(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, label: &
 struct ListUi<'a> {
     char_styles: &'a [String],
     families: &'a [String],
-    fonts: &'a designcraft_fonts::ScopedFonts<'static>,
+    fonts: &'a evodesign_fonts::ScopedFonts<'static>,
     scope: u32,
     family: &'a str,
     style: &'a str,
 }
 
 impl ListUi<'_> {
-    fn new_parts(app: &DesignApp) -> (Vec<String>, Vec<String>, designcraft_fonts::ScopedFonts<'static>, u32) {
+    fn new_parts(app: &DesignApp) -> (Vec<String>, Vec<String>, evodesign_fonts::ScopedFonts<'static>, u32) {
         let styles = app.session.active().map(|s| s.doc.styles.character.iter().map(|c| c.name.clone()).collect()).unwrap_or_default();
         let families = crate::panels::font_menu(app).into_iter().map(|f| f.family).collect();
         (styles, families, crate::panels::fonts(app), crate::panels::font_scope(app))
@@ -5079,12 +5079,12 @@ impl ListUi<'_> {
 
 /// A character style for a bullet or number (`key`), [None] first.
 fn list_char_style(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, key: &str, styles: &[String]) {
-    let cur = para_value(d, pv, key).as_str().unwrap_or(designcraft_doc::NO_CHAR_STYLE).to_string();
+    let cur = para_value(d, pv, key).as_str().unwrap_or(evodesign_doc::NO_CHAR_STYLE).to_string();
     egui::ComboBox::from_id_salt(("pslistcs", key)).selected_text(crate::rtl::widget(ui, crate::i18n::style_name(lang, &cur))).width(200.0).show_ui(
         ui,
         |ui| {
-            for n in std::iter::once(designcraft_doc::NO_CHAR_STYLE)
-                .chain(styles.iter().map(String::as_str).filter(|n| *n != designcraft_doc::NO_CHAR_STYLE))
+            for n in std::iter::once(evodesign_doc::NO_CHAR_STYLE)
+                .chain(styles.iter().map(String::as_str).filter(|n| *n != evodesign_doc::NO_CHAR_STYLE))
             {
                 if ui.selectable_label(n == cur, crate::rtl::widget(ui, crate::i18n::style_name(lang, n))).clicked() {
                     para_set(d, key, json!(n));
@@ -5184,10 +5184,10 @@ fn bullet_font(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, lu: &L
 /// list type and level; the bullet, its font and the text after it, or the list, number style,
 /// number text and where numbering starts and restarts; the label's character style; then where
 /// the label goes (alignment, indents and the tab position of the text after it).
-fn bullets_and_numbering(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &designcraft_doc::Document, lu: &ListUi<'_>) {
+fn bullets_and_numbering(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Value, doc: &evodesign_doc::Document, lu: &ListUi<'_>) {
     let units = doc.settings.horizontal_units;
     let kind = para_value(d, pv, "listType").as_str().unwrap_or("none").to_string();
-    let level = para_value(d, pv, "listLevel").as_u64().unwrap_or(1).clamp(1, designcraft_doc::LIST_LEVELS as u64) as u32;
+    let level = para_value(d, pv, "listLevel").as_u64().unwrap_or(1).clamp(1, evodesign_doc::LIST_LEVELS as u64) as u32;
     egui::ScrollArea::vertical().id_salt("psbnscroll").max_height(340.0).show(ui, |ui| {
         egui::Grid::new("psbn").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
             crate::rtl::label(ui, crate::i18n::tr(lang, "List Type:"));
@@ -5195,7 +5195,7 @@ fn bullets_and_numbering(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, pv: &Val
             ui.end_row();
             if kind != "none" {
                 crate::rtl::label(ui, crate::i18n::tr(lang, "Level:"));
-                para_count(ui, d, pv, "listLevel", (1, designcraft_doc::LIST_LEVELS as u32));
+                para_count(ui, d, pv, "listLevel", (1, evodesign_doc::LIST_LEVELS as u32));
                 ui.end_row();
             }
             match kind.as_str() {
@@ -5361,7 +5361,7 @@ fn section_list(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cjk: bool, sectio
 }
 
 /// "Paragraph Style n" / "Character Style n": the first name no style has.
-fn next_style_name(styles: &designcraft_doc::Styles, para: bool) -> String {
+fn next_style_name(styles: &evodesign_doc::Styles, para: bool) -> String {
     let (base, count) = if para { ("Paragraph Style", styles.paragraph.len()) } else { ("Character Style", styles.character.len()) };
     let taken = |n: &str| if para { styles.para(n).is_some() } else { styles.char_style(n).is_some() };
     // Among count + 1 numbers at least one is free.
@@ -5371,7 +5371,7 @@ fn next_style_name(styles: &designcraft_doc::Styles, para: bool) -> String {
 /// Paragraph or Character Style Options for an existing style (a double-click on it in the styles
 /// panel, or Edit in its menu). [None] and [No Paragraph Style] have no options.
 pub fn open_style_options(app: &mut DesignApp, para: bool, name: &str) {
-    if name == if para { designcraft_doc::NO_PARA_STYLE } else { designcraft_doc::NO_CHAR_STYLE } {
+    if name == if para { evodesign_doc::NO_PARA_STYLE } else { evodesign_doc::NO_CHAR_STYLE } {
         return;
     }
     let id = if para { "paragraphStyleOptions" } else { "characterStyleOptions" };
@@ -5393,8 +5393,8 @@ fn character_style_general(
     lang: &str,
     ui: &mut egui::Ui,
     d: &mut Dialog,
-    styles: &designcraft_doc::Styles,
-    style: &designcraft_doc::CharacterStyle,
+    styles: &evodesign_doc::Styles,
+    style: &evodesign_doc::CharacterStyle,
     based: &str,
 ) {
     let (name, new) = (d.s("name"), d.b("new"));
@@ -5448,8 +5448,8 @@ fn character_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
     let Some(doc) = app.session.active().map(|st| st.doc.clone()) else { return };
     let styles = &doc.styles;
     let style = match styles.char_style(&name) {
-        _ if new => designcraft_doc::CharacterStyle { name: String::new(), based_on: None, chars: Default::default(), shortcut: String::new() },
-        Some(s) if name != designcraft_doc::NO_CHAR_STYLE => s.clone(),
+        _ if new => evodesign_doc::CharacterStyle { name: String::new(), based_on: None, chars: Default::default(), shortcut: String::new() },
+        Some(s) if name != evodesign_doc::NO_CHAR_STYLE => s.clone(),
         _ => {
             crate::rtl::label(ui, format!("No style named {name}"));
             return;
@@ -5464,7 +5464,7 @@ fn character_style_options(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialo
         .and_then(Value::as_str)
         .map(str::to_string)
         .or(style.based_on.clone())
-        .unwrap_or_else(|| designcraft_doc::NO_CHAR_STYLE.into());
+        .unwrap_or_else(|| evodesign_doc::NO_CHAR_STYLE.into());
     // The fields show the style's own attributes over those its Based On gives it.
     let mut shown = styles.char_style_attrs(&based);
     shown.merge(&style.chars);
@@ -5591,7 +5591,7 @@ fn char_check(ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, key: &str, lab
 }
 
 /// A swatch attribute from a menu; `text_color` names the "" entry (the text's own colour).
-fn char_swatch(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designcraft_doc::Document, key: &str, text_color: Option<&str>) {
+fn char_swatch(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &evodesign_doc::Document, key: &str, text_color: Option<&str>) {
     let mut opts: Vec<(Value, &str)> = text_color.map(|l| (json!(""), l)).into_iter().collect();
     opts.extend(doc.swatches.iter().map(|w| (json!(w.name), w.name.as_str())));
     char_choice(lang, ui, d, cf, key, &opts);
@@ -5757,7 +5757,7 @@ fn advanced_character_formats(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf:
 }
 
 /// Character Color: the fill or stroke swatch, its tint and the stroke weight.
-fn character_color(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designcraft_doc::Document) {
+fn character_color(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &evodesign_doc::Document) {
     let stroke = d.s("colorTarget") == "stroke";
     ui.horizontal(|ui| {
         for (target, label) in [("fill", "Fill"), ("stroke", "Stroke")] {
@@ -5797,7 +5797,7 @@ fn character_color(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharField
 /// OpenType Features: the feature switches, figure style and stylistic sets (one `otfFeatures`
 /// list: changing any feature sets the whole list).
 fn open_type_features(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields) {
-    use designcraft_doc::otf;
+    use evodesign_doc::otf;
     let mut list: Vec<String> =
         cf.get(d, "otfFeatures").as_array().map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()).unwrap_or_default();
     let mut changed = false;
@@ -5848,7 +5848,7 @@ fn open_type_features(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFi
 }
 
 /// Underline Options / Strikethrough Options (`key` is `underline` or `strikethrough`).
-fn line_options(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &designcraft_doc::Document, key: &str) {
+fn line_options(lang: &str, ui: &mut egui::Ui, d: &mut Dialog, cf: &CharFields, doc: &evodesign_doc::Document, key: &str) {
     char_check(ui, d, cf, key, crate::i18n::tr(lang, if key == "underline" { "Underline On" } else { "Strikethrough On" }));
     ui.add_space(4.0);
     egui::Grid::new(("csline", key)).num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
@@ -5897,14 +5897,14 @@ fn delete_character_style(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog
     }
     ui.add_space(4.0);
     if !d.fields.contains_key("replaceWith") {
-        d.fields.insert("replaceWith".into(), json!(designcraft_doc::NO_CHAR_STYLE));
+        d.fields.insert("replaceWith".into(), json!(evodesign_doc::NO_CHAR_STYLE));
     }
     let replace = d.s("replaceWith");
     egui::ComboBox::from_id_salt("del_char_replace")
         .selected_text(crate::rtl::widget(ui, crate::i18n::style_name(&app.ui.language, &replace)))
         .width(260.0)
         .show_ui(ui, |ui| {
-            for n in [designcraft_doc::NO_CHAR_STYLE].into_iter().chain(names.iter().map(String::as_str)) {
+            for n in [evodesign_doc::NO_CHAR_STYLE].into_iter().chain(names.iter().map(String::as_str)) {
                 if ui.selectable_label(n == replace, crate::rtl::widget(ui, crate::i18n::style_name(&app.ui.language, n))).clicked() {
                     d.fields.insert("replaceWith".into(), json!(n));
                 }
@@ -5944,8 +5944,8 @@ fn style_combo(app: &DesignApp, ui: &mut egui::Ui, d: &mut Dialog, key: &str, ch
         })
         .unwrap_or_default();
     let mut opts: Vec<(&str, &str)> = names.iter().map(|n| (n.as_str(), crate::i18n::style_name(&app.ui.language, n))).collect();
-    if character && !names.iter().any(|n| n == designcraft_doc::NO_CHAR_STYLE) {
-        opts.insert(0, (designcraft_doc::NO_CHAR_STYLE, crate::i18n::style_name(&app.ui.language, designcraft_doc::NO_CHAR_STYLE)));
+    if character && !names.iter().any(|n| n == evodesign_doc::NO_CHAR_STYLE) {
+        opts.insert(0, (evodesign_doc::NO_CHAR_STYLE, crate::i18n::style_name(&app.ui.language, evodesign_doc::NO_CHAR_STYLE)));
     }
     combo(ui, d, key, &opts);
 }
@@ -6555,7 +6555,7 @@ fn humanize(key: &str) -> String {
 
 /// A form for any command, from its parameter documentation.
 fn command_form(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
-    let doc = designcraft_engine::find_command(&d.id[4..]).map_or("", |c| c.params);
+    let doc = evodesign_engine::find_command(&d.id[4..]).map_or("", |c| c.params);
     let fields = command_fields(doc);
     let dim = crate::theme::Tokens::get(ui.ctx()).text_dim;
     egui::Grid::new("cmdform").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
@@ -6621,8 +6621,8 @@ fn toc_rows(d: &Dialog) -> Vec<TocRow> {
 pub fn open_toc(app: &mut DesignApp) {
     let Some(st) = app.session.active() else { return };
     let d = &st.doc;
-    let styles: Vec<&str> = d.styles.paragraph.iter().map(|p| p.name.as_str()).filter(|n| *n != designcraft_doc::NO_PARA_STYLE).collect();
-    let char_styles: Vec<&str> = d.styles.character.iter().map(|c| c.name.as_str()).filter(|n| *n != designcraft_doc::NO_CHAR_STYLE).collect();
+    let styles: Vec<&str> = d.styles.paragraph.iter().map(|p| p.name.as_str()).filter(|n| *n != evodesign_doc::NO_PARA_STYLE).collect();
+    let char_styles: Vec<&str> = d.styles.character.iter().map(|c| c.name.as_str()).filter(|n| *n != evodesign_doc::NO_CHAR_STYLE).collect();
     let toc = d.toc.as_ref().filter(|t| d.story(t.story).is_some());
     let rows: Vec<TocRow> = toc
         .map(|t| {
@@ -6633,8 +6633,8 @@ pub fn open_toc(app: &mut DesignApp) {
                     level: e.level,
                     entry_style: e.entry_style.clone().unwrap_or_default(),
                     page_number: match (t.page_numbers, e.page_number) {
-                        (false, _) | (_, designcraft_doc::TocPageNumber::None) => "none",
-                        (_, designcraft_doc::TocPageNumber::Before) => "before",
+                        (false, _) | (_, evodesign_doc::TocPageNumber::None) => "none",
+                        (_, evodesign_doc::TocPageNumber::Before) => "before",
                         _ => "after",
                     }
                     .into(),
@@ -6781,7 +6781,7 @@ fn toc_dialog(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
     if let Some(r) = rows.get_mut(sel) {
         ui.add_space(8.0);
         crate::rtl::label(ui, egui::RichText::new(format!("{} {}", tr("Style:"), r.style)).font(semibold(12.0)));
-        let none = designcraft_doc::NO_CHAR_STYLE;
+        let none = evodesign_doc::NO_CHAR_STYLE;
         egui::Grid::new("toc_entry").num_columns(4).spacing([8.0, 6.0]).show(ui, |ui| {
             crate::rtl::label(ui, tr("Entry Style:"));
             let auto = format!("TOC Level {}", r.level.clamp(1, 9));
@@ -7002,7 +7002,7 @@ fn insert_xref(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
                             if cur_style != all && st.paras[pi].style != cur_style {
                                 continue;
                             }
-                            let text = designcraft_doc::xref::clean(&st.text[r]);
+                            let text = evodesign_doc::xref::clean(&st.text[r]);
                             if text.is_empty() {
                                 continue;
                             }
@@ -7065,12 +7065,12 @@ enum ColorEdit {
 /// the colour again when focus leaves. `model` is what OK applies: picking keeps a CMYK colour CMYK
 /// (converted through the CMYK working space); typing R/G/B or C/M/Y/K values chooses that model.
 fn color_picker(ui: &mut egui::Ui, d: &mut Dialog) {
-    use designcraft_color::Color;
+    use evodesign_color::Color;
     let to8 = |v: f64| v.clamp(0.0, 255.0).round() as u8;
     let display_rgb = |c: Color| c.to_rgb().map(|v| (f64::from(v) * 255.0).clamp(0.0, 255.0).round());
     let cmyk_of = |rgb: [f64; 3]| {
         let c = Color::rgb((rgb[0] / 255.0) as f32, (rgb[1] / 255.0) as f32, (rgb[2] / 255.0) as f32);
-        c.to_cmyk_managed(designcraft_color::cms::active_settings().intent).map(|v| f64::from(v) * 100.0)
+        c.to_cmyk_managed(evodesign_color::cms::active_settings().intent).map(|v| f64::from(v) * 100.0)
     };
     let hex_rgb = |s: &str| match Color::from_hex(s) {
         Some(Color::Rgb { r, g, b }) => Some([r, g, b].map(|v| (f64::from(v) * 255.0).round())),
@@ -7268,7 +7268,7 @@ fn find_font(app: &mut DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
     crate::rtl::label(ui, egui::RichText::new(crate::i18n::tr(&app.ui.language, "Replace With")).font(semibold(12.0)));
     let db = crate::panels::fonts(app);
     if d.s("toFamily").is_empty() {
-        d.fields.insert("toFamily".into(), json!(designcraft_fonts::FALLBACK_FAMILY));
+        d.fields.insert("toFamily".into(), json!(evodesign_fonts::FALLBACK_FAMILY));
     }
     egui::Grid::new("ff_to").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
         crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Font Family:"));
@@ -7312,7 +7312,7 @@ mod tests {
 
     #[test]
     fn paragraph_style_settings_show_captured_color_and_pending_spacing_without_changing_the_document() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let f = app.run("frame.create", json!({"rect":[36,36,300,200],"content":"text","text":"Heading"})).unwrap();
         app.run("text.select", json!({"story":f["story"],"anchor":0,"focus":7})).unwrap();
@@ -7340,11 +7340,11 @@ mod tests {
     /// tells the two apart.
     #[test]
     fn layer_options_confirm_without_the_menu_fields_keeps_file_defaults() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 100, "height": 100, "pages": 1})).unwrap();
         let pdf = app.run("file.exportPdf", json!({})).unwrap()["base64"].clone();
         let placed = app.run("file.place", json!({"base64": pdf, "name": "plain.pdf", "x": 0, "y": 0, "width": 100})).unwrap();
-        let id = designcraft_doc::ItemId(placed["id"].as_u64().unwrap());
+        let id = evodesign_doc::ItemId(placed["id"].as_u64().unwrap());
         app.run("selection.set", json!({"ids": [placed["id"]]})).unwrap();
         app.ui.dialog = Some(Dialog::new("layerOptions", json!({})));
         confirm(&mut app).unwrap();
@@ -7359,16 +7359,16 @@ mod tests {
 
     #[test]
     fn paragraph_style_settings_compare_with_the_chosen_parent() {
-        let mut styles = designcraft_doc::Styles::default();
-        styles.paragraph.push(designcraft_doc::ParagraphStyle {
+        let mut styles = evodesign_doc::Styles::default();
+        styles.paragraph.push(evodesign_doc::ParagraphStyle {
             name: "Parent".into(),
-            chars: designcraft_doc::CharAttrs { size: Some(20.0), ..Default::default() },
+            chars: evodesign_doc::CharAttrs { size: Some(20.0), ..Default::default() },
             based_on: None,
             next_style: None,
             para: Default::default(),
             shortcut: String::new(),
         });
-        let style = designcraft_doc::ParagraphStyle {
+        let style = evodesign_doc::ParagraphStyle {
             name: "Child".into(),
             based_on: Some("Parent".into()),
             next_style: None,
@@ -7382,7 +7382,7 @@ mod tests {
 
     #[test]
     fn step_and_repeat_dialog_previews_and_makes_the_copies_as_one_undo_step() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let id = app.run("frame.create", json!({"rect": [72, 600, 540, 640]})).unwrap()["id"].as_u64().unwrap();
         app.run("selection.set", json!({"ids": [id]})).unwrap();
@@ -7435,7 +7435,7 @@ mod tests {
         let r = confirm(&mut app).unwrap();
         assert_eq!((items(&app), undo(&app)), (n0 + 2, u0 + 1));
         let last = r["ids"][1].as_u64().unwrap();
-        let top = app.session.doc().unwrap().doc.item(designcraft_doc::ItemId(last)).unwrap().bounds().min_y();
+        let top = app.session.doc().unwrap().doc.item(evodesign_doc::ItemId(last)).unwrap().bounds().min_y();
         assert!((top - (600.0 - 108.0)).abs() < 1e-6, "{top}");
         // Create as a grid: Rows × Columns cells, the original being one.
         app.run("selection.set", json!({"ids": [id]})).unwrap();
@@ -7457,7 +7457,7 @@ mod tests {
 
     /// A three-page document in `units` with Document Setup open.
     fn document_setup_app(units: &str) -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 3})).unwrap();
         app.run("document.preferences", json!({"horizontalUnits": units, "verticalUnits": units})).unwrap();
         crate::menus::activate(&mut app, "layout.documentSetup", &Value::Null);
@@ -7484,7 +7484,7 @@ mod tests {
         );
         confirm(&mut app).unwrap();
         assert!(app.ui.dialog.is_none());
-        let mm = designcraft_geom::units::PT_PER_MM;
+        let mm = evodesign_geom::units::PT_PER_MM;
         let doc = &app.session.active().unwrap().doc;
         assert!((doc.settings.page_width - 210.0 * mm).abs() < 1e-6 && (doc.settings.bleed[2] - 3.0 * mm).abs() < 1e-6);
         assert!(doc.spreads.iter().flat_map(|s| &s.pages).all(|p| (p.margins.top - 20.0 * mm).abs() < 1e-6), "every page");
@@ -7498,7 +7498,7 @@ mod tests {
         let mut app = document_setup_app("millimeters");
         setup_fields(&mut app, json!({"bleedTop": "5", "bleedBottom": "5", "bleedInside": "5", "bleedOutside": "5", "width": "210"}));
         confirm(&mut app).unwrap();
-        let mm = designcraft_geom::units::PT_PER_MM;
+        let mm = evodesign_geom::units::PT_PER_MM;
         let settings = &app.session.active().unwrap().doc.settings;
         assert!(settings.bleed.iter().all(|b| (b - 5.0 * mm).abs() < 1e-6), "5 mm, not 5 picas: {:?}", settings.bleed);
         assert!((settings.page_width - 210.0 * mm).abs() < 1e-6, "{}", settings.page_width);
@@ -7506,7 +7506,7 @@ mod tests {
 
     #[test]
     fn document_setup_keeps_each_pages_margins_unless_they_are_edited() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 3, "margins": 36})).unwrap();
         app.run("layout.marginsAndColumns", json!({"pages": [1], "margins": 90})).unwrap();
         let margins =
@@ -7559,13 +7559,13 @@ mod tests {
         click_dialog(&mut app, &ctx, screen, visible_label(&labels, screen, "Adjust Layout").center());
         assert!(app.ui.dialog.is_none(), "applied");
         let doc = &app.session.active().unwrap().doc;
-        let b = doc.item(designcraft_doc::ItemId(f["id"].as_u64().unwrap())).unwrap().bounds();
+        let b = doc.item(evodesign_doc::ItemId(f["id"].as_u64().unwrap())).unwrap().bounds();
         assert!((b.y0 - 72.0).abs() < 1e-6 && doc.page(0).unwrap().margins.outside == 72.0, "{b:?}");
     }
 
     #[test]
     fn cell_options_dialog_draws_and_applies_only_changed_values_to_the_chosen_edges() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [72, 72, 400, 400], "content": "text", "caret": true})).unwrap();
         let tid = app.run("table.insert", json!({"rows": 2, "cols": 2})).unwrap()["table"].as_u64().unwrap();
@@ -7592,7 +7592,7 @@ mod tests {
 
     #[test]
     fn cell_options_edge_changes_reseed_every_stroke_field_and_survive_a_bad_seed() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [72, 72, 400, 400], "content": "text", "caret": true})).unwrap();
         let tid = app.run("table.insert", json!({"rows": 2, "cols": 2})).unwrap()["table"].as_u64().unwrap();
@@ -7622,7 +7622,7 @@ mod tests {
         // `ui.dialog.set` takes any value; a size that isn't finite is saved as `null`.
         let sizes = [(json!("nan"), 20.0), (json!("inf"), 20.0), (json!(null), 20.0), (json!(1e39), 36.0), (json!(3), 8.0), (json!(11), 11.0)];
         for (size, want) in sizes {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({})).unwrap();
             app.ui.story_editor_size = 20.0;
             app.run("app.preferences", json!({})).unwrap();
@@ -7637,7 +7637,7 @@ mod tests {
     fn preferences_ok_sets_only_the_ruler_units_it_is_given() {
         // `ui.dialog.open` takes any fields, so the vertical units can be missing.
         for (vertical, want) in [(None, "inches"), (Some("points"), "points")] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({})).unwrap();
             app.run("document.preferences", json!({"verticalUnits": "inches"})).unwrap();
             let mut fields = json!({"horizontalUnits": "millimeters", "bg.relativeTo": "topOfPage"});
@@ -7653,7 +7653,7 @@ mod tests {
 
     #[test]
     fn enter_and_escape_close_the_style_menu_not_numbering_and_section_options() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 2})).unwrap();
         crate::menus::activate(&mut app, "layout.section", &Value::Null);
         let ctx = dialog_context("en");
@@ -7687,7 +7687,7 @@ mod tests {
     fn numbering_and_section_options_keep_their_actions_in_view() {
         for language in ["en", "ar"] {
             for size in [egui::vec2(1178.0, 814.0), egui::vec2(392.0, 271.0)] {
-                let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+                let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
                 app.ui.language = language.into();
                 app.run("file.new", json!({"pages": 2})).unwrap();
                 crate::menus::activate(&mut app, "layout.section", &Value::Null);
@@ -7727,7 +7727,7 @@ mod tests {
 
     /// The Color Picker over a new document's selected frame, a few frames in.
     fn picker(fields: Value) -> (DesignApp, egui::Context, egui::Rect, u64) {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let id = app.run("frame.create", json!({"rect": [36, 36, 200, 200]})).unwrap()["id"].as_u64().unwrap();
         app.run("selection.set", json!({"ids": [id]})).unwrap();
@@ -7759,9 +7759,9 @@ mod tests {
         }
     }
 
-    fn fill(app: &DesignApp, id: u64) -> designcraft_color::Color {
+    fn fill(app: &DesignApp, id: u64) -> evodesign_color::Color {
         let d = &app.session.active().unwrap().doc;
-        d.resolve_color(&d.item(designcraft_doc::ItemId(id)).unwrap().fill.swatch, 1.0).unwrap()
+        d.resolve_color(&d.item(evodesign_doc::ItemId(id)).unwrap().fill.swatch, 1.0).unwrap()
     }
 
     #[test]
@@ -7797,7 +7797,7 @@ mod tests {
         assert!(rightmost(&labels, "12.5").x > rightmost(&labels, "2").x - 1.0, "the typed text stays in the R field");
         assert_eq!(app.ui.dialog.as_ref().unwrap().s("hex"), "#0d0203");
         confirm(&mut app).unwrap();
-        let designcraft_color::Color::Rgb { r, .. } = fill(&app, id) else { panic!("not RGB") };
+        let evodesign_color::Color::Rgb { r, .. } = fill(&app, id) else { panic!("not RGB") };
         assert!((r - 12.5 / 255.0).abs() < 1e-6, "{r}");
     }
 
@@ -7812,7 +7812,7 @@ mod tests {
         dialog_frame(&mut app, &ctx, screen, vec![select_all_key()]);
         type_slowly(&mut app, &ctx, screen, "3366cc");
         confirm(&mut app).unwrap();
-        assert!(matches!(fill(&app, id), designcraft_color::Color::Cmyk { .. }), "{:?}", fill(&app, id));
+        assert!(matches!(fill(&app, id), evodesign_color::Color::Cmyk { .. }), "{:?}", fill(&app, id));
         // A typed C/M/Y/K percent is a percent: M 1 is 1 %.
         let (mut app, ctx, screen, id) = picker(cmyk.clone());
         let labels = dialog_frame(&mut app, &ctx, screen, vec![]);
@@ -7820,7 +7820,7 @@ mod tests {
         dialog_frame(&mut app, &ctx, screen, vec![select_all_key()]);
         type_slowly(&mut app, &ctx, screen, "1");
         confirm(&mut app).unwrap();
-        let designcraft_color::Color::Cmyk { c, m, y, k } = fill(&app, id) else { panic!("not CMYK") };
+        let evodesign_color::Color::Cmyk { c, m, y, k } = fill(&app, id) else { panic!("not CMYK") };
         assert!(c == 0.0 && (m - 0.01).abs() < 1e-6 && (y - 1.0).abs() < 1e-6 && k == 0.0, "{c} {m} {y} {k}");
         // Typed R/G/B values: RGB.
         let (mut app, ctx, screen, id) = picker(cmyk);
@@ -7830,15 +7830,15 @@ mod tests {
         dialog_frame(&mut app, &ctx, screen, vec![select_all_key()]);
         type_slowly(&mut app, &ctx, screen, "10");
         confirm(&mut app).unwrap();
-        assert!(matches!(fill(&app, id), designcraft_color::Color::Rgb { .. }), "{:?}", fill(&app, id));
+        assert!(matches!(fill(&app, id), evodesign_color::Color::Rgb { .. }), "{:?}", fill(&app, id));
     }
 
     #[test]
     fn ok_without_edits_leaves_the_fill_alone() {
         let (mut app, _, _, id) = picker(json!({"target": "fill", "hex": "#ff8000", "model": "cmyk", "cmyk": [0, 50, 100, 0]}));
-        let before = app.session.active().unwrap().doc.item(designcraft_doc::ItemId(id)).unwrap().fill.clone();
+        let before = app.session.active().unwrap().doc.item(evodesign_doc::ItemId(id)).unwrap().fill.clone();
         confirm(&mut app).unwrap();
-        assert_eq!(app.session.active().unwrap().doc.item(designcraft_doc::ItemId(id)).unwrap().fill, before);
+        assert_eq!(app.session.active().unwrap().doc.item(evodesign_doc::ItemId(id)).unwrap().fill, before);
     }
 
     #[test]
@@ -7869,7 +7869,7 @@ mod tests {
 
     /// A paragraph styled "Ruled Child", whose Rule Below comes from its parent "Ruled".
     fn ruled_paragraph() -> (DesignApp, Value) {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let rule = json!({"on": true, "weight": 3.0, "color": "[Black]", "tint": 0.5, "columnWidth": false, "offset": 4.0, "leftIndent": 6.0, "rightIndent": 2.0});
         app.run("style.paragraph.create", json!({"name": "Ruled", "para": {"ruleBelow": rule}})).unwrap();
@@ -7986,14 +7986,14 @@ mod tests {
         assert_eq!(para["numberExpression"], "^#)^t");
         assert_eq!(para["startAt"], 3);
         assert_eq!(para["spanColumns"], json!({"kind": "split", "columns": 3}));
-        let props: designcraft_doc::ParaProps = serde_json::from_value(para).unwrap();
+        let props: evodesign_doc::ParaProps = serde_json::from_value(para).unwrap();
         assert_eq!(props.number_label(3), "III)\t");
     }
 
     #[test]
     fn paragraph_style_options_ignore_optical_margin_is_set_on_ok() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("style.paragraph.create", json!({"name": "Flush"})).unwrap();
         app.ui.dialog = Some(Dialog::new("paragraphStyleOptions", json!({"name": "Flush", "section": "indents"})));
@@ -8056,7 +8056,7 @@ mod tests {
 
     /// A frame with two paragraphs of [Basic Paragraph]; the first has a local Word Spacing minimum.
     fn two_paragraphs() -> (DesignApp, Value) {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let r = app.run("frame.create", json!({"rect": [72, 72, 300, 400], "content": "text", "text": "One\nTwo"})).unwrap();
         app.run("text.select", json!({"story": r["story"], "anchor": 0, "focus": 0})).unwrap();
@@ -8079,7 +8079,7 @@ mod tests {
         let (mut app, story) = two_paragraphs();
         let ctx = dialog_context("en");
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1400.0, 900.0));
-        let sid = designcraft_doc::StoryId(story.as_u64().unwrap());
+        let sid = evodesign_doc::StoryId(story.as_u64().unwrap());
         let weight = |app: &DesignApp, para: usize| {
             let d = &app.session.doc().unwrap().doc;
             d.styles.resolve_para(&d.story(sid).unwrap().paras[para]).0.hyph_weight
@@ -8133,7 +8133,7 @@ mod tests {
         assert_eq!((weight(&app, 0), weight(&app, 1)), (0.9, 0.5));
         assert_eq!(undo_steps(&app), before + 1, "one undo step");
         // Paragraph Style Options › Hyphenation has the same form.
-        app.ui.dialog = Some(Dialog::new("paragraphStyleOptions", json!({"name": designcraft_doc::story::BASIC_PARAGRAPH, "section": "hyph"})));
+        app.ui.dialog = Some(Dialog::new("paragraphStyleOptions", json!({"name": evodesign_doc::story::BASIC_PARAGRAPH, "section": "hyph"})));
         for _ in 0..3 {
             dialog_frame(&mut app, &ctx, screen, vec![]);
         }
@@ -8229,7 +8229,7 @@ mod tests {
         assert_eq!(para_attr(&mut app, &story, 0, "wordSpaceDesired"), 1.1);
         assert_eq!(para_attr(&mut app, &story, 0, "wordSpaceMin"), 0.7, "unedited fields stay");
         assert_eq!(para_attr(&mut app, &story, 4, "wordSpaceDesired"), 1.0, "only the selected paragraph");
-        let style = app.session.doc().unwrap().doc.styles.resolve_para_style(designcraft_doc::story::BASIC_PARAGRAPH).0.word_space_desired;
+        let style = app.session.doc().unwrap().doc.styles.resolve_para_style(evodesign_doc::story::BASIC_PARAGRAPH).0.word_space_desired;
         assert_eq!(style, 1.0, "the paragraph style keeps its value");
 
         // Cancel (Escape) leaves the paragraph alone.
@@ -8293,7 +8293,7 @@ mod tests {
     }
 
     fn command_app(id: &str, fields: Value) -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.ui.dialog = Some(Dialog::new(&format!("cmd:{id}"), fields));
         app
     }
@@ -8329,7 +8329,7 @@ mod tests {
 
     #[test]
     fn numbering_commands_document_their_fields() {
-        let names = |id: &str| command_fields(designcraft_engine::find_command(id).unwrap().params).into_iter().map(|f| f.key).collect::<Vec<_>>();
+        let names = |id: &str| command_fields(evodesign_engine::find_command(id).unwrap().params).into_iter().map(|f| f.key).collect::<Vec<_>>();
         assert_eq!(names("layout.section"), ["page", "startNumber", "style", "prefix", "includePrefix", "marker", "remove"]);
         assert_eq!(names("layout.chapterNumbering"), ["style", "start", "source"]);
     }
@@ -8342,7 +8342,7 @@ mod tests {
         confirm(&mut app).unwrap();
         let doc = &app.session.active().unwrap().doc;
         let item = doc.spreads.iter().flat_map(|s| &s.items).next().unwrap();
-        assert_eq!(item.bounds(), designcraft_geom::Rect::new(10.0, 20.0, 110.0, 220.0));
+        assert_eq!(item.bounds(), evodesign_geom::Rect::new(10.0, 20.0, 110.0, 220.0));
     }
 
     #[test]
@@ -8370,7 +8370,7 @@ mod tests {
     #[test]
     fn style_options_preview_choice_is_remembered_on_reopen() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("style.paragraph.create", json!({"name":"Tutorial","chars":{"size":10}})).unwrap();
         open_style_options(&mut app, true, "Tutorial");
@@ -8398,7 +8398,7 @@ mod tests {
     fn style_options_preview_updates_all_uses_cancels_and_commits_once() {
         use egui_kittest::{Harness, kittest::Queryable};
         for paragraph in [true, false] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({})).unwrap();
             let f = app.run("frame.create", json!({"rect":[36,36,300,300],"content":"text","text":"First\nSecond"})).unwrap();
             app.run("text.select", json!({"story":f["story"],"anchor":0,"focus":12})).unwrap();
@@ -8461,11 +8461,11 @@ mod tests {
 
     #[test]
     fn style_preview_refuses_justification_spacing_ok_would_refuse() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let before = app.session.doc().unwrap().doc.clone();
         let mut d =
-            Dialog::new("paragraphStyleOptions", json!({"name": designcraft_doc::BASIC_PARAGRAPH, "preview": true, "p.wordSpaceDesired": 1.1}));
+            Dialog::new("paragraphStyleOptions", json!({"name": evodesign_doc::BASIC_PARAGRAPH, "preview": true, "p.wordSpaceDesired": 1.1}));
         style_options_preview(&mut app, &mut d);
         assert_ne!(app.session.doc().unwrap().doc, before, "a valid value previews");
         // Minimum above Desired: the page goes back and the dialog says why.
@@ -8478,7 +8478,7 @@ mod tests {
 
     #[test]
     fn invalid_style_preview_leaves_the_starting_document_and_can_be_cancelled() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("style.character.create", json!({"name":"Emphasis"})).unwrap();
         let before = app.session.doc().unwrap().doc.clone();
@@ -8494,13 +8494,13 @@ mod tests {
 
     #[test]
     fn style_preview_rejects_conflicting_scalar_and_nested_rule_fields_without_panicking() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let before = app.session.doc().unwrap().doc.clone();
         let mut dialog = Dialog::new(
             "paragraphStyleOptions",
             json!({
-                "name": designcraft_doc::BASIC_PARAGRAPH, "preview": true,
+                "name": evodesign_doc::BASIC_PARAGRAPH, "preview": true,
                 "p.ruleAbove": false, "p.ruleAbove.weight": 2
             }),
         );
@@ -8514,11 +8514,11 @@ mod tests {
 
     #[test]
     fn text_frame_options_set_columns_baseline_and_wrap_as_indesign_does() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         // A 300 pt frame, 2 columns, 12 pt gutter (picas in the dialog).
         let r = app.run("frame.create", json!({"rect": [36, 36, 336, 236], "content": "text", "text": "Hello"})).unwrap();
-        let id = designcraft_doc::ItemId(r["id"].as_u64().unwrap());
+        let id = evodesign_doc::ItemId(r["id"].as_u64().unwrap());
         app.run("object.textFrameOptions", json!({"ids": [id.0], "columns": 2, "gutter": 12})).unwrap();
         let opts = |app: &DesignApp| app.session.doc().unwrap().doc.item(id).unwrap().text_frame().unwrap().options.clone();
         let mut d = Dialog::new("textFrameOptions", json!({}));
@@ -8538,9 +8538,9 @@ mod tests {
         app.ui.dialog = Some(d);
         confirm(&mut app).unwrap();
         let o = opts(&app);
-        assert_eq!(o.columns_kind, designcraft_doc::ColumnsKind::FixedWidth);
+        assert_eq!(o.columns_kind, evodesign_doc::ColumnsKind::FixedWidth);
         assert_eq!((o.column_width, o.first_baseline_min, o.columns), (120.0, 6.0, 2));
-        assert_eq!(o.first_baseline, designcraft_doc::FirstBaseline::CapHeight);
+        assert_eq!(o.first_baseline, evodesign_doc::FirstBaseline::CapHeight);
         assert!(o.balance_columns && o.ignore_wrap);
         // Fixed Number again: the width isn't sent.
         let mut d = Dialog::new("textFrameOptions", json!({}));
@@ -8549,15 +8549,15 @@ mod tests {
         d.fields.insert("columnsKind".into(), json!("fixedNumber"));
         app.ui.dialog = Some(d);
         confirm(&mut app).unwrap();
-        assert_eq!((opts(&app).columns_kind, opts(&app).column_width), (designcraft_doc::ColumnsKind::FixedNumber, 120.0));
+        assert_eq!((opts(&app).columns_kind, opts(&app).column_width), (evodesign_doc::ColumnsKind::FixedNumber, 120.0));
     }
 
     #[test]
     fn baseline_grid_increment_error_explains_the_positive_measure_rule() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let r = app.run("frame.create", json!({"rect": [36, 36, 336, 236], "content": "text", "text": "Hello"})).unwrap();
-        let id = designcraft_doc::ItemId(r["id"].as_u64().unwrap());
+        let id = evodesign_doc::ItemId(r["id"].as_u64().unwrap());
         for increment in ["0", "-1 pt", "not a measure"] {
             let mut d = Dialog::new("textFrameOptions", json!({}));
             seed_text_frame_options(&app, &mut d);
@@ -8572,11 +8572,11 @@ mod tests {
 
     #[test]
     fn text_frame_options_set_a_custom_baseline_grid_relative_to() {
-        use designcraft_doc::{FrameBaselineGrid, FrameGridRelative};
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        use evodesign_doc::{FrameBaselineGrid, FrameGridRelative};
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let r = app.run("frame.create", json!({"rect": [36, 36, 336, 236], "content": "text", "text": "Hello"})).unwrap();
-        let id = designcraft_doc::ItemId(r["id"].as_u64().unwrap());
+        let id = evodesign_doc::ItemId(r["id"].as_u64().unwrap());
         let grid = |app: &DesignApp| app.session.doc().unwrap().doc.item(id).unwrap().text_frame().unwrap().options.baseline_grid;
         let open = |app: &mut DesignApp, fields: &[(&str, Value)]| {
             let mut d = Dialog::new("textFrameOptions", json!({}));
@@ -8601,10 +8601,10 @@ mod tests {
 
     #[test]
     fn text_frame_options_change_only_what_was_edited() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let r = app.run("frame.create", json!({"rect": [36, 36, 336, 236], "content": "text", "text": "Hello"})).unwrap();
-        let id = designcraft_doc::ItemId(r["id"].as_u64().unwrap());
+        let id = evodesign_doc::ItemId(r["id"].as_u64().unwrap());
         app.run("object.textFrameOptions", json!({"ids": [id.0], "columns": 2, "inset": [1, 2, 3, 4]})).unwrap();
         let opts = |app: &DesignApp| app.session.doc().unwrap().doc.item(id).unwrap().text_frame().unwrap().options.clone();
         let before = opts(&app);
@@ -8640,7 +8640,7 @@ mod tests {
         // An unknown swatch is an error and the dialog stays open.
         let e = open(&mut app, &[("columnRuleColor", json!("Mauve"))]).unwrap_err();
         assert!(e.contains("Mauve") && app.ui.dialog.is_some(), "{e}");
-        assert_eq!(opts(&app).column_rule_color, designcraft_color::swatch::BLACK);
+        assert_eq!(opts(&app).column_rule_color, evodesign_color::swatch::BLACK);
         // Each OK is one undo step.
         for _ in 0..4 {
             app.run("edit.undo", json!({})).unwrap();
@@ -8650,7 +8650,7 @@ mod tests {
 
     #[test]
     fn toc_dialog_adds_a_style_and_ok_makes_the_table_of_contents() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.newSample", json!({})).unwrap();
         crate::menus::activate(&mut app, "toc.generate", &Value::Null);
         assert_eq!(app.ui.dialog.as_ref().map(|d| d.id.as_str()), Some(TOC));
@@ -8675,7 +8675,7 @@ mod tests {
         assert!(app.ui.dialog.is_none());
         let d = &app.session.doc().unwrap().doc;
         let toc = d.toc.clone().unwrap();
-        assert_eq!(toc.entries, vec![designcraft_doc::TocEntry::new("Headline", 1)]);
+        assert_eq!(toc.entries, vec![evodesign_doc::TocEntry::new("Headline", 1)]);
         let text = &d.story(toc.story).unwrap().text;
         assert!(text.starts_with("Contents\n") && text.contains("\nNotes on the Grid\t"), "{text}");
         assert_eq!(app.session.doc().unwrap().history.undo.len(), undo + 1);
@@ -8690,7 +8690,7 @@ mod tests {
     fn margins_and_columns_link_arithmetic_preview_and_one_undo_step() {
         // Adobe's "Set up a modern magazine layout" (1:41–3:04): linked margins to 0.4375 in, then
         // 5 columns with a 0.1875 in gutter, unlinked, and "*2" typed after the outside margin.
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"preset": "A4", "pages": 3, "facingPages": true, "margins": 36})).unwrap();
         app.canvas_rect = Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1000.0, 800.0)));
         open_margins_and_columns(&mut app);
@@ -8763,7 +8763,7 @@ mod tests {
 
     #[test]
     fn create_guides_reads_like_indesigns_and_previews() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 1, "facingPages": false})).unwrap();
         app.canvas_rect = Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1000.0, 800.0)));
         open_create_guides(&mut app);
@@ -8878,11 +8878,11 @@ mod tests {
         click_dialog(app, ctx, screen, pos);
     }
 
-    fn scope_dialog() -> (DesignApp, egui::Context, egui::Rect, designcraft_engine::doc::StoryId) {
+    fn scope_dialog() -> (DesignApp, egui::Context, egui::Rect, evodesign_engine::doc::StoryId) {
         scope_dialog_with_selection("red red | red", 7)
     }
 
-    fn scope_dialog_with_selection(text: &str, end: usize) -> (DesignApp, egui::Context, egui::Rect, designcraft_engine::doc::StoryId) {
+    fn scope_dialog_with_selection(text: &str, end: usize) -> (DesignApp, egui::Context, egui::Rect, evodesign_engine::doc::StoryId) {
         scope_dialog_with_tool(text, end, None)
     }
 
@@ -8890,12 +8890,12 @@ mod tests {
         text: &str,
         end: usize,
         tool: Option<&str>,
-    ) -> (DesignApp, egui::Context, egui::Rect, designcraft_engine::doc::StoryId) {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+    ) -> (DesignApp, egui::Context, egui::Rect, evodesign_engine::doc::StoryId) {
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.ui.language = "en".into();
         app.run("file.new", json!({})).unwrap();
         let frame = app.run("frame.create", json!({"rect": [36, 36, 100, 100], "content": "text", "text": text})).unwrap();
-        let sid = designcraft_engine::doc::StoryId(frame["story"].as_u64().unwrap());
+        let sid = evodesign_engine::doc::StoryId(frame["story"].as_u64().unwrap());
         let ctx = dialog_context("en");
         if let Some(tool) = tool {
             scope_control(&mut app, &ctx, "ui.tool.select", json!({"tool": tool}));
@@ -8915,12 +8915,12 @@ mod tests {
         (app, ctx, screen, sid)
     }
 
-    fn scope_selected(app: &DesignApp, sid: designcraft_engine::doc::StoryId, a: usize, b: usize) {
+    fn scope_selected(app: &DesignApp, sid: evodesign_engine::doc::StoryId, a: usize, b: usize) {
         let t = app.session.doc().unwrap().selection.text.unwrap();
         assert_eq!((t.story, t.range(), t.cell), (sid, a..b, None));
     }
 
-    fn scope_state_unchanged(app: &DesignApp, before: &designcraft_engine::DocState) {
+    fn scope_state_unchanged(app: &DesignApp, before: &evodesign_engine::DocState) {
         let after = app.session.doc().unwrap();
         assert!(std::sync::Arc::ptr_eq(&before.doc, &after.doc));
         assert_eq!(after.uid, before.uid);
@@ -9041,7 +9041,7 @@ mod tests {
             scope_click(&mut app, &ctx, screen, "Find Next");
             scope_selected(&app, sid, 2, 2);
             assert_eq!(app.session.doc().unwrap().doc.story(sid).unwrap().text, "é🙂");
-            let other_sid = designcraft_engine::doc::StoryId(other["story"].as_u64().unwrap());
+            let other_sid = evodesign_engine::doc::StoryId(other["story"].as_u64().unwrap());
             assert_eq!(app.session.doc().unwrap().doc.story(other_sid).unwrap().text, "other");
         }
     }
@@ -9082,7 +9082,7 @@ mod tests {
             scope_selected(&app, sid, 0, 3);
             let before = app.session.doc().unwrap().clone();
             let active = (app.session.active_index(), app.session.documents().len());
-            let off = app.session.layout().xf(designcraft_engine::doc::SpreadRef::Doc(0)).translation();
+            let off = app.session.layout().xf(evodesign_engine::doc::SpreadRef::Doc(0)).translation();
             let x = off.x + before.doc.spreads[0].pages[0].x + 200.0;
             let y = off.y + 200.0;
             // The Page tool opens Page Size on a double-click (a click selects the page).
@@ -9327,7 +9327,7 @@ mod tests {
         assert_eq!(app.session.doc().unwrap().doc.story(sid).unwrap().text, "red red | red");
         app.run("edit.redo", json!({})).unwrap();
         let native = app.run("file.serialize", json!({})).unwrap();
-        app.run("file.openBytes", json!({"name": "scope.designcraft", "base64": native["base64"]})).unwrap();
+        app.run("file.openBytes", json!({"name": "scope.evodesign", "base64": native["base64"]})).unwrap();
         assert_eq!(app.session.doc().unwrap().doc.story(sid).unwrap().text, "blue blue | red");
     }
 
@@ -9421,10 +9421,10 @@ mod tests {
         let point = {
             let st = app.session.doc().unwrap();
             let cs = app.session.cache.get(&st.doc, sid, None);
-            let (fi, x, baseline, ascent, _) = designcraft_compose::caret(&cs, 1).unwrap();
-            let inner = designcraft_geom::Point::new(x, baseline - ascent * 0.5);
+            let (fi, x, baseline, ascent, _) = evodesign_compose::caret(&cs, 1).unwrap();
+            let inner = evodesign_geom::Point::new(x, baseline - ascent * 0.5);
             assert_eq!(cs.frames[fi].frame, frame);
-            assert_eq!(designcraft_compose::hit(&cs, fi, inner), Some(1));
+            assert_eq!(evodesign_compose::hit(&cs, fi, inner), Some(1));
             let loc = st.doc.find(frame).unwrap();
             st.doc.parent_xf(&loc) * st.doc.text_xf(st.doc.item(frame).unwrap()) * inner
         };
@@ -9446,7 +9446,7 @@ mod tests {
     #[test]
     fn find_scope_dialog_failed_native_drop_alert_releases_bounds() {
         let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("broken.designcraft");
+        let path = directory.path().join("broken.evodesign");
         std::fs::write(&path, b"not a native document").unwrap();
         for dismissal in ["OK", "Escape", "control"] {
             let (mut app, ctx, screen, sid) = scope_dialog();
@@ -9588,7 +9588,7 @@ mod tests {
                 for (command, title, ok, cancel) in
                     [("app.preferences", "Preferences", "OK", "Cancel"), ("app.newDocumentDialog", "New Document", "Create", "Close")]
                 {
-                    let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+                    let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
                     app.ui.language = language.into();
                     app.run("file.new", json!({})).unwrap();
                     app.run(command, json!({})).unwrap();
@@ -9608,7 +9608,7 @@ mod tests {
 
     #[test]
     fn preferences_first_setting_switches_interface_language() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("app.preferences", json!({})).unwrap();
         let ctx = dialog_context("");
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1178.0, 814.0));
@@ -9670,7 +9670,7 @@ mod tests {
 
     #[test]
     fn preferences_sidebar_scroll_keeps_selected_options_visible() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("app.preferences", json!({})).unwrap();
         let ctx = dialog_context("en");
@@ -9697,7 +9697,7 @@ mod tests {
 
     #[test]
     fn preferences_horizontal_scroll_reaches_clipped_options() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("app.preferences", json!({})).unwrap();
         let ctx = dialog_context("en");
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(450.0, 280.0));
@@ -9735,7 +9735,7 @@ mod tests {
 
     #[test]
     fn new_document_vertical_scroll_reaches_every_field_and_preset() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("app.newDocumentDialog", json!({})).unwrap();
         let ctx = dialog_context("en");
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(392.0, 271.0));
@@ -9761,7 +9761,7 @@ mod tests {
     #[test]
     fn arabic_new_document_fields_remain_reachable_and_editable() {
         for size in [egui::vec2(392.0, 271.0), egui::vec2(450.0, 280.0), egui::vec2(1178.0, 814.0)] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             app.ui.language = "ar".into();
             app.run("app.newDocumentDialog", json!({})).unwrap();
             let fields = [("height", "66p1"), ("gutter", "1p2"), ("marginBottom", "3p3"), ("marginOutside", "3p4")];
@@ -9773,7 +9773,7 @@ mod tests {
             for _ in 0..3 {
                 dialog_frame(&mut app, &ctx, screen, vec![]);
             }
-            // With craft-fonts' Noto Sans Arabic the rows above are taller, so at the smallest size the
+            // With evo-fonts' Noto Sans Arabic the rows above are taller, so at the smallest size the
             // Height field starts partly below the body's clip: scroll to it like the other fields.
             let labels = dialog_frame(&mut app, &ctx, screen, vec![]);
             let (_, _, body) = labels.iter().find(|(text, _, _)| text.trim() == "66p1").expect("66p1 is painted");
@@ -9810,7 +9810,7 @@ mod tests {
             ("app.preferences", "Preferences", "recoveryMinutes", "OK", "Cancel"),
             ("app.newDocumentDialog", "New Document", "pages", "Create", "Close"),
         ] {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             app.run(command, json!({})).unwrap();
             let original = app.ui.dialog.as_ref().unwrap().fields[field].clone();
             app.ui.dialog.as_mut().unwrap().fields.insert(field.into(), json!(42));
@@ -9896,13 +9896,13 @@ mod tests {
         assert_eq!(f[0].hint, "%");
         assert_eq!(f[2].hint, "parent items (default: all)");
         // Every command with a "…" label parses without panicking.
-        for c in designcraft_engine::command_specs() {
+        for c in evodesign_engine::command_specs() {
             let _ = command_fields(c.params);
         }
     }
 
     fn test_app() -> crate::DesignApp {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({"pages": 1})).unwrap();
         app
     }
@@ -9951,12 +9951,12 @@ mod tests {
         app.ui.dialog = Some(Dialog::new("paragraphStyleOptions", json!({"name": name, "p.align": "center"})));
         confirm(&mut app).expect("OK saves the style edit");
         let st = app.session.active().unwrap();
-        assert_eq!(st.doc.styles.para(&name).unwrap().para.align, Some(designcraft_doc::Align::Center));
+        assert_eq!(st.doc.styles.para(&name).unwrap().para.align, Some(evodesign_doc::Align::Center));
     }
 
     #[test]
     fn paragraph_style_options_align_to_grid_shows_and_sets_the_style_grid_alignment() {
-        use designcraft_doc::GridAlign;
+        use evodesign_doc::GridAlign;
         use egui_kittest::kittest::Queryable;
         let mut app = test_app();
         app.session.execute("style.paragraph.create", &json!({"name": "Grid Body", "para": {"gridAlign": "firstLineOnly"}})).unwrap();
@@ -9987,12 +9987,12 @@ mod tests {
         app.session.execute("text.insert", &json!({"text": "Hello"})).unwrap();
         app.session.execute("text.select", &json!({"story": sid, "anchor": 0, "focus": 0})).unwrap();
         app.session.execute("style.paragraph.apply", &json!({"name": name})).unwrap();
-        app.ui.dialog = Some(Dialog::new("deleteParagraphStyle", json!({"name": name, "replaceWith": designcraft_doc::BASIC_PARAGRAPH})));
+        app.ui.dialog = Some(Dialog::new("deleteParagraphStyle", json!({"name": name, "replaceWith": evodesign_doc::BASIC_PARAGRAPH})));
         confirm(&mut app).expect("OK deletes the style");
         let st = app.session.active().unwrap();
         assert!(st.doc.styles.para(&name).is_none(), "style removed");
-        let story = st.doc.stories.get(&designcraft_doc::StoryId(sid)).unwrap();
-        assert_eq!(story.paras[0].style, designcraft_doc::BASIC_PARAGRAPH, "text reassigned to the replacement style");
+        let story = st.doc.stories.get(&evodesign_doc::StoryId(sid)).unwrap();
+        assert_eq!(story.paras[0].style, evodesign_doc::BASIC_PARAGRAPH, "text reassigned to the replacement style");
     }
 
     #[test]
@@ -10024,12 +10024,12 @@ mod tests {
         app.session.execute("text.insert", &json!({"text": "Hello"})).unwrap();
         app.session.execute("text.select", &json!({"story": sid, "anchor": 0, "focus": 5})).unwrap();
         app.session.execute("style.character.apply", &json!({"name": name})).unwrap();
-        app.ui.dialog = Some(Dialog::new("deleteCharacterStyle", json!({"name": name, "replaceWith": designcraft_doc::NO_CHAR_STYLE})));
+        app.ui.dialog = Some(Dialog::new("deleteCharacterStyle", json!({"name": name, "replaceWith": evodesign_doc::NO_CHAR_STYLE})));
         confirm(&mut app).expect("OK deletes the style");
         let st = app.session.active().unwrap();
         assert!(st.doc.styles.char_style(&name).is_none(), "style removed");
-        let story = st.doc.stories.get(&designcraft_doc::StoryId(sid)).unwrap();
-        assert_eq!(story.chars[0].format.style, designcraft_doc::NO_CHAR_STYLE, "text reassigned to the replacement style");
+        let story = st.doc.stories.get(&evodesign_doc::StoryId(sid)).unwrap();
+        assert_eq!(story.chars[0].format.style, evodesign_doc::NO_CHAR_STYLE, "text reassigned to the replacement style");
     }
 
     #[test]
@@ -10070,7 +10070,7 @@ mod tests {
         z.by_name("OEBPS/content.opf").unwrap().read_to_string(&mut opf).unwrap();
         assert!(opf.contains("properties=\"cover-image\""), "the first page is the cover: {opf}");
         assert!(z.by_name("OEBPS/content2.xhtml").is_ok(), "the split override reaches the export");
-        assert_eq!(app.session.active().unwrap().doc.settings.epub_split, designcraft_doc::EpubSplit::Off, "an override is not stored");
+        assert_eq!(app.session.active().unwrap().doc.settings.epub_split, evodesign_doc::EpubSplit::Off, "an override is not stored");
         crate::menus::export_epub(&mut app, &json!({"path": "book.epub", "cover": false})).unwrap();
         let bytes = written.lock().unwrap().clone();
         let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
@@ -10081,13 +10081,13 @@ mod tests {
 
     #[test]
     fn epub_export_options_store_split_document() {
-        use designcraft_doc::EpubSplit;
+        use evodesign_doc::EpubSplit;
         let mut app = test_app();
         app.session.execute("style.paragraph.create", &json!({"name": "Chapter"})).unwrap();
         let undo_steps = |app: &crate::DesignApp| app.session.active().map(|st| st.history.undo.len());
         app.run("app.exportEpub", json!({})).unwrap();
         let d = app.ui.dialog.as_mut().unwrap();
-        assert_eq!((d.id.as_str(), d.b("split"), d.s("style").as_str()), ("epubExport", false, designcraft_doc::BASIC_PARAGRAPH));
+        assert_eq!((d.id.as_str(), d.b("split"), d.s("style").as_str()), ("epubExport", false, evodesign_doc::BASIC_PARAGRAPH));
         d.fields.insert("split".into(), json!(true));
         d.fields.insert("style".into(), json!("Chapter"));
         let before = undo_steps(&app);
@@ -10215,7 +10215,7 @@ mod tests {
 
     #[test]
     fn open_pdf_export_seeds_fields_from_settings() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.ui.pdf_export.standard = "x4".into();
         app.ui.pdf_export.tagged = false;
         app.ui.pdf_export.marks_crop = true;
@@ -10256,7 +10256,7 @@ mod tests {
     #[test]
     fn confirm_pdf_export_writes_file_and_persists_settings() {
         use std::sync::{Arc, Mutex};
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let writes: Arc<Mutex<Vec<(String, Vec<u8>)>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = writes.clone();
@@ -10264,7 +10264,7 @@ mod tests {
             sink.lock().unwrap().push((path.to_string(), bytes.to_vec()));
             Ok(())
         }));
-        app.services.pick_save = Some(Box::new(|_name: &str| Some("/tmp/designcraft-test.pdf".to_string())));
+        app.services.pick_save = Some(Box::new(|_name: &str| Some("/tmp/evodesign-test.pdf".to_string())));
 
         app.ui.dialog = Some(Dialog::new("pdfExport", json!({})));
         {
@@ -10279,7 +10279,7 @@ mod tests {
 
         let got = writes.lock().unwrap();
         assert_eq!(got.len(), 1, "confirming the dialog writes exactly one file");
-        assert_eq!(got[0].0, "/tmp/designcraft-test.pdf");
+        assert_eq!(got[0].0, "/tmp/evodesign-test.pdf");
         assert!(got[0].1.starts_with(b"%PDF"), "the written bytes are a PDF");
         drop(got);
 
@@ -10296,11 +10296,11 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("note.txt");
         std::fs::write(&path, "One").unwrap();
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let r = app.session.execute("file.place", &json!({"path": path.to_string_lossy(), "link": true, "rect": [72, 72, 300, 200]})).unwrap();
         let sid = r["story"].as_u64().unwrap();
-        let text = |app: &crate::DesignApp| app.session.doc().unwrap().doc.story(designcraft_doc::StoryId(sid)).unwrap().text.clone();
+        let text = |app: &crate::DesignApp| app.session.doc().unwrap().doc.story(evodesign_doc::StoryId(sid)).unwrap().text.clone();
 
         // Not edited in the layout: updates without asking.
         std::fs::write(&path, "Two").unwrap();
@@ -10329,7 +10329,7 @@ mod tests {
     #[test]
     fn confirm_pdf_export_cancelled_save_writes_nothing() {
         use std::sync::{Arc, Mutex};
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.session.execute("file.new", &json!({})).unwrap();
         let writes: Arc<Mutex<Vec<(String, Vec<u8>)>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = writes.clone();
@@ -10345,11 +10345,11 @@ mod tests {
         assert!(writes.lock().unwrap().is_empty(), "cancelling the save picker must not write");
     }
 
-    use designcraft_doc::{CharAttrs, CharacterStyle};
+    use evodesign_doc::{CharAttrs, CharacterStyle};
 
     /// A document with character styles Base (bold) and Emphasis (italic) on the first two letters.
     fn styled_app() -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("style.character.create", json!({"name": "Base", "chars": {"fontStyle": "Bold"}})).unwrap();
         app.run("style.character.create", json!({"name": "Emphasis", "chars": {"fontStyle": "Italic"}})).unwrap();
@@ -10427,10 +10427,10 @@ mod tests {
         let d = app.ui.dialog.clone().unwrap();
         assert_eq!((d.id.as_str(), d.b("new"), d.s("rename").as_str()), ("paragraphStyleOptions", true, "Paragraph Style 1"));
         ctl(&mut app, "ui.dialog.set", json!({"field": "c.size", "value": 20}));
-        ctl(&mut app, "ui.dialog.set", json!({"field": "basedOn", "value": designcraft_doc::BASIC_PARAGRAPH}));
+        ctl(&mut app, "ui.dialog.set", json!({"field": "basedOn", "value": evodesign_doc::BASIC_PARAGRAPH}));
         assert_eq!(ctl(&mut app, "ui.dialog.confirm", json!({}))["ok"], true);
         let st = app.session.active().unwrap().doc.styles.para("Paragraph Style 1").cloned().unwrap();
-        assert_eq!(st.based_on.as_deref(), Some(designcraft_doc::BASIC_PARAGRAPH));
+        assert_eq!(st.based_on.as_deref(), Some(evodesign_doc::BASIC_PARAGRAPH));
         assert_eq!(st.chars, CharAttrs { size: Some(20.0), ..Default::default() });
     }
 
@@ -10440,9 +10440,9 @@ mod tests {
         open_style_options(&mut app, false, "Emphasis");
         let d = app.ui.dialog.take().unwrap();
         assert_eq!((d.id.as_str(), d.s("name").as_str()), ("characterStyleOptions", "Emphasis"));
-        open_style_options(&mut app, false, designcraft_doc::NO_CHAR_STYLE);
+        open_style_options(&mut app, false, evodesign_doc::NO_CHAR_STYLE);
         assert!(app.ui.dialog.is_none());
-        open_style_options(&mut app, true, designcraft_doc::BASIC_PARAGRAPH);
+        open_style_options(&mut app, true, evodesign_doc::BASIC_PARAGRAPH);
         assert_eq!(app.ui.dialog.take().unwrap().id, "paragraphStyleOptions");
     }
 
@@ -10495,7 +10495,7 @@ mod tests {
 
     #[test]
     fn shortcut_recorder_waits_for_the_key_after_its_modifiers() {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         let mut d = Dialog::new("keyboardShortcuts", json!({"query": "", "recording": "app.palette"}));
         let ctx = egui::Context::default();
         let key = |key, modifiers| egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers };
@@ -10525,7 +10525,7 @@ mod tests {
             h.run_steps(3);
         }
         let rect = |h: &Harness<'static, DesignApp>| h.ctx.memory(|m| m.area_rect(egui::Id::new("dialog"))).unwrap();
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.ui.dialog = Some(Dialog::new("insertTable", Value::Null));
         let mut ready = false;
@@ -10578,7 +10578,7 @@ mod tests {
         use egui::{Event, Modifiers, PointerButton, vec2};
         use egui_kittest::{Harness, kittest::Queryable};
         let rect = |h: &Harness<'static, DesignApp>| h.ctx.memory(|m| m.area_rect(egui::Id::new("dialog"))).unwrap();
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"title": "A"})).unwrap();
         app.ui.new_document_preview = true;
         app.run("app.newDocumentDialog", json!({})).unwrap();
@@ -10622,7 +10622,7 @@ mod tests {
 
     #[test]
     fn margins_dialog_reads_bare_numbers_in_the_ruler_unit() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("document.preferences", json!({"horizontalUnits": "millimeters"})).unwrap();
         crate::menus::activate(&mut app, "layout.marginsAndColumns", &Value::Null);
@@ -10634,7 +10634,7 @@ mod tests {
         assert!((top - 15.0 * 72.0 / 25.4).abs() < 0.01, "top margin was {top} pt");
     }
     fn facing_app(pages: u64) -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": pages, "facingPages": true})).unwrap();
         app.canvas_rect = Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1400.0, 900.0)));
         app
@@ -10696,6 +10696,6 @@ mod tests {
         ctl(&mut app, "ui.dialog.open", json!({"id": "characterStyleOptions", "fields": {"name": "Emphasis"}}));
         ctl(&mut app, "ui.dialog.set", json!({"field": "c.digits", "value": "farsi"}));
         assert_eq!(ctl(&mut app, "ui.dialog.confirm", json!({}))["ok"], true);
-        assert_eq!(char_style(&app, "Emphasis").unwrap().chars.digits, Some(designcraft_doc::Digits::Farsi));
+        assert_eq!(char_style(&app, "Emphasis").unwrap().chars.digits, Some(evodesign_doc::Digits::Farsi));
     }
 }

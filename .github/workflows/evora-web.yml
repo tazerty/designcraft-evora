@@ -1,7 +1,7 @@
-# Evora : build web (wasm) de la branche evora/<tag-amont> du fork tazerty/designcraft.
+# Evora : build web (wasm) de la branche evora/<tag-amont> du fork tazerty/evodesign.
 #
 # Écrit par Evora (patch EVORA-CIC-00) à partir de packaging/web/package.sh et packaging/env.sh de
-# l'amont storytold/designcraft (MIT OR Apache-2.0). Rien n'est repris de storytold/craft-common-actions.
+# l'amont (MIT OR Apache-2.0). Rien n'est repris de ses actions communes.
 # Les workflows amont (freebsd, nix, packaging-lint, release, windows-arm64, et depuis v0.13.0 ci et
 # sonarcloud) sont retirés de cette branche ; seul ce workflow y vit.
 #
@@ -28,7 +28,8 @@
 # d'affichage et dans la page servie hors .wasm ; la fumée « pont-ehp » juge aussi les textes servis dans
 # chaque langue, le thème, les espaces de travail, les menus et les raccourcis d'Evora (EVORA-CIC-02 à 22),
 # les commandes destructives du catalogue livré (règle du 2026-10-27, marqueurs de retrait) et les pictogrammes
-# d'Evora ; porte des pictogrammes d'Evora à la source (EVORA-CIC-22).
+# d'Evora ; porte des pictogrammes d'Evora à la source (EVORA-CIC-22). Depuis EVORA-CIC-27 : porte zéro terme (le
+# nom amont retiré n'apparaît plus dans le site, binaires compris, hors LICENSES/ ; zero-terme.py et son autotest).
 # Portes en RAPPORT : termes dans tout le bundle (identifiants fonctionnels du .wasm), taille (budget non
 # arbitré), fumée sous la CSP cible,
 # nom amont dans tout le bundle (couches moteur L1 à L5 : messages, profils, métadonnées des fichiers
@@ -82,12 +83,12 @@ env:
   # 2026-09-18 qui porte les deux correctifs de synthesize_manifest (index rebasé, guillemet fermant) ;
   # le Cargo.toml de ce commit annonce encore 0.9.2. Aucune release ne les porte au 2026-10-19.
   CARGO_ABOUT_REV: "d7c169da07c684c5a80f75aab8a1dd7df660bc4b"
-  # craft-fonts : commit passé par l'amont lui-même (release.yml au tag, ligne craft-fonts-ref ;
-  # a71c20e3 à v0.13.0, abb83316 à v0.9.0).
-  CRAFT_FONTS_REF: "a71c20e30af613287c504f7e685ca8fad77752bc"
+  # tazerty/evo-fonts : copie, sans l'ancien nom, du paquet de polices libres que l'amont épingle dans son
+  # release.yml au tag (révision d'origine a71c20e3 à v0.13.0).
+  EVO_FONTS_REF: "694feb975e8c85807341856d54c4973949dac49e"
   # Slug de build Evora de cette application (D-P18 a) ; consigné dans EVORA-BUILD.txt.
   EVORA_BUILD_SLUG: "layout"
-  WEB_MANIFEST: "apps/designcraft-web/Cargo.toml"
+  WEB_MANIFEST: "apps/evodesign-web/Cargo.toml"
 
 jobs:
   licences:
@@ -250,7 +251,9 @@ jobs:
             cat "$log"; echo "::error::témoin cargo-deny : une source git non admise (indd-utils) passe la porte"; exit 1
           fi
           ncodes="$(grep -oE '^error\[[a-z0-9-]+\]' "$log" | sort -u | wc -l | tr -d ' ' || true)"
-          if grep -q 'sources FAILED' "$log" && grep -q 'indd-utils' "$log" && ! grep -qE 'craft-libs|pdfcraft' "$log" && [ "$ncodes" = 1 ]; then
+          # Toute source git nommée par le journal doit être celle retirée, jamais l'autre source admise (winit).
+          others="$(grep -E 'git[+]https://' "$log" | grep -vc 'indd-utils' || true)"
+          if grep -q 'sources FAILED' "$log" && grep -q 'indd-utils' "$log" && [ "$others" = 0 ] && [ "$ncodes" = 1 ]; then
             echo "Témoin cargo-deny OK : $(grep -c '^error\[' "$log") erreur(s) sur storytold/indd-utils seulement"
           else
             cat "$log"; echo "::error::témoin cargo-deny : le rouge ne porte pas exactement sur la source retirée"; exit 1
@@ -308,14 +311,14 @@ jobs:
       - name: Absence de stockage du moteur (EVORA-CIC-04 ; bloquante)
         id: storage
         continue-on-error: true
-        run: python3 -I .github/evora/gates.py storage-guard apps/designcraft-web/Cargo.toml Cargo.toml "$GITHUB_STEP_SUMMARY"
+        run: python3 -I .github/evora/gates.py storage-guard apps/evodesign-web/Cargo.toml Cargo.toml "$GITHUB_STEP_SUMMARY"
 
-      - name: Checkout de craft-fonts (commit épinglé)
+      - name: Checkout de evo-fonts (commit épinglé)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: storytold/craft-fonts
-          ref: ${{ env.CRAFT_FONTS_REF }}
-          path: evora-ci/craft-fonts
+          repository: tazerty/evo-fonts
+          ref: ${{ env.EVO_FONTS_REF }}
+          path: evora-ci/evo-fonts
           persist-credentials: false
 
       - name: Tag amont et nom de l'artefact
@@ -335,8 +338,8 @@ jobs:
             in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
           ' Cargo.toml)"
           [ "v$VERSION" = "$TAG" ] || { echo "::error::Cargo.toml annonce $VERSION alors que la branche vise $TAG"; exit 1; }
-          have="$(git -C evora-ci/craft-fonts rev-parse HEAD)"
-          [ "$have" = "$CRAFT_FONTS_REF" ] || { echo "::error::craft-fonts au commit $have, épinglé $CRAFT_FONTS_REF"; exit 1; }
+          have="$(git -C evora-ci/evo-fonts rev-parse HEAD)"
+          [ "$have" = "$EVO_FONTS_REF" ] || { echo "::error::evo-fonts au commit $have, épinglé $EVO_FONTS_REF"; exit 1; }
           {
             echo "tag=$TAG"
             echo "name=evora-layout-web-$TAG"
@@ -344,7 +347,7 @@ jobs:
             echo "epoch=$(git log -1 --format=%ct)"
             echo "report=$RUNNER_TEMP/evora-portes.md"
           } >> "$GITHUB_OUTPUT"
-          printf '## Evora : build web %s\n\nCommit `%s` ; craft-fonts `%s`.\n\n' "$TAG" "$(git rev-parse HEAD)" "$CRAFT_FONTS_REF" > "$RUNNER_TEMP/evora-portes.md"
+          printf '## Evora : build web %s\n\nCommit `%s` ; evo-fonts `%s`.\n\n' "$TAG" "$(git rev-parse HEAD)" "$EVO_FONTS_REF" > "$RUNNER_TEMP/evora-portes.md"
 
       - name: Rust (rustup, version épinglée) et cible wasm32
         run: |
@@ -406,10 +409,10 @@ jobs:
         run: cargo fetch --locked
 
       - name: Build web release (trunk hors ligne)
-        working-directory: apps/designcraft-web
+        working-directory: apps/evodesign-web
         env:
-          CRAFT_FONTS_DIR: ${{ github.workspace }}/evora-ci/craft-fonts
-          CRAFT_FONTS_REQUIRED: "1"
+          EVO_FONTS_DIR: ${{ github.workspace }}/evora-ci/evo-fonts
+          EVO_FONTS_REQUIRED: "1"
           TRUNK_TOOLS_WASM_BINDGEN: ${{ env.WASM_BINDGEN_VERSION }}
           TRUNK_TOOLS_WASM_OPT: ${{ env.BINARYEN_VERSION }}
         run: |
@@ -429,7 +432,7 @@ jobs:
         env:
           NAME: ${{ steps.meta.outputs.name }}
           COMMIT: ${{ steps.meta.outputs.commit }}
-          CRAFT_FONTS_DIR: ${{ github.workspace }}/evora-ci/craft-fonts
+          EVO_FONTS_DIR: ${{ github.workspace }}/evora-ci/evo-fonts
         run: |
           set -euo pipefail
           SITE="$GITHUB_WORKSPACE/dist/web"
@@ -448,8 +451,8 @@ jobs:
           for f in LICENSE-MIT LICENSE-APACHE NOTICE ASSETS.md; do
             if [ -f "$f" ]; then cp "$f" "$PKG/LICENSES/"; fi
           done
-          # Licences des polices craft-fonts embarquées (logique de copy_font_licences, packaging/env.sh).
-          for f in "$CRAFT_FONTS_DIR"/fonts/*/OFL.txt; do
+          # Licences des polices evo-fonts embarquées (logique de copy_font_licences, packaging/env.sh).
+          for f in "$EVO_FONTS_DIR"/fonts/*/OFL.txt; do
             if [ -f "$f" ]; then cp "$f" "$PKG/LICENSES/OFL-$(basename "$(dirname "$f")").txt"; fi
           done
           cp "$RUNNER_TEMP/evora-about/THIRD-PARTY-LICENSES.txt" "$PKG/LICENSES/THIRD-PARTY-LICENSES.txt"
@@ -464,7 +467,7 @@ jobs:
             echo "trunk: $(trunk --version)"
             echo "wasm-bindgen: $(wasm-bindgen --version)"
             echo "wasm-opt: $(wasm-opt --version)"
-            echo "craft-fonts: $CRAFT_FONTS_REF"
+            echo "evo-fonts: $EVO_FONTS_REF"
           } > "$PKG/EVORA-BUILD.txt"
           { echo "work=$WORK"; echo "pkg=$PKG"; echo "out=$OUT"; } >> "$GITHUB_OUTPUT"
 
@@ -489,6 +492,16 @@ jobs:
           PKG: ${{ steps.pkg.outputs.pkg }}
           REPORT: ${{ steps.meta.outputs.report }}
         run: python3 -I .github/evora/gates.py brands-ui "$GITHUB_WORKSPACE" "$PKG" "$REPORT"
+
+      - name: Porte zéro terme (nom amont retiré absent du site, hors LICENSES/ ; EVORA-CIC-27 ; bloquante)
+        id: zero_term
+        continue-on-error: true
+        env:
+          PKG: ${{ steps.pkg.outputs.pkg }}
+        run: |
+          set -euo pipefail
+          python3 -I .github/evora/zero-terme.py selftest
+          python3 -I .github/evora/zero-terme.py check "$PKG"
 
       - name: Porte des liens sortants (E7, EVORA-CIC-05 ; bloquante)
         id: links
@@ -562,13 +575,14 @@ jobs:
         env:
           PKG: ${{ steps.pkg.outputs.pkg }}
           REPORT: ${{ steps.meta.outputs.report }}
-        run: python3 -I .github/evora/smoke_ehp.py "$PKG" "$GITHUB_WORKSPACE/evora-ci/craft-fonts" "$GITHUB_WORKSPACE/evora-ci/smoke" "$REPORT"
+        run: python3 -I .github/evora/smoke_ehp.py "$PKG" "$GITHUB_WORKSPACE/evora-ci/evo-fonts" "$GITHUB_WORKSPACE/evora-ci/smoke" "$REPORT"
 
       - name: Verdict des portes (ensemble exact des portes rouges)
         env:
           STORAGE: ${{ steps.storage.outcome }}
           BRANDS: ${{ steps.brands.outcome }}
           BRANDS_UI: ${{ steps.brands_ui.outcome }}
+          ZERO_TERM: ${{ steps.zero_term.outcome }}
           LINKS: ${{ steps.links.outcome }}
           EMOJIS: ${{ steps.emojis.outcome }}
           ICONS: ${{ steps.icons.outcome }}
@@ -579,7 +593,7 @@ jobs:
           REPORT: ${{ steps.meta.outputs.report }}
         run: |
           red=""
-          for pair in "stockage:$STORAGE" "marques:$BRANDS" "nom-amont-affichage:$BRANDS_UI" "liens:$LINKS" \
+          for pair in "stockage:$STORAGE" "marques:$BRANDS" "nom-amont-affichage:$BRANDS_UI" "zero-terme:$ZERO_TERM" "liens:$LINKS" \
                       "emojis:$EMOJIS" "pictogrammes:$ICONS" "termes-affichage:$TERMS_UI" "termes-page:$TERMS_PAGE" \
                       "pont-ehp:$SMOKE_EHP" \
                       "job-licences:$LICENCES"; do

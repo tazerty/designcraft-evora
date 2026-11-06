@@ -1,0 +1,26 @@
+[package]
+name = "evo-pdf"
+description = "Shared PDF reading, rendering and optional writing for Evo apps"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "vendor/evo-libs"
+rust-version = "1.95"
+
+[features]
+default = []
+read = ["dep:hayro-syntax", "dep:thiserror"]
+interpret = ["read", "dep:hayro-interpret"]
+raster = ["interpret", "dep:hayro", "dep:bytemuck"]
+write = ["dep:krilla", "dep:thiserror"]
+write-pdf = ["write", "krilla/pdf"]
+write-simple-text = ["write", "krilla/simple-text"]
+
+[dependencies]
+hayro-syntax = { version = "=0.7.2", default-features = false, features = ["std"], optional = true }
+hayro-interpret = { version = "=0.7.0", default-features = false, features = ["embed-fonts", "embed-cmaps"], optional = true }
+hayro = { version = "=0.7.1", default-features = false, optional = true }
+bytemuck = { version = "1", optional = true }
+krilla = { version = "=0.8.2", default-features = false, features = ["raster-images"], optional = true }
+thiserror = { version = "2", optional = true }
+

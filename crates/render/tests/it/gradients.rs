@@ -1,12 +1,12 @@
 //! Gradient fills: InDesign stretches a radial gradient with the object's box.
 
-use designcraft_color::swatch::{Swatch, SwatchValue};
-use designcraft_color::{Color, Gradient, GradientKind, GradientStop};
-use designcraft_compose::Cache;
-use designcraft_doc::build::NewDocument;
-use designcraft_doc::{Document, Fill, Item, ItemId, Shape, SpreadRef};
-use designcraft_geom::{Affine, Rect, Vec2, shapes};
-use designcraft_render::{Placed, RenderOptions, Rendered, Renderer};
+use evodesign_color::swatch::{Swatch, SwatchValue};
+use evodesign_color::{Color, Gradient, GradientKind, GradientStop};
+use evodesign_compose::Cache;
+use evodesign_doc::build::NewDocument;
+use evodesign_doc::{Document, Fill, Item, ItemId, Shape, SpreadRef};
+use evodesign_geom::{Affine, Rect, Vec2, shapes};
+use evodesign_render::{Placed, RenderOptions, Rendered, Renderer};
 
 /// A 100×200 rectangle at (50, 20) filled with a black-to-white radial gradient.
 fn portrait(vector: Option<[f64; 4]>) -> Document {

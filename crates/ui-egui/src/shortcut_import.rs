@@ -3,7 +3,7 @@
 //!
 //! The file lists items under `Product area : <area>` headers, one per line:
 //! `<name> --- [none defined]` or `<name> --- <context>: <keys>, <context>: <keys>`. Item names
-//! use `: ` between submenu levels. Only the Default context applies (DesignCraft has no
+//! use `: ` between submenu levels. Only the Default context applies (EvoDesign has no
 //! shortcut contexts); a type command with no Default entry takes its Text entry.
 
 use std::collections::{BTreeSet, HashMap};
@@ -58,7 +58,7 @@ pub fn decode(bytes: &[u8]) -> Result<String, String> {
 /// Reads and decodes a set file, refusing one over [`MAX_BYTES`].
 pub fn read_file(path: &str) -> Result<String, String> {
     let cap = u64::try_from(MAX_BYTES).unwrap_or(u64::MAX);
-    let bytes = designcraft_engine::io::read_capped(path, cap).map_err(|e| format!("can't read {path}: {e}"))?;
+    let bytes = evodesign_engine::io::read_capped(path, cap).map_err(|e| format!("can't read {path}: {e}"))?;
     decode(&bytes)
 }
 
@@ -141,7 +141,7 @@ enum Mod {
 }
 
 /// Keys as InDesign writes them (`Shift+Ctrl+S`, `Ctrl+Num 5`, `Page Down`, `⇧⌘S`) as a
-/// DesignCraft shortcut string (`Cmd+Shift+S`). Ctrl is the command modifier in a Windows set.
+/// EvoDesign shortcut string (`Cmd+Shift+S`). Ctrl is the command modifier in a Windows set.
 fn read_keys(keys: &str, mac: bool) -> Result<String, &'static str> {
     const SYMBOLS: &[(&str, Mod)] = &[("⌘", Mod::Command), ("⌥", Mod::Alt), ("⇧", Mod::Shift), ("⌃", Mod::Control)];
     const WORDS: &[(&str, Mod)] = &[
@@ -238,7 +238,7 @@ fn norm(s: &str) -> String {
     ["show/hide ", "show ", "hide "].iter().find_map(|p| s.strip_prefix(p).filter(|r| !r.is_empty())).map_or(s.clone(), str::to_string)
 }
 
-/// DesignCraft's commands by menu path and label.
+/// EvoDesign's commands by menu path and label.
 #[derive(Default)]
 struct Index {
     /// `menu\nsubmenu\nlabel` → ids, in the menu bar.
@@ -278,7 +278,7 @@ impl Index {
         for (menu, entries) in menus::menu_tree() {
             walk(&mut ix, &entries, &mut vec![norm(menu)]);
         }
-        for c in designcraft_engine::command_specs() {
+        for c in evodesign_engine::command_specs() {
             let label = norm(c.label);
             if !c.menu.is_empty() {
                 let path: Vec<String> = c.menu.iter().map(|m| norm(m)).collect();
@@ -333,7 +333,7 @@ fn add_path(map: &mut HashMap<String, BTreeSet<String>>, path: &[String], label:
     map.entry(key).or_default().insert(id.to_string());
 }
 
-/// What the set says about one DesignCraft command, over every item matched to it.
+/// What the set says about one EvoDesign command, over every item matched to it.
 struct Decision {
     id: String,
     item: String,
@@ -346,7 +346,7 @@ struct Decision {
 fn command_label(id: &str) -> String {
     menus::ui_label(id)
         .map(|(l, _)| l.to_string())
-        .or_else(|| designcraft_engine::find_command(id).map(|c| c.label.to_string()))
+        .or_else(|| evodesign_engine::find_command(id).map(|c| c.label.to_string()))
         .unwrap_or_else(|| id.to_string())
 }
 
@@ -375,7 +375,7 @@ pub fn import(app: &mut DesignApp, text: &str) -> Result<Value, String> {
                 unmatched_without_shortcut += 1;
             } else {
                 let tool = norm(&item.area) == "tools"
-                    && designcraft_tools::TOOL_GROUPS.iter().flat_map(|g| g.iter()).any(|t| norm(t.label) == norm(&item.name));
+                    && evodesign_tools::TOOL_GROUPS.iter().flat_map(|g| g.iter()).any(|t| norm(t.label) == norm(&item.name));
                 let mut row = json!({"item": shown, "keys": all_keys});
                 if tool {
                     row["reason"] = json!("tool keys are fixed");
@@ -427,7 +427,7 @@ pub fn import(app: &mut DesignApp, text: &str) -> Result<Value, String> {
     let mut skipped = Vec::new();
     let mut decided: BTreeSet<String> = BTreeSet::new();
     // When two items in the set want the same keys, the later one takes them (the rule shared by
-    // the Craft apps' importers).
+    // the Evo apps' importers).
     let mut winner: HashMap<(bool, bool, bool, bool, egui::Key), usize> = HashMap::new();
     for (i, d) in decisions.iter().enumerate() {
         if let Some(keys) = d.shortcut.as_deref().and_then(keys_of) {
@@ -548,7 +548,7 @@ mod tests {
     use super::*;
 
     fn app() -> DesignApp {
-        DesignApp::new(designcraft_engine::Session::new(), crate::Services::default())
+        DesignApp::new(evodesign_engine::Session::new(), crate::Services::default())
     }
 
     #[test]

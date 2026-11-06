@@ -21,7 +21,7 @@ fn harness(app: DesignApp) -> Harness<'static, DesignApp> {
 
 /// A page with vertical guides at x 200 and 300 and a horizontal one at y 400.
 fn with_guides() -> Harness<'static, DesignApp> {
-    let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+    let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({})).unwrap();
     for (orientation, position) in [("vertical", 200.0), ("vertical", 300.0), ("horizontal", 400.0)] {
         app.run("guide.add", json!({"orientation": orientation, "position": position})).unwrap();
@@ -98,7 +98,7 @@ fn clicking_guides_selects_them_and_shift_click_adds_or_removes() {
     let at = screen_of(&h, 450.0, 150.0);
     click(&mut h, at, Modifiers::NONE);
     assert!(selected(&h).is_empty());
-    assert_eq!(h.state().session.doc().unwrap().selection.items, [designcraft_doc::ItemId(id)]);
+    assert_eq!(h.state().session.doc().unwrap().selection.items, [evodesign_doc::ItemId(id)]);
     // With View › Lock Guides on, guides can't be selected, and selected ones are deselected.
     h.state_mut().run("guide.selectAll", json!({})).unwrap();
     h.state_mut().ui.guides_locked = true;
@@ -142,7 +142,7 @@ fn a_marquee_selects_guides_only_when_it_touches_no_object() {
     let (a, b) = (screen_of(&h, 150.0, 500.0), screen_of(&h, 350.0, 550.0));
     drag(&mut h, a, b);
     assert!(selected(&h).is_empty());
-    assert_eq!(h.state().session.doc().unwrap().selection.items, [designcraft_doc::ItemId(id)]);
+    assert_eq!(h.state().session.doc().unwrap().selection.items, [evodesign_doc::ItemId(id)]);
 }
 
 #[test]
@@ -216,7 +216,7 @@ fn a_guide_over_a_frame_takes_the_click() {
     // Away from the guide, a click inside the frame selects it.
     let at = screen_of(&h, 160.0, 530.0);
     click(&mut h, at, Modifiers::NONE);
-    assert_eq!(h.state().session.doc().unwrap().selection.items, [designcraft_doc::ItemId(id)]);
+    assert_eq!(h.state().session.doc().unwrap().selection.items, [evodesign_doc::ItemId(id)]);
     assert!(selected(&h).is_empty());
 }
 
@@ -239,7 +239,7 @@ fn dragging_one_of_several_selected_guides_previews_them_all() {
     h.state_mut().run("guide.select", json!({"guides": [{"page": 0, "index": 0}, {"page": 0, "index": 2}]})).unwrap();
     let (a, b) = (screen_of(&h, 200.0, 600.0), screen_of(&h, 250.0, 620.0));
     let g =
-        GuideDrag { orientation: designcraft_doc::Orientation::Vertical, from: Some((SpreadRef::Doc(0), 0, 0)), at: Some(b), mods: Modifiers::NONE };
+        GuideDrag { orientation: evodesign_doc::Orientation::Vertical, from: Some((SpreadRef::Doc(0), 0, 0)), at: Some(b), mods: Modifiers::NONE };
     let press = GuidePress { origin: a, shift: false };
     let app = h.state();
     let xf = Xf::new(app.canvas_rect.unwrap(), app.view().unwrap());
@@ -261,7 +261,7 @@ fn pt_per_px(h: &Harness<'_, DesignApp>) -> f64 {
 
 /// A letter page with two columns: the left column's right side.
 fn with_columns() -> (Harness<'static, DesignApp>, f64) {
-    let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+    let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"preset": "Letter", "columns": 2, "gutter": 18, "margins": 54})).unwrap();
     app.run("guide.add", json!({"orientation": "vertical", "position": 200.0})).unwrap();
     let side = app.session.doc().unwrap().doc.spreads[0].pages[0].column_rects()[0].x1;
@@ -300,7 +300,7 @@ fn a_dragged_guide_snaps_to_a_frame_edge_with_a_smart_guide() {
     let near = 400.0 + 1.5 * pt_per_px(&h);
     let (a, b) = (screen_of(&h, 200.0, 600.0), screen_of(&h, near, 600.0));
     let g =
-        GuideDrag { orientation: designcraft_doc::Orientation::Vertical, from: Some((SpreadRef::Doc(0), 0, 0)), at: Some(b), mods: Modifiers::NONE };
+        GuideDrag { orientation: evodesign_doc::Orientation::Vertical, from: Some((SpreadRef::Doc(0), 0, 0)), at: Some(b), mods: Modifiers::NONE };
     {
         let app = h.state();
         let xf = Xf::new(app.canvas_rect.unwrap(), app.view().unwrap());

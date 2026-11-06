@@ -1,8 +1,8 @@
-//! DesignCraft fonts: the font database (bundled OFL families + user/system fonts), vertical
+//! EvoDesign fonts: the font database (bundled OFL families + user/system fonts), vertical
 //! metrics, glyph outlines and OpenType shaping.
 //!
 //! Shaping here is style-agnostic: [`shape`] turns a string in one face into glyph ids, clusters
-//! and advances in font units. `designcraft-compose` applies sizes, tracking, scaling and
+//! and advances in font units. `evodesign-compose` applies sizes, tracking, scaling and
 //! justification on top.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
@@ -30,9 +30,9 @@ pub use kurbo::BezPath;
 use skrifa::MetadataProvider;
 use skrifa::instance::Size;
 
-/// A font from the optional craft-fonts build input (https://github.com/storytold/craft-fonts;
-/// empty unless built with `CRAFT_FONTS_DIR`, see `build.rs`).
-pub struct CraftFont {
+/// A font from the optional evo-fonts build input (https://github.com/tazerty/evo-fonts;
+/// empty unless built with `EVO_FONTS_DIR`, see `build.rs`).
+pub struct EvoFont {
     pub family: &'static str,
     pub style: &'static str,
     /// ISO 15924 scripts the font is for, e.g. `"Jpan"`.
@@ -40,16 +40,16 @@ pub struct CraftFont {
     pub bytes: &'static [u8],
 }
 
-include!(concat!(env!("OUT_DIR"), "/craft_fonts.rs"));
+include!(concat!(env!("OUT_DIR"), "/evo_fonts.rs"));
 
-/// The craft-fonts faces for Japanese (`"Jpan"`), in manifest order. Empty without craft-fonts.
-pub fn japanese_fonts() -> impl Iterator<Item = &'static CraftFont> {
-    CRAFT_FONTS.iter().filter(|f| f.scripts.contains(&"Jpan"))
+/// The evo-fonts faces for Japanese (`"Jpan"`), in manifest order. Empty without evo-fonts.
+pub fn japanese_fonts() -> impl Iterator<Item = &'static EvoFont> {
+    EVO_FONTS.iter().filter(|f| f.scripts.contains(&"Jpan"))
 }
 
 /// Japanese faces in document-fallback order: Mincho (serif) families first, matching the
 /// serif default text font, then the others; Regular before other styles.
-pub fn japanese_document_fonts() -> Vec<&'static CraftFont> {
+pub fn japanese_document_fonts() -> Vec<&'static EvoFont> {
     let mut v: Vec<_> = japanese_fonts().collect();
     v.sort_by_key(|f| (!f.family.contains("Mincho"), f.style != "Regular"));
     v
@@ -57,7 +57,7 @@ pub fn japanese_document_fonts() -> Vec<&'static CraftFont> {
 
 /// Japanese faces in UI order: BIZ UDPGothic first (the UI face), then the others; `bold` puts
 /// bold styles before regular ones.
-pub fn japanese_ui_fonts(bold: bool) -> Vec<&'static CraftFont> {
+pub fn japanese_ui_fonts(bold: bool) -> Vec<&'static EvoFont> {
     let mut v: Vec<_> = japanese_fonts().collect();
     v.sort_by_key(|f| (f.family != "BIZ UDPGothic", (f.style == "Bold") != bold));
     v
@@ -577,13 +577,13 @@ mod tests {
     }
 
     #[test]
-    fn craft_fonts_japanese_faces_cover_japanese_and_have_vertical_forms() {
-        if CRAFT_FONTS.is_empty() {
-            eprintln!("skipped: built without craft-fonts (set CRAFT_FONTS_DIR to a checkout)");
+    fn evo_fonts_japanese_faces_cover_japanese_and_have_vertical_forms() {
+        if EVO_FONTS.is_empty() {
+            eprintln!("skipped: built without evo-fonts (set EVO_FONTS_DIR to a checkout)");
             return;
         }
         let fonts = japanese_document_fonts();
-        assert!(!fonts.is_empty(), "craft-fonts has Japanese fonts");
+        assert!(!fonts.is_empty(), "evo-fonts has Japanese fonts");
         assert!(fonts[0].family.contains("Mincho"), "documents fall back to a Mincho first");
         assert_eq!(japanese_ui_fonts(false)[0].family, "BIZ UDPGothic");
         assert_eq!(japanese_ui_fonts(true)[0].style, "Bold");
@@ -602,7 +602,7 @@ mod tests {
             assert_eq!(horizontal.len(), vertical.len());
             assert!(horizontal.iter().zip(&vertical).any(|(h, v)| h.gid != v.gid), "{} has vertical forms", cf.family);
         }
-        // Japanese in a Latin face falls back to a craft-fonts Mincho, without system fonts, in
+        // Japanese in a Latin face falls back to a evo-fonts Mincho, without system fonts, in
         // Japanese text (the Japanese chain) and without a language (the first loaded face).
         let latin = db.face(DEFAULT_FAMILY, "Regular");
         for language in [Some("ja"), None] {
@@ -612,13 +612,13 @@ mod tests {
     }
 
     #[test]
-    fn works_without_craft_fonts() {
-        // Always true without CRAFT_FONTS_DIR; with it, the bundled fonts must still all load.
+    fn works_without_evo_fonts() {
+        // Always true without EVO_FONTS_DIR; with it, the bundled fonts must still all load.
         let db = FontDb::with_font_dirs(Vec::new());
         db.set_system_fallback(false);
         assert_eq!(db.face(DEFAULT_FAMILY, "Regular").family, DEFAULT_FAMILY);
         assert!(!shape(&db.face(DEFAULT_FAMILY, "Regular"), "Hello", &[], |c| c).is_empty());
-        if CRAFT_FONTS.is_empty() {
+        if EVO_FONTS.is_empty() {
             assert!(japanese_fonts().next().is_none() && japanese_document_fonts().is_empty());
             let latin = db.face(DEFAULT_FAMILY, "Regular");
             for language in [Some("ja"), None] {

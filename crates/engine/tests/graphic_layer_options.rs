@@ -1,8 +1,8 @@
 //! Per-placement artwork layer metadata must survive native saves and stay visibly unsupported.
 use std::io::{Cursor, Read, Write};
 
-use designcraft_doc::{Content, GRAPHIC_LAYER_RENDERING_WARNING};
-use designcraft_engine::{DocState, Session};
+use evodesign_doc::{Content, GRAPHIC_LAYER_RENDERING_WARNING};
+use evodesign_engine::{DocState, Session};
 use serde_json::json;
 
 fn fixture() -> Vec<u8> {
@@ -24,10 +24,10 @@ fn fixture() -> Vec<u8> {
 
 #[test]
 fn graphic_layer_options_survive_native_reopen_and_report_unsupported_output() {
-    let imported = designcraft_idml::import_idml_report(&fixture(), &|_| None).unwrap();
+    let imported = evodesign_idml::import_idml_report(&fixture(), &|_| None).unwrap();
     assert!(imported.warnings.iter().any(|w| w.contains(GRAPHIC_LAYER_RENDERING_WARNING)));
     let doc = imported.document;
-    let options = |d: &designcraft_doc::Document| {
+    let options = |d: &evodesign_doc::Document| {
         d.spreads[0]
             .items
             .iter()
@@ -38,12 +38,12 @@ fn graphic_layer_options_survive_native_reopen_and_report_unsupported_output() {
             .collect::<Vec<_>>()
     };
     let expected = options(&doc);
-    let saved = designcraft_format::save(&doc).unwrap();
+    let saved = evodesign_format::save(&doc).unwrap();
     let mut z = zip::ZipArchive::new(Cursor::new(&saved)).unwrap();
     let mut meta = String::new();
     z.by_name("meta.json").unwrap().read_to_string(&mut meta).unwrap();
     assert_eq!(serde_json::from_str::<serde_json::Value>(&meta).unwrap()["version"], 4, "old readers must not silently drop the settings");
-    let reopened = designcraft_format::load(&saved).unwrap();
+    let reopened = evodesign_format::load(&saved).unwrap();
     assert_eq!(options(&reopened), expected);
     let mut s = Session::new();
     s.add_document(DocState::new(reopened, None));
@@ -55,7 +55,7 @@ fn graphic_layer_options_survive_native_reopen_and_report_unsupported_output() {
 
 #[test]
 fn graphic_layer_options_in_cells_require_the_new_native_reader() {
-    let mut doc = designcraft_idml::import_idml(&fixture()).unwrap();
+    let mut doc = evodesign_idml::import_idml(&fixture()).unwrap();
     let graphic = doc.spreads[0]
         .items
         .iter()
@@ -67,13 +67,13 @@ fn graphic_layer_options_in_cells_require_the_new_native_reader() {
     // Keep the original spread graphic too: its warning must not hide the cell warning.
     let layer = doc.default_layer();
     let (_, story) = doc
-        .add_text_frame(designcraft_doc::SpreadRef::Doc(0), designcraft_geom::Rect::new(0.0, 0.0, 80.0, 80.0), layer, "Body", Default::default())
+        .add_text_frame(evodesign_doc::SpreadRef::Doc(0), evodesign_geom::Rect::new(0.0, 0.0, 80.0, 80.0), layer, "Body", Default::default())
         .unwrap();
-    let mut table = designcraft_doc::Table::new(1, 1, 1, 0, 0, 20.0);
+    let mut table = evodesign_doc::Table::new(1, 1, 1, 0, 0, 20.0);
     table.cells[0].graphic = Some(graphic);
     doc.story_mut(story).unwrap().insert_table(0, table);
     assert!(doc.has_graphic_layer_options());
-    let reopened = designcraft_format::load(&designcraft_format::save(&doc).unwrap()).unwrap();
+    let reopened = evodesign_format::load(&evodesign_format::save(&doc).unwrap()).unwrap();
     assert!(reopened.has_graphic_layer_visibility_overrides());
     let mut s = Session::new();
     s.add_document(DocState::new(reopened, None));
@@ -87,7 +87,7 @@ fn graphic_layer_options_in_cells_require_the_new_native_reader() {
 fn a_graphic_layer_cell_alone_still_requires_the_new_native_reader() {
     // The cell is the only thing carrying the settings: a save that only looked at spread items
     // would choose format 3 and drop them.
-    let mut doc = designcraft_idml::import_idml(&fixture()).unwrap();
+    let mut doc = evodesign_idml::import_idml(&fixture()).unwrap();
     let graphic = doc.spreads[0]
         .items
         .iter()
@@ -98,26 +98,26 @@ fn a_graphic_layer_cell_alone_still_requires_the_new_native_reader() {
         .unwrap();
     let layer = doc.default_layer();
     let (_, story) = doc
-        .add_text_frame(designcraft_doc::SpreadRef::Doc(0), designcraft_geom::Rect::new(0.0, 0.0, 80.0, 80.0), layer, "Body", Default::default())
+        .add_text_frame(evodesign_doc::SpreadRef::Doc(0), evodesign_geom::Rect::new(0.0, 0.0, 80.0, 80.0), layer, "Body", Default::default())
         .unwrap();
     // Only the cell keeps them: the spread's own placed graphic goes away.
     std::sync::Arc::make_mut(&mut doc.spreads[0]).items.retain(|i| i.graphic().is_none());
-    let mut table = designcraft_doc::Table::new(1, 1, 1, 0, 0, 20.0);
+    let mut table = evodesign_doc::Table::new(1, 1, 1, 0, 0, 20.0);
     table.cells[0].graphic = Some(graphic);
     doc.story_mut(story).unwrap().insert_table(0, table);
     assert!(doc.has_graphic_layer_options(), "the cell alone carries the settings");
-    let saved = designcraft_format::save(&doc).unwrap();
+    let saved = evodesign_format::save(&doc).unwrap();
     let mut z = zip::ZipArchive::new(Cursor::new(&saved)).unwrap();
     let mut meta = String::new();
     z.by_name("meta.json").unwrap().read_to_string(&mut meta).unwrap();
     assert_eq!(serde_json::from_str::<serde_json::Value>(&meta).unwrap()["version"], 4, "a cell-only save needs the newer reader");
-    assert!(designcraft_format::load(&saved).unwrap().has_graphic_layer_visibility_overrides());
+    assert!(evodesign_format::load(&saved).unwrap().has_graphic_layer_visibility_overrides());
 }
 
 #[test]
 fn pdf_layer_warning_survives_soft_effects_and_flattening() {
     for flatten in [false, true] {
-        let doc = designcraft_idml::import_idml(&fixture()).unwrap();
+        let doc = evodesign_idml::import_idml(&fixture()).unwrap();
         let id = doc.spreads[0].items.iter().find(|i| i.graphic().is_some()).unwrap().id.0;
         let mut session = Session::new();
         session.add_document(DocState::new(doc, None));

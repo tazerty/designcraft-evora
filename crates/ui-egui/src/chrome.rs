@@ -1,7 +1,7 @@
 //! Window chrome: application bar (with menus), Control panel, document tabs, status bar, start screen.
 
-use designcraft_doc::{Align, Content};
-use designcraft_geom::Unit;
+use evodesign_doc::{Align, Content};
+use evodesign_geom::Unit;
 use egui::{Color32, Sense, Stroke, vec2};
 use serde_json::json;
 
@@ -800,7 +800,7 @@ fn control_character(
     ui.vertical(|ui| {
         ui.spacing_mut().item_spacing.y = 3.0;
         // The character style, then the language.
-        let cs = attrs.as_ref().and_then(|a| a["characterStyle"].as_str()).unwrap_or(designcraft_doc::NO_CHAR_STYLE).to_string();
+        let cs = attrs.as_ref().and_then(|a| a["characterStyle"].as_str()).unwrap_or(evodesign_doc::NO_CHAR_STYLE).to_string();
         let names: Vec<String> = app.session.active().map(|d| d.doc.styles.character.iter().map(|c| c.name.clone()).collect()).unwrap_or_default();
         let mut pick = None;
         egui::ComboBox::from_id_salt("ctl_char_style")
@@ -889,7 +889,7 @@ fn control_paragraph(
     let mut drop = None;
     rows(ui, |ui, row| {
         if row == 0 {
-            let max = designcraft_compose::MAX_DROP_CAP_LINES as f64;
+            let max = evodesign_compose::MAX_DROP_CAP_LINES as f64;
             if let Some(v) = icon_field(
                 ui,
                 "drop-lines",
@@ -899,7 +899,7 @@ fn control_paragraph(
                 drop = Some(("dropCapLines", v));
             }
         } else {
-            let max = designcraft_compose::MAX_DROP_CAP_CHARS as f64;
+            let max = evodesign_compose::MAX_DROP_CAP_CHARS as f64;
             if let Some(v) = icon_field(
                 ui,
                 "drop-chars",
@@ -916,7 +916,7 @@ fn control_paragraph(
     vsep(ui);
     // Bulleted List over Numbered List, as InDesign's (a list with the default hanging indent, or,
     // pressed, none). Pressed when every selected paragraph has it, as Type › Apply Bullets shows.
-    use designcraft_doc::ListType;
+    use evodesign_doc::ListType;
     let pressed = [ListType::Bullets, ListType::Numbers].map(|k| app.session.selection_has_list(k));
     let mut list = None;
     rows(ui, |ui, row| {
@@ -993,7 +993,7 @@ fn control_paragraph(
 
 /// A swatch field of the Control panel (Shading and Border colours): the swatch's chip and name,
 /// and the document's swatches in its menu. Returns the swatch picked.
-pub(crate) fn swatch_field(ui: &mut egui::Ui, doc: &designcraft_doc::Document, cur: &str, width: f32, label: &str) -> Option<String> {
+pub(crate) fn swatch_field(ui: &mut egui::Ui, doc: &evodesign_doc::Document, cur: &str, width: f32, label: &str) -> Option<String> {
     let t = Tokens::get(ui.ctx());
     let (r, resp) = ui.allocate_exact_size(vec2(width, crate::widgets::FIELD_H), Sense::click());
     let resp = resp.on_hover_text(label);
@@ -1270,7 +1270,7 @@ pub fn start_screen(app: &mut DesignApp, ui: &mut egui::Ui) {
                 ));
                 ui.add_space(8.0);
                 ui.horizontal_wrapped(|ui| {
-                    for p in designcraft_doc::build::PRESETS.iter().filter(|p| p.intent == designcraft_doc::Intent::Print) {
+                    for p in evodesign_doc::build::PRESETS.iter().filter(|p| p.intent == evodesign_doc::Intent::Print) {
                         let (cr, resp) = ui.allocate_exact_size(vec2(120.0, 150.0), Sense::click());
                         let hov = resp.hovered();
                         ui.painter().rect_filled(cr, 6.0, if hov { t.hover } else { t.panel });
@@ -1289,8 +1289,8 @@ pub fn start_screen(app: &mut DesignApp, ui: &mut egui::Ui) {
                             egui::Align2::CENTER_CENTER,
                             format!(
                                 "{} × {}",
-                                designcraft_geom::format_measure(p.width, p.units),
-                                designcraft_geom::format_measure(p.height, p.units)
+                                evodesign_geom::format_measure(p.width, p.units),
+                                evodesign_geom::format_measure(p.height, p.units)
                             ),
                             egui::FontId::proportional(10.0),
                             t.text_dim,
@@ -1349,9 +1349,9 @@ fn recent_files(app: &mut DesignApp, ui: &mut egui::Ui) {
                 }
             }
             let color = if there { t.text_strong } else { t.text_dim };
-            // The name without `.designcraft`, on up to two lines (broken after a space or dash).
+            // The name without `.evodesign`, on up to two lines (broken after a space or dash).
             let label = crate::menus::recent_label(&path);
-            let name = label.strip_suffix(".designcraft").unwrap_or(&label).to_string();
+            let name = label.strip_suffix(".evodesign").unwrap_or(&label).to_string();
             let mut job = egui::text::LayoutJob::simple(name, semibold(12.0), color, cr.width() - 12.0);
             job.wrap.max_rows = 2;
             job.halign = egui::Align::Center;
@@ -1392,7 +1392,7 @@ fn recent_file_stat_at(ctx: &egui::Context, path: &str, now: f64) -> RecentStat 
     {
         return st;
     }
-    let meta = designcraft_engine::io::metadata(path).ok().filter(designcraft_engine::io::Metadata::is_file);
+    let meta = evodesign_engine::io::metadata(path).ok().filter(evodesign_engine::io::Metadata::is_file);
     let st = RecentStat { exists: meta.is_some(), modified: meta.and_then(|m| m.modified().ok()), checked: now };
     ctx.data_mut(|d| d.insert_temp(key, st.clone()));
     st
@@ -1407,7 +1407,7 @@ fn recent_preview_texture(ctx: &egui::Context, path: &str, modified: Option<std:
     {
         return tex;
     }
-    let tex = designcraft_engine::cmd::recent_preview(path).and_then(|p| {
+    let tex = evodesign_engine::cmd::recent_preview(path).and_then(|p| {
         let size = [usize::try_from(p.width).ok()?, usize::try_from(p.height).ok()?];
         (size[0].checked_mul(size[1])?.checked_mul(4)? == p.rgba.len()).then(|| {
             ctx.load_texture(format!("recent_preview:{path}"), egui::ColorImage::from_rgba_unmultiplied(size, &p.rgba), egui::TextureOptions::LINEAR)
@@ -1417,7 +1417,7 @@ fn recent_preview_texture(ctx: &egui::Context, path: &str, modified: Option<std:
     tex
 }
 
-/// Start screen: the ArtCraft community (Discord first) and project links.
+/// Start screen: the Upstream community (Discord first) and project links.
 fn community_card(app: &mut DesignApp, ui: &mut egui::Ui) {
     // Evora build (patches EVORA-CIC-01 and EVORA-CIC-05, E1 and E7): the upstream community card
     // (mark, invitation, outside links) is not shown.
@@ -1463,7 +1463,7 @@ mod tests {
     #[test]
     fn recent_files_are_looked_up_on_disk_every_few_seconds() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("a.designcraft");
+        let path = dir.path().join("a.evodesign");
         std::fs::write(&path, b"x").unwrap();
         let path = path.to_string_lossy().to_string();
         let ctx = egui::Context::default();
@@ -1475,7 +1475,7 @@ mod tests {
     }
 
     fn app() -> crate::DesignApp {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.ui.control_bar = true;
         app
     }
@@ -1508,7 +1508,7 @@ mod tests {
 
     /// A document with two frames, the Selection tool, German menus, and the search field clicked.
     fn searching() -> egui_kittest::Harness<'static, test_window::Window> {
-        let mut app = crate::DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = crate::DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.ui.language = "de".into();
         let mut h = test_window::open(app, vec2(1440.0, 900.0));
         let app = &mut h.state_mut().app;
@@ -1674,7 +1674,7 @@ mod tests {
         };
         let size_of = |h: &egui_kittest::Harness<'static, test_window::Window>| {
             let st = h.state().app.session.doc().unwrap();
-            let sid = designcraft_doc::StoryId(f["story"].as_u64().unwrap());
+            let sid = evodesign_doc::StoryId(f["story"].as_u64().unwrap());
             st.doc.story(sid).unwrap().format_after(0).over.size
         };
         // The ⌄ segment right of the size field opens the list; choosing 72 pt sets the size.
@@ -1692,8 +1692,8 @@ mod tests {
         h.get_by_label("60 pt").click();
         h.run_steps(3);
         let st = h.state().app.session.doc().unwrap();
-        let sid = designcraft_doc::StoryId(f["story"].as_u64().unwrap());
-        assert_eq!(st.doc.story(sid).unwrap().format_after(0).over.leading, Some(designcraft_doc::Leading::Points(60.0)));
+        let sid = evodesign_doc::StoryId(f["story"].as_u64().unwrap());
+        assert_eq!(st.doc.story(sid).unwrap().format_after(0).over.leading, Some(evodesign_doc::Leading::Points(60.0)));
         // The spinner left of the size steps it by a point.
         let size = field(&h, "72 pt");
         press(&mut h, pos2(size.min.x - 5.0 - crate::widgets::SEG_W / 2.0, size.min.y + 3.0));
@@ -1710,8 +1710,8 @@ mod tests {
         h.key_press(egui::Key::Enter);
         h.run_steps(3);
         let st = h.state().app.session.doc().unwrap();
-        let sid = designcraft_doc::StoryId(f["story"].as_u64().unwrap());
-        assert_eq!(st.doc.story(sid).unwrap().format_after(0).over.leading, Some(designcraft_doc::Leading::Points(87.6)));
+        let sid = evodesign_doc::StoryId(f["story"].as_u64().unwrap());
+        assert_eq!(st.doc.story(sid).unwrap().format_after(0).over.leading, Some(evodesign_doc::Leading::Points(87.6)));
         // Escape cancels: the same typing, then Escape, leaves the leading automatic.
         h.state_mut().app.run("type.char", serde_json::json!({"attrs": {"leading": {"kind": "auto"}}})).unwrap();
         h.run_steps(3);
@@ -1891,7 +1891,7 @@ mod tests {
         // Pages don't move within their spread, so there is no "Objects Move with Page" option, and
         // no "Controlled by Parent" rule until parent pages have rules of their own.
         assert!(h.query_by_label("Objects Move with Page").is_none());
-        assert!(!crate::panels::interactive::LIQUID_RULES.iter().any(|(r, _)| *r == designcraft_doc::LiquidRule::ControlledByParent));
+        assert!(!crate::panels::interactive::LIQUID_RULES.iter().any(|(r, _)| *r == evodesign_doc::LiquidRule::ControlledByParent));
         assert_eq!(crate::panels::properties::preset_name(252.0, 144.0), "US Business Card");
         h.get_by_label("Show Parent Page Overlay").click();
         h.run_steps(4);
@@ -2111,7 +2111,7 @@ mod tests {
 
     impl WindowHarness {
         fn new() -> Self {
-            let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+            let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
             app.custom_titlebar = true;
             let ctx = egui::Context::default();
             crate::theme::install_fonts(&ctx, "");
@@ -2216,7 +2216,7 @@ mod tests {
 
     #[test]
     fn native_window_actions_are_unavailable_without_custom_chrome() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         assert!(!crate::menus::enabled(&app, "window.close"));
         assert!(app.run("window.close", json!({})).is_err());
         assert!(app.pending_window_commands.is_empty());

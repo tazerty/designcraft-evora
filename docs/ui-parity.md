@@ -24,7 +24,7 @@ basics of editing fail for too many users on Windows and Linux.
 
 **✓** like InDesign · **~** present, differs or unreliable · **✗** missing.
 
-| Area | InDesign 2026 | DesignCraft | Status | Evidence |
+| Area | InDesign 2026 | EvoDesign | Status | Evidence |
 |---|---|---|---|---|
 | Chrome: app bar, Control panel, Tools panel, dock, doc tabs, status bar | Medium Dark, measured sizes | measured look; the text Control panel switches between Character (A) and Paragraph (¶) Formatting Controls (¶ with the Bulleted and Numbered List buttons, Shading and Border), and Escape in a field reverts what was typed | ✓ | 11-observed-ui.md; Learn Skills Daily course, chapter 16 |
 | Properties panel and Contextual Task Bar | per selection | ✓, task bar movable (#143); ••• expands Character (scales, baseline shift, skew, language, case and position buttons) and Paragraph (indents, spacing, drop cap, baseline grid, hyphenation) in place | ✓ | Learn Skills Daily course, chapter 16; `properties.rs` `more_options_expand_character_and_paragraph_in_place` |

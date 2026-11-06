@@ -8,7 +8,7 @@
 use serde_json::{Value, json};
 
 /// The app's slug upstream (kept: identifiers, not shown).
-pub const APP: &str = "designcraft";
+pub const APP: &str = "evodesign";
 /// The upstream community chat (none in the Evora build).
 pub const DISCORD: &str = "";
 /// The upstream website (none in the Evora build).

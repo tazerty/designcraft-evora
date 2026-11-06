@@ -1,14 +1,14 @@
 //! Renderer caching/culling behaviour, and a render-time regression test (`#[ignore]`: wall-clock
 //! timings are only meaningful on an idle machine — run with
-//! `cargo test --release -p designcraft-render --test it perf:: -- --ignored`).
+//! `cargo test --release -p evodesign-render --test it perf:: -- --ignored`).
 
 use std::time::Instant;
 
-use designcraft_compose::Cache;
-use designcraft_doc::build::NewDocument;
-use designcraft_doc::{Document, ParaFormat, SpreadRef};
-use designcraft_geom::{Affine, Rect, Vec2};
-use designcraft_render::{Placed, RenderOptions, Renderer};
+use evodesign_compose::Cache;
+use evodesign_doc::build::NewDocument;
+use evodesign_doc::{Document, ParaFormat, SpreadRef};
+use evodesign_geom::{Affine, Rect, Vec2};
+use evodesign_render::{Placed, RenderOptions, Renderer};
 
 const WORDS: &[&str] = &["grid", "margin", "column", "rhythm", "baseline", "reader", "story", "frame", "quiet", "layout", "type", "texture"];
 

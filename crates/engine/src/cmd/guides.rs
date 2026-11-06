@@ -9,8 +9,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use designcraft_doc::{Document, Guide, GuideSel, Orientation, Selection, SpreadRef};
-use designcraft_geom::Rect;
+use evodesign_doc::{Document, Guide, GuideSel, Orientation, Selection, SpreadRef};
+use evodesign_geom::Rect;
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, bool_or, cmd, has_doc, str_param};
@@ -471,7 +471,7 @@ pub(crate) fn keep_selection_valid(st: &mut DocState, before: Option<(&Document,
 /// Every (spread, page, index) of `old` still names a guide of the same orientation on the same
 /// page in `new`: guides were only added at the end of their pages, or moved.
 fn same_guide_addresses(old: &Document, new: &Document) -> bool {
-    let same = |a: &[std::sync::Arc<designcraft_doc::Spread>], b: &[std::sync::Arc<designcraft_doc::Spread>]| {
+    let same = |a: &[std::sync::Arc<evodesign_doc::Spread>], b: &[std::sync::Arc<evodesign_doc::Spread>]| {
         a.len() == b.len()
             && a.iter().zip(b).all(|(a, b)| {
                 a.pages.len() == b.pages.len()
@@ -875,7 +875,7 @@ mod selection_tests {
 
 #[cfg(test)]
 mod new_guide_tests {
-    use designcraft_doc::GuideSel;
+    use evodesign_doc::GuideSel;
     use serde_json::json;
 
     use crate::Session;
@@ -973,7 +973,7 @@ mod layer_tests {
 
     #[test]
     fn create_guides_goes_to_the_named_spread_and_page_only() {
-        use designcraft_doc::SpreadRef;
+        use evodesign_doc::SpreadRef;
         let mut s = Session::new();
         s.execute("file.new", &json!({"pages": 3})).unwrap();
         // The UI passes the spread/page being worked on as a serialised SpreadRef (page 3).
@@ -988,7 +988,7 @@ mod layer_tests {
 
     #[test]
     fn guides_on_a_parent_page_show_on_the_pages_that_use_it() {
-        use designcraft_doc::{PageSide, SpreadRef};
+        use evodesign_doc::{PageSide, SpreadRef};
         let mut s = Session::new();
         s.execute("file.new", &json!({"pages": 4, "facingPages": true})).unwrap();
         // A vertical guide 88 pt inside the parent's right page, and a horizontal one.
@@ -1008,10 +1008,10 @@ mod layer_tests {
             }
             seen += 1;
             assert_eq!(page.side, PageSide::Right);
-            let v = inherited.iter().find(|g| g.orientation == designcraft_doc::Orientation::Vertical).unwrap();
+            let v = inherited.iter().find(|g| g.orientation == evodesign_doc::Orientation::Vertical).unwrap();
             // Moved to this page's own place in its spread: still 88 pt inside the page.
             assert!((v.position - (page.x + 88.0)).abs() < 1e-6, "page {abs}: {v:?} vs x {}", page.x);
-            let h = inherited.iter().find(|g| g.orientation == designcraft_doc::Orientation::Horizontal).unwrap();
+            let h = inherited.iter().find(|g| g.orientation == evodesign_doc::Orientation::Horizontal).unwrap();
             assert!((h.position - 200.0).abs() < 1e-6);
         }
         assert!(seen >= 2, "pages on the parent's right side inherit: {seen}");

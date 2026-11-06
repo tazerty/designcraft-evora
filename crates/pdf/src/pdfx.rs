@@ -50,7 +50,7 @@ pub fn make_pdfx4(pdf: &[u8], title: &str, date: Option<i64>) -> Option<Vec<u8>>
         out.extend_from_slice(b"\nendobj\n");
     };
     // The output profile and the output intent.
-    let intent = designcraft_color::cms::active().output_intent().ok()?;
+    let intent = evodesign_color::cms::active().output_intent().ok()?;
     let (icc_id, oi_id) = (size, size + 1);
     let mut s = format!("<</N 4/Length {}>>\nstream\n", intent.icc.len()).into_bytes();
     s.extend_from_slice(&intent.icc);
@@ -473,14 +473,14 @@ impl RgbScan {
 
 #[cfg(test)]
 mod tests {
-    use craft_pdf::write::backend as krilla;
+    use evo_pdf::write::backend as krilla;
     use std::sync::Arc;
 
-    use designcraft_color::{Color, Swatch};
-    use designcraft_compose::Cache;
-    use designcraft_doc::build::NewDocument;
-    use designcraft_doc::{Asset, AssetId, Content, Document, Fill, Fitting, Graphic, Item, ItemId, Shape, SpreadRef};
-    use designcraft_geom::{Affine, Rect};
+    use evodesign_color::{Color, Swatch};
+    use evodesign_compose::Cache;
+    use evodesign_doc::build::NewDocument;
+    use evodesign_doc::{Asset, AssetId, Content, Document, Fill, Fitting, Graphic, Item, ItemId, Shape, SpreadRef};
+    use evodesign_geom::{Affine, Rect};
     use hayro_syntax::object::{Name, Object};
     use image::{ExtendedColorType, ImageEncoder};
 
@@ -488,13 +488,13 @@ mod tests {
 
     pub(super) fn place(d: &mut Document, name: &str, data: Vec<u8>, size: (f64, f64), at: (f64, f64)) {
         let asset = AssetId(d.alloc());
-        let mime = designcraft_images::mime(&data).into();
-        let pixels = designcraft_images::pixel_size(&data);
+        let mime = evodesign_images::mime(&data).into();
+        let pixels = evodesign_images::pixel_size(&data);
         d.assets.insert(asset, Arc::new(Asset { id: asset, name: name.into(), mime, data: data.into(), pixels, ..Default::default() }));
         let lid = d.default_layer();
         let id = ItemId(d.alloc());
         let r = Rect::new(at.0, at.1, at.0 + 100.0, at.1 + 50.0);
-        let mut it = Item::new(id, lid, Shape::Rectangle, designcraft_geom::shapes::rectangle(r));
+        let mut it = Item::new(id, lid, Shape::Rectangle, evodesign_geom::shapes::rectangle(r));
         it.content = Content::Graphic(Graphic {
             layer_options: None,
             asset,
@@ -512,7 +512,7 @@ mod tests {
 
     fn add_box(d: &mut Document, r: Rect, swatch: &str) {
         let lid = d.default_layer();
-        let mut b = Item::new(ItemId(d.alloc()), lid, Shape::Rectangle, designcraft_geom::shapes::rectangle(r));
+        let mut b = Item::new(ItemId(d.alloc()), lid, Shape::Rectangle, evodesign_geom::shapes::rectangle(r));
         b.fill = Fill::swatch(swatch);
         d.insert_item(SpreadRef::Doc(0), b, None).unwrap();
     }

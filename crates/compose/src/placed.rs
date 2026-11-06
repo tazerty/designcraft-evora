@@ -6,8 +6,8 @@
 
 use std::sync::Arc;
 
-use designcraft_doc::{Document, Item, ItemId, SpreadRef, StoryId};
-use designcraft_geom::Affine;
+use evodesign_doc::{Document, Item, ItemId, SpreadRef, StoryId};
+use evodesign_geom::Affine;
 
 use crate::{ComposedStory, FrameText};
 

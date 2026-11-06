@@ -1,11 +1,11 @@
-use designcraft_engine::Session;
+use evodesign_engine::Session;
 use serde_json::json;
 
 fn library_failure(command: &str) {
     let temp = tempfile::tempdir().unwrap();
     let folder = temp.path().join("library");
     std::fs::create_dir(&folder).unwrap();
-    let file = folder.join("items.dclib");
+    let file = folder.join("items.evodesignlib");
     let mut s = Session::new();
     s.execute("file.new", &json!({})).unwrap();
     s.execute("frame.create", &json!({"rect": [0, 0, 50, 50]})).unwrap();
@@ -23,7 +23,7 @@ fn library_failure(command: &str) {
     assert_eq!(before, serde_json::to_value(&s.library).unwrap(), "a failed library write must retain its original items");
     assert_eq!(path, s.library.as_ref().unwrap().path);
     assert_eq!(journal, s.journal);
-    assert_eq!(original_bytes, std::fs::read(kept.join("items.dclib")).unwrap());
+    assert_eq!(original_bytes, std::fs::read(kept.join("items.evodesignlib")).unwrap());
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn book_failure(command: &str) {
     let mut chapters = Vec::new();
     for i in 0..3 {
         s.execute("file.new", &json!({})).unwrap();
-        let path = temp.path().join(format!("chapter-{i}.designcraft"));
+        let path = temp.path().join(format!("chapter-{i}.evodesign"));
         s.execute("file.saveAs", &json!({"path": path})).unwrap();
         chapters.push(path);
     }

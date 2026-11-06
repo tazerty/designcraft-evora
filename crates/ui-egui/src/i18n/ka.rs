@@ -1,5 +1,5 @@
 //! Original Georgian interface translations, written from the English source following the shared
-//! Georgian glossary of the ArtCraft apps (commands as verbal nouns: შენახვა, გახსნა; no capitals,
+//! Georgian glossary of the Upstream apps (commands as verbal nouns: შენახვა, გახსნა; no capitals,
 //! since Georgian has no case; counts as "noun: n"). Every key of the shared, Arabic, Brazilian
 //! Portuguese, Japanese, Italian and Ukrainian tables has a row here, plus a few labels that only
 //! the code or the command table use.

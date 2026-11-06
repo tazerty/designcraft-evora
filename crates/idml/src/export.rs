@@ -3,12 +3,12 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::Write;
 
-use designcraft_color::{Color, ColorType, GradientKind, SwatchValue, swatch};
-use designcraft_doc::{
+use evodesign_color::{Color, ColorType, GradientKind, SwatchValue, swatch};
+use evodesign_doc::{
     CharAttrs, CharFormat, ColumnsKind, Content, Document, Item, ListType, PageSide, ParaAttrs, ParaFormat, Rule, Shape, SpanColumns, Spread, Story,
     TextFrameOptions, story as st,
 };
-use designcraft_geom::{Affine, PathData};
+use evodesign_geom::{Affine, PathData};
 
 use crate::names::{self, CHAR_BUILTINS, OBJECT_BUILTINS, PARA_BUILTINS, escape_id, num, pt};
 use crate::xml::{El, Node, document, document_with_pi};
@@ -366,7 +366,7 @@ impl<'a> Ex<'a> {
         if secs.is_empty() || secs[0].start != 0 {
             secs.insert(
                 0,
-                designcraft_doc::Section {
+                evodesign_doc::Section {
                     start: 0,
                     start_number: Some(1),
                     style: Default::default(),
@@ -618,14 +618,14 @@ impl<'a> Ex<'a> {
             let id = format!("CustomStrokeStyle/{}", st.name);
             let pcts = |v: &[f64]| v.iter().map(|x| num(x * 100.0)).collect::<Vec<_>>().join(" ");
             let el = match &st.kind {
-                designcraft_doc::StrokeType::Stripes { bands } => {
+                evodesign_doc::StrokeType::Stripes { bands } => {
                     let flat: Vec<f64> = bands.iter().flat_map(|(a, w)| [*a, a + w]).collect();
                     Some(El::new("StripedStrokeStyle").attr("StripeArray", pcts(&flat)))
                 }
-                designcraft_doc::StrokeType::Dashed { pattern } => {
+                evodesign_doc::StrokeType::Dashed { pattern } => {
                     Some(El::new("DashedStrokeStyle").attr("DashArray", pattern.iter().map(|x| num(*x)).collect::<Vec<_>>().join(" ")))
                 }
-                designcraft_doc::StrokeType::Dotted => Some(El::new("DottedStrokeStyle").attr("DotArray", "0 200")),
+                evodesign_doc::StrokeType::Dotted => Some(El::new("DottedStrokeStyle").attr("DotArray", "0 200")),
                 _ => None,
             };
             if let Some(el) = el {
@@ -730,9 +730,9 @@ impl<'a> Ex<'a> {
                 .attr(
                     "Intent",
                     match s.intent {
-                        designcraft_doc::Intent::Print => "PrintIntent",
-                        designcraft_doc::Intent::Web => "WebIntent",
-                        designcraft_doc::Intent::Mobile => "MobileIntent",
+                        evodesign_doc::Intent::Print => "PrintIntent",
+                        evodesign_doc::Intent::Web => "WebIntent",
+                        evodesign_doc::Intent::Mobile => "MobileIntent",
                     },
                 )
                 .attr("CreatePrimaryTextFrame", bool_s(s.primary_text_frame))
@@ -751,9 +751,9 @@ impl<'a> Ex<'a> {
                 .attr(
                     "RulerOrigin",
                     match s.ruler_origin {
-                        designcraft_doc::RulerOrigin::Spread => "SpreadOrigin",
-                        designcraft_doc::RulerOrigin::Page => "PageOrigin",
-                        designcraft_doc::RulerOrigin::Spine => "SpineOrigin",
+                        evodesign_doc::RulerOrigin::Spread => "SpreadOrigin",
+                        evodesign_doc::RulerOrigin::Page => "PageOrigin",
+                        evodesign_doc::RulerOrigin::Spine => "SpineOrigin",
                     },
                 )
                 .attr("CursorKeyIncrement", num(s.keyboard_increment))
@@ -773,8 +773,8 @@ impl<'a> Ex<'a> {
                 .attr(
                     "BaselineGridRelativeOption",
                     match bg.relative_to {
-                        designcraft_doc::GridRelative::TopOfPage => "TopOfPageOfBaselineGridRelativeOption",
-                        designcraft_doc::GridRelative::TopMargin => "TopOfMarginOfBaselineGridRelativeOption",
+                        evodesign_doc::GridRelative::TopOfPage => "TopOfPageOfBaselineGridRelativeOption",
+                        evodesign_doc::GridRelative::TopMargin => "TopOfMarginOfBaselineGridRelativeOption",
                     },
                 ),
         );
@@ -783,17 +783,17 @@ impl<'a> Ex<'a> {
         root.push(El::new("TransparencyPreference").attr(
             "BlendingSpace",
             match s.blend_space {
-                designcraft_doc::BlendSpace::Cmyk => "CMYK",
-                designcraft_doc::BlendSpace::Rgb => "RGB",
+                evodesign_doc::BlendSpace::Cmyk => "CMYK",
+                evodesign_doc::BlendSpace::Rgb => "RGB",
             },
         ));
         // Split Document: the style is a reference, a built-in one by its `$ID/` name; an empty
         // one splits on the styles' export tags.
         let (break_doc, split_style) = match &s.epub_split {
-            designcraft_doc::EpubSplit::Off => (false, names::style_name_out(PARA_BUILTINS, st::BASIC_PARAGRAPH)),
-            designcraft_doc::EpubSplit::ExportTags => (true, String::new()),
-            designcraft_doc::EpubSplit::Style(n) if PARA_BUILTINS.iter().any(|(o, _)| o == n) => (true, names::style_name_out(PARA_BUILTINS, n)),
-            designcraft_doc::EpubSplit::Style(n) => (true, names::style_self("ParagraphStyle", PARA_BUILTINS, n)),
+            evodesign_doc::EpubSplit::Off => (false, names::style_name_out(PARA_BUILTINS, st::BASIC_PARAGRAPH)),
+            evodesign_doc::EpubSplit::ExportTags => (true, String::new()),
+            evodesign_doc::EpubSplit::Style(n) if PARA_BUILTINS.iter().any(|(o, _)| o == n) => (true, names::style_name_out(PARA_BUILTINS, n)),
+            evodesign_doc::EpubSplit::Style(n) => (true, names::style_self("ParagraphStyle", PARA_BUILTINS, n)),
         };
         root.push(El::new("EPubExportPreference").attr("BreakDocument", bool_s(break_doc)).attr("ParagraphStyleName", split_style));
         let a = &s.advanced_type;
@@ -842,26 +842,26 @@ impl<'a> Ex<'a> {
             let mut el =
                 El::new("ParagraphStyle").attr("Self", &id).attr("Name", names::style_name_out(PARA_BUILTINS, &ps.name)).attr("Imported", "false");
             let mut props = Vec::new();
-            let (pa, ca) = if ps.name == designcraft_doc::NO_PARA_STYLE {
+            let (pa, ca) = if ps.name == evodesign_doc::NO_PARA_STYLE {
                 // The root style carries the complete attribute set.
-                let mut pa = designcraft_doc::ParaProps::common([&designcraft_doc::ParaProps::default()]);
+                let mut pa = evodesign_doc::ParaProps::common([&evodesign_doc::ParaProps::default()]);
                 pa.merge(&ps.para);
-                let mut ca = designcraft_doc::CharProps::common([&designcraft_doc::CharProps::default()]);
+                let mut ca = evodesign_doc::CharProps::common([&evodesign_doc::CharProps::default()]);
                 ca.merge(&ps.chars);
                 (pa, ca)
             } else {
                 let next = ps.next_style.as_deref().unwrap_or(&ps.name);
                 el.set("NextStyle", names::style_self("ParagraphStyle", PARA_BUILTINS, next));
-                match ps.based_on.as_deref().filter(|b| *b != designcraft_doc::NO_PARA_STYLE) {
+                match ps.based_on.as_deref().filter(|b| *b != evodesign_doc::NO_PARA_STYLE) {
                     Some(b) => props.push(p("BasedOn", "object", names::style_self("ParagraphStyle", PARA_BUILTINS, b))),
                     None => props.push(p("BasedOn", "string", "$ID/[No paragraph style]")),
                 }
                 (ps.para.clone(), ps.chars.clone())
             };
-            let parent = (ps.name != designcraft_doc::NO_PARA_STYLE).then(|| ps.based_on.as_deref().unwrap_or(designcraft_doc::NO_PARA_STYLE));
+            let parent = (ps.name != evodesign_doc::NO_PARA_STYLE).then(|| ps.based_on.as_deref().unwrap_or(evodesign_doc::NO_PARA_STYLE));
             let parent_props = match ps.based_on.as_deref() {
-                Some(b) if ps.name != designcraft_doc::NO_PARA_STYLE => styles.resolve_para_style(b).0,
-                _ => designcraft_doc::ParaProps::default(),
+                Some(b) if ps.name != evodesign_doc::NO_PARA_STYLE => styles.resolve_para_style(b).0,
+                _ => evodesign_doc::ParaProps::default(),
             };
             let pa = with_list_tab(pa, || (styles.resolve_para_style(&ps.name).0, parent_props));
             self.para_attrs(&mut el, &mut props, &pa, parent);
@@ -879,7 +879,7 @@ impl<'a> Ex<'a> {
         let mut cells = El::new("RootCellStyleGroup")
             .attr("Self", self.fresh())
             .child(El::new("CellStyle").attr("Self", "CellStyle/$ID/[None]").attr("AppliedParagraphStyle", NO_PARA_ID).attr("Name", "$ID/[None]"));
-        for cs in styles.cell.iter().filter(|c| c.name != designcraft_doc::NO_CELL_STYLE) {
+        for cs in styles.cell.iter().filter(|c| c.name != evodesign_doc::NO_CELL_STYLE) {
             let mut el = El::new("CellStyle")
                 .attr("Self", names::style_self("CellStyle", names::CELL_BUILTINS, &cs.name))
                 .attr("Name", names::style_name_out(names::CELL_BUILTINS, &cs.name));
@@ -919,8 +919,8 @@ impl<'a> Ex<'a> {
             if let Some(ps) = &cs.paragraph_style {
                 el.set("AppliedParagraphStyle", names::style_self("ParagraphStyle", PARA_BUILTINS, ps));
             }
-            let base = cs.based_on.as_deref().unwrap_or(designcraft_doc::NO_CELL_STYLE);
-            let based_on = if base == designcraft_doc::NO_CELL_STYLE {
+            let base = cs.based_on.as_deref().unwrap_or(evodesign_doc::NO_CELL_STYLE);
+            let based_on = if base == evodesign_doc::NO_CELL_STYLE {
                 p("BasedOn", "string", "$ID/[None]")
             } else {
                 p("BasedOn", "object", names::style_self("CellStyle", names::CELL_BUILTINS, base))
@@ -929,10 +929,10 @@ impl<'a> Ex<'a> {
         }
         root.push(cells);
         let mut tables = El::new("RootTableStyleGroup").attr("Self", self.fresh());
-        if !styles.table.iter().any(|s| s.name == designcraft_doc::NO_TABLE_STYLE) {
+        if !styles.table.iter().any(|s| s.name == evodesign_doc::NO_TABLE_STYLE) {
             tables.push(El::new("TableStyle").attr("Self", "TableStyle/$ID/[No table style]").attr("Name", "$ID/[No table style]"));
         }
-        if !styles.table.iter().any(|s| s.name == designcraft_doc::BASIC_TABLE) {
+        if !styles.table.iter().any(|s| s.name == evodesign_doc::BASIC_TABLE) {
             tables.push(with_props(
                 El::new("TableStyle").attr("Self", "TableStyle/$ID/[Basic Table]").attr("Name", "$ID/[Basic Table]"),
                 vec![p("BasedOn", "string", "$ID/[No table style]")],
@@ -990,9 +990,9 @@ impl<'a> Ex<'a> {
                 el.set("SpaceAfter", num(v));
             }
             let mut props = Vec::new();
-            if ts.name != designcraft_doc::NO_TABLE_STYLE {
-                let base = ts.based_on.as_deref().unwrap_or(designcraft_doc::NO_TABLE_STYLE);
-                props.push(if base == designcraft_doc::NO_TABLE_STYLE {
+            if ts.name != evodesign_doc::NO_TABLE_STYLE {
+                let base = ts.based_on.as_deref().unwrap_or(evodesign_doc::NO_TABLE_STYLE);
+                props.push(if base == evodesign_doc::NO_TABLE_STYLE {
                     p("BasedOn", "string", "$ID/[No table style]")
                 } else {
                     p("BasedOn", "object", names::style_self("TableStyle", names::TABLE_BUILTINS, base))
@@ -1015,8 +1015,8 @@ impl<'a> Ex<'a> {
         // Object styles.
         let mut og = Group::default();
         let mut have: Vec<&str> = styles.object.iter().map(|o| o.name.as_str()).collect();
-        let defaults = designcraft_doc::Styles::default();
-        let mut all: Vec<designcraft_doc::ObjectStyle> = styles.object.clone();
+        let defaults = evodesign_doc::Styles::default();
+        let mut all: Vec<evodesign_doc::ObjectStyle> = styles.object.clone();
         for b in &defaults.object {
             if !have.contains(&b.name.as_str()) {
                 all.push(b.clone());
@@ -1027,8 +1027,8 @@ impl<'a> Ex<'a> {
             let id = names::style_self("ObjectStyle", OBJECT_BUILTINS, &os.name);
             let mut el = El::new("ObjectStyle").attr("Self", &id).attr("Name", names::style_name_out(OBJECT_BUILTINS, &os.name));
             let mut props = Vec::new();
-            if os.name != designcraft_doc::NO_OBJECT_STYLE {
-                match os.based_on.as_deref().filter(|b| *b != designcraft_doc::NO_OBJECT_STYLE) {
+            if os.name != evodesign_doc::NO_OBJECT_STYLE {
+                match os.based_on.as_deref().filter(|b| *b != evodesign_doc::NO_OBJECT_STYLE) {
                     Some(b) => props.push(p("BasedOn", "object", names::style_self("ObjectStyle", OBJECT_BUILTINS, b))),
                     None => props.push(p("BasedOn", "string", "$ID/[None]")),
                 }
@@ -1085,9 +1085,9 @@ impl<'a> Ex<'a> {
     }
 
     /// The document's table of contents as a TOC style; its story names it in `AppliedTOCStyle`.
-    fn toc_style_el(&mut self, toc: &designcraft_doc::Toc) -> El {
+    fn toc_style_el(&mut self, toc: &evodesign_doc::Toc) -> El {
         let para = |n: &str| names::style_self("ParagraphStyle", PARA_BUILTINS, n);
-        let chars = |n: Option<&str>| names::style_self("CharacterStyle", CHAR_BUILTINS, n.unwrap_or(designcraft_doc::NO_CHAR_STYLE));
+        let chars = |n: Option<&str>| names::style_self("CharacterStyle", CHAR_BUILTINS, n.unwrap_or(evodesign_doc::NO_CHAR_STYLE));
         let mut el = El::new("TOCStyle")
             .attr("Self", TOC_STYLE_ID)
             .attr("Name", TOC_STYLE_NAME)
@@ -1101,9 +1101,9 @@ impl<'a> Ex<'a> {
             let format = e.entry_style.clone().unwrap_or_else(|| format!("TOC Level {}", e.level));
             let position = match e.page_number {
                 _ if !toc.page_numbers => "NoPageNumber",
-                designcraft_doc::TocPageNumber::After => "AfterEntry",
-                designcraft_doc::TocPageNumber::Before => "BeforeEntry",
-                designcraft_doc::TocPageNumber::None => "NoPageNumber",
+                evodesign_doc::TocPageNumber::After => "AfterEntry",
+                evodesign_doc::TocPageNumber::Before => "BeforeEntry",
+                evodesign_doc::TocPageNumber::None => "NoPageNumber",
             };
             el.push(
                 El::new("TOCStyleEntry")
@@ -1161,10 +1161,10 @@ impl<'a> Ex<'a> {
         }
         if let Some(k) = a.kerning {
             match k {
-                designcraft_doc::Kerning::Metrics => el.set("KerningMethod", "$ID/Metrics"),
-                designcraft_doc::Kerning::Optical => el.set("KerningMethod", "$ID/Optical"),
-                designcraft_doc::Kerning::None => el.set("KerningMethod", "None"),
-                designcraft_doc::Kerning::Manual(v) => el.set("KerningValue", num(v)),
+                evodesign_doc::Kerning::Metrics => el.set("KerningMethod", "$ID/Metrics"),
+                evodesign_doc::Kerning::Optical => el.set("KerningMethod", "$ID/Optical"),
+                evodesign_doc::Kerning::None => el.set("KerningMethod", "None"),
+                evodesign_doc::Kerning::Manual(v) => el.set("KerningValue", num(v)),
             }
         }
         if let Some(v) = a.tracking {
@@ -1233,14 +1233,14 @@ impl<'a> Ex<'a> {
             }
         }
         if let Some(list) = &a.otf_features {
-            for (tag, _, attr) in designcraft_doc::otf::TOGGLES {
-                el.set(attr, bool_s(designcraft_doc::otf::is_on(list, tag)));
+            for (tag, _, attr) in evodesign_doc::otf::TOGGLES {
+                el.set(attr, bool_s(evodesign_doc::otf::is_on(list, tag)));
             }
-            let fig = designcraft_doc::otf::figures(list);
-            if let Some(f) = designcraft_doc::otf::FIGURES.iter().find(|f| f.0 == fig) {
+            let fig = evodesign_doc::otf::figures(list);
+            if let Some(f) = evodesign_doc::otf::FIGURES.iter().find(|f| f.0 == fig) {
                 el.set("OTFFigureStyle", f.3);
             }
-            el.set("OTFStylisticSets", designcraft_doc::otf::stylistic_sets(list).to_string());
+            el.set("OTFStylisticSets", evodesign_doc::otf::stylistic_sets(list).to_string());
         }
         if let Some(v) = &a.glyph_form {
             el.set("GlyphForm", v);
@@ -1337,9 +1337,9 @@ impl<'a> Ex<'a> {
             el.set(
                 "KinsokuHangType",
                 match v {
-                    designcraft_doc::cjk::KinsokuHang::None => "None",
-                    designcraft_doc::cjk::KinsokuHang::Regular => "KinsokuHangRegular",
-                    designcraft_doc::cjk::KinsokuHang::Force => "KinsokuHangForce",
+                    evodesign_doc::cjk::KinsokuHang::None => "None",
+                    evodesign_doc::cjk::KinsokuHang::Regular => "KinsokuHangRegular",
+                    evodesign_doc::cjk::KinsokuHang::Force => "KinsokuHangForce",
                 },
             );
         }
@@ -1395,7 +1395,7 @@ impl<'a> Ex<'a> {
         if let (Some(cap), Some(list)) = (cap, list.as_mut()) {
             match list.first_mut() {
                 Some(ns) if ns.is_drop_cap() => ns.style = cap.to_string(),
-                _ if real(cap) => list.insert(0, designcraft_doc::NestedStyle::drop_cap(cap)),
+                _ if real(cap) => list.insert(0, evodesign_doc::NestedStyle::drop_cap(cap)),
                 _ => {}
             }
         }
@@ -1463,7 +1463,7 @@ impl<'a> Ex<'a> {
         if let Some(v) = a.direction {
             el.set(
                 "ParagraphDirection",
-                if v == designcraft_doc::TextDirection::RightToLeft { "RightToLeftDirection" } else { "LeftToRightDirection" },
+                if v == evodesign_doc::TextDirection::RightToLeft { "RightToLeftDirection" } else { "LeftToRightDirection" },
             );
         }
         if let Some(v) = a.kashidas {
@@ -1500,12 +1500,12 @@ impl<'a> Ex<'a> {
             // `grid_align` isn't written.
             let reference = crate::cjk::grid_reference_out(a.grid_reference.unwrap_or_default());
             match g {
-                designcraft_doc::GridAlign::None => el.set("GridAlignment", "None"),
-                designcraft_doc::GridAlign::AllLines => {
+                evodesign_doc::GridAlign::None => el.set("GridAlignment", "None"),
+                evodesign_doc::GridAlign::AllLines => {
                     el.set("GridAlignment", reference);
                     el.set("GridAlignFirstLineOnly", "false");
                 }
-                designcraft_doc::GridAlign::FirstLineOnly => {
+                evodesign_doc::GridAlign::FirstLineOnly => {
                     el.set("GridAlignment", reference);
                     el.set("GridAlignFirstLineOnly", "true");
                 }
@@ -1515,10 +1515,10 @@ impl<'a> Ex<'a> {
             el.set(
                 "Composer",
                 match c {
-                    designcraft_doc::Composer::Paragraph => "HL Composer",
-                    designcraft_doc::Composer::SingleLine => "HL Single",
-                    designcraft_doc::Composer::Japanese => "HL Composer J",
-                    designcraft_doc::Composer::JapaneseSingleLine => "HL Single J",
+                    evodesign_doc::Composer::Paragraph => "HL Composer",
+                    evodesign_doc::Composer::SingleLine => "HL Single",
+                    evodesign_doc::Composer::Japanese => "HL Composer J",
+                    evodesign_doc::Composer::JapaneseSingleLine => "HL Single J",
                 },
             );
         }
@@ -1726,14 +1726,14 @@ impl<'a> Ex<'a> {
         el.set(&format!("{k}Offset"), num(r.offset));
         el.set(&format!("{k}LeftIndent"), num(r.left_indent));
         el.set(&format!("{k}RightIndent"), num(r.right_indent));
-        props.push(if r.color == designcraft_doc::TEXT_COLOR {
-            p(&format!("{k}Color"), "string", designcraft_doc::TEXT_COLOR)
+        props.push(if r.color == evodesign_doc::TEXT_COLOR {
+            p(&format!("{k}Color"), "string", evodesign_doc::TEXT_COLOR)
         } else {
             p(&format!("{k}Color"), "object", self.sw(&r.color))
         });
     }
 
-    fn stroke_attrs(&self, el: &mut El, s: &designcraft_doc::Stroke) {
+    fn stroke_attrs(&self, el: &mut El, s: &evodesign_doc::Stroke) {
         el.set("StrokeColor", self.sw(&s.swatch));
         el.set("StrokeWeight", num(if s.is_none() { 0.0 } else { s.weight }));
         el.set("StrokeTint", pct(s.tint as f64));
@@ -1844,7 +1844,7 @@ impl<'a> Ex<'a> {
             && let Some(pt) = &t.options.path
         {
             // Type on a path: a TextPath child holds the story.
-            let len = designcraft_geom::warp::PathWarp::new(&it.path.to_bezpath(), false).length();
+            let len = evodesign_geom::warp::PathWarp::new(&it.path.to_bezpath(), false).length();
             el.push(
                 El::new("TextPath")
                     .attr("Self", format!("{}tp", uid(it.id.0)))
@@ -1879,7 +1879,7 @@ impl<'a> Ex<'a> {
         el.set("Visible", bool_s(!it.hidden));
         el.set("Locked", bool_s(it.locked));
         el.set("Nonprinting", bool_s(it.nonprinting));
-        let os = if it.object_style.is_empty() { designcraft_doc::NO_OBJECT_STYLE } else { &it.object_style };
+        let os = if it.object_style.is_empty() { evodesign_doc::NO_OBJECT_STYLE } else { &it.object_style };
         el.set("AppliedObjectStyle", names::style_self("ObjectStyle", OBJECT_BUILTINS, os));
         el.set("ItemTransform", affine_s(xf));
         el.set("FillColor", self.sw(&it.fill.swatch));
@@ -1922,7 +1922,7 @@ impl<'a> Ex<'a> {
         let styled = self.d.styles.object_effects(os).is_some();
         let ds = &it.effects.drop_shadow;
         let (gf, df) = (&it.effects.gradient_feather, &it.effects.directional_feather);
-        if it.opacity < 1.0 || it.blend != designcraft_color::BlendMode::Normal || ds.on || it.effects.feather > 0.0 || gf.on || df.on || styled {
+        if it.opacity < 1.0 || it.blend != evodesign_color::BlendMode::Normal || ds.on || it.effects.feather > 0.0 || gf.on || df.on || styled {
             let mut t = El::new("TransparencySetting");
             t.push(El::new("BlendingSetting").attr("BlendMode", names::blend_out(it.blend)).attr("Opacity", pct(it.opacity as f64)));
             for c in self.effect_els(&it.effects, styled) {
@@ -1974,10 +1974,10 @@ impl<'a> Ex<'a> {
                         .attr(
                             "BaselineFrameGridRelativeOption",
                             match g.relative_to {
-                                designcraft_doc::FrameGridRelative::TopOfPage => "TopOfPageOfBaselineFrameGridRelativeOption",
-                                designcraft_doc::FrameGridRelative::TopMargin => "TopOfMarginOfBaselineFrameGridRelativeOption",
-                                designcraft_doc::FrameGridRelative::TopOfFrame => "TopOfFrameOfBaselineFrameGridRelativeOption",
-                                designcraft_doc::FrameGridRelative::TopInset => "TopOfInsetOfBaselineFrameGridRelativeOption",
+                                evodesign_doc::FrameGridRelative::TopOfPage => "TopOfPageOfBaselineFrameGridRelativeOption",
+                                evodesign_doc::FrameGridRelative::TopMargin => "TopOfMarginOfBaselineFrameGridRelativeOption",
+                                evodesign_doc::FrameGridRelative::TopOfFrame => "TopOfFrameOfBaselineFrameGridRelativeOption",
+                                evodesign_doc::FrameGridRelative::TopInset => "TopOfInsetOfBaselineFrameGridRelativeOption",
                             },
                         )
                         .attr("BaselineFrameGridIncrement", num(g.increment)),
@@ -1993,10 +1993,10 @@ impl<'a> Ex<'a> {
                 }
             }
             Content::Graphic(g) => {
-                if g.auto_fit != designcraft_doc::Fitting::None || g.fit_align != 4 || g.crop != [0.0; 4] {
+                if g.auto_fit != evodesign_doc::Fitting::None || g.fit_align != 4 || g.crop != [0.0; 4] {
                     el.push(
                         El::new("FrameFittingOption")
-                            .attr("AutoFit", bool_s(g.auto_fit != designcraft_doc::Fitting::None))
+                            .attr("AutoFit", bool_s(g.auto_fit != evodesign_doc::Fitting::None))
                             .attr("TopCrop", num(g.crop[0]))
                             .attr("LeftCrop", num(g.crop[1]))
                             .attr("BottomCrop", num(g.crop[2]))
@@ -2017,7 +2017,7 @@ impl<'a> Ex<'a> {
 
     /// The `TransparencySetting` children for `e`'s drop shadow and feather; `all` also writes the
     /// effects that are off (`Mode="None"`), as an object style that sets effects does.
-    fn effect_els(&self, e: &designcraft_doc::Effects, all: bool) -> Vec<El> {
+    fn effect_els(&self, e: &evodesign_doc::Effects, all: bool) -> Vec<El> {
         let mut out = Vec::new();
         let ds = &e.drop_shadow;
         if ds.on || all {
@@ -2035,9 +2035,9 @@ impl<'a> Ex<'a> {
         }
         if e.feather > 0.0 || all {
             let corners = match e.feather_options.corners {
-                designcraft_doc::FeatherCorners::Sharp => "Sharp",
-                designcraft_doc::FeatherCorners::Rounded => "Rounded",
-                designcraft_doc::FeatherCorners::Diffused => "Diffusion",
+                evodesign_doc::FeatherCorners::Sharp => "Sharp",
+                evodesign_doc::FeatherCorners::Rounded => "Rounded",
+                evodesign_doc::FeatherCorners::Diffused => "Diffusion",
             };
             out.push(
                 El::new("FeatherSetting")
@@ -2050,9 +2050,9 @@ impl<'a> Ex<'a> {
         out
     }
 
-    fn image_el(&mut self, asset: &designcraft_doc::Asset, g: &designcraft_doc::Graphic) -> El {
+    fn image_el(&mut self, asset: &evodesign_doc::Asset, g: &evodesign_doc::Graphic) -> El {
         let is_pdf = asset.mime == "application/pdf";
-        let is_eps = asset.mime == "application/postscript" || designcraft_images::is_eps(&asset.data);
+        let is_eps = asset.mime == "application/postscript" || evodesign_images::is_eps(&asset.data);
         let mut el = El::new(if is_eps {
             "EPS"
         } else if is_pdf {
@@ -2298,13 +2298,13 @@ impl<'a> Ex<'a> {
                 .attr("OpticalMarginAlignment", bool_s(s.optical_margin.on))
                 .attr(
                     "OpticalMarginSize",
-                    num(designcraft_doc::OpticalMargin::clamp_size(s.optical_margin.size).unwrap_or(designcraft_doc::OpticalMargin::DEFAULT_SIZE)),
+                    num(evodesign_doc::OpticalMargin::clamp_size(s.optical_margin.size).unwrap_or(evodesign_doc::OpticalMargin::DEFAULT_SIZE)),
                 )
                 .attr("FrameType", "TextFrameType")
                 .attr("StoryOrientation", if s.vertical { "Vertical" } else { "Horizontal" })
                 .attr(
                     "StoryDirection",
-                    if s.direction == designcraft_doc::TextDirection::RightToLeft { "RightToLeftDirection" } else { "LeftToRightDirection" },
+                    if s.direction == evodesign_doc::TextDirection::RightToLeft { "RightToLeftDirection" } else { "LeftToRightDirection" },
                 ),
         );
         for psr in self.story_paras(s) {
@@ -2382,10 +2382,10 @@ impl<'a> Ex<'a> {
                         if let Some(t) = s.para_table(pi) {
                             out.push(Node::El(self.table_el(t)));
                         }
-                    } else if ch == designcraft_doc::ANCHOR_MARK {
+                    } else if ch == evodesign_doc::ANCHOR_MARK {
                         flush_text(&mut cur, &mut pending);
                         flush_content(&mut pending, &mut out);
-                        let k = s.text[..seg_start + ci].matches(designcraft_doc::ANCHOR_MARK).count();
+                        let k = s.text[..seg_start + ci].matches(evodesign_doc::ANCHOR_MARK).count();
                         if let Some(a) = s.anchors.get(k) {
                             out.push(Node::El(
                                 El::new("HyperlinkTextDestination")
@@ -2395,19 +2395,19 @@ impl<'a> Ex<'a> {
                                     .attr("DestinationUniqueKey", a.id & 0xFFFF_FFFF),
                             ));
                         }
-                    } else if ch == designcraft_doc::OBJECT_MARK {
+                    } else if ch == evodesign_doc::OBJECT_MARK {
                         // An anchored object: the item inside the range with its anchoring settings.
                         flush_text(&mut cur, &mut pending);
                         flush_content(&mut pending, &mut out);
-                        let k = s.text[..seg_start + ci].matches(designcraft_doc::OBJECT_MARK).count();
+                        let k = s.text[..seg_start + ci].matches(evodesign_doc::OBJECT_MARK).count();
                         if let Some(o) = s.objects.get(k) {
                             let mut e = self.item_el(&o.item, o.item.xf);
-                            use designcraft_doc::anchored::AnchorAlign as A;
+                            use evodesign_doc::anchored::AnchorAlign as A;
                             let setting = match &o.position {
-                                designcraft_doc::AnchorPosition::Inline { y_offset } => {
+                                evodesign_doc::AnchorPosition::Inline { y_offset } => {
                                     El::new("AnchoredObjectSetting").attr("AnchoredPosition", "InlinePosition").attr("AnchorYoffset", num(*y_offset))
                                 }
-                                designcraft_doc::AnchorPosition::AboveLine { align, space_before, space_after } => El::new("AnchoredObjectSetting")
+                                evodesign_doc::AnchorPosition::AboveLine { align, space_before, space_after } => El::new("AnchoredObjectSetting")
                                     .attr("AnchoredPosition", "AboveLine")
                                     .attr(
                                         "HorizontalAlignment",
@@ -2419,7 +2419,7 @@ impl<'a> Ex<'a> {
                                     )
                                     .attr("AnchorSpaceAbove", num(*space_before))
                                     .attr("AnchorYoffset", num(*space_after)),
-                                designcraft_doc::AnchorPosition::Custom {
+                                evodesign_doc::AnchorPosition::Custom {
                                     x_relative,
                                     y_relative,
                                     x_offset,
@@ -2444,12 +2444,12 @@ impl<'a> Ex<'a> {
                             e.push(setting);
                             out.push(Node::El(e));
                         }
-                    } else if ch == designcraft_doc::INDEX_MARK {
+                    } else if ch == evodesign_doc::INDEX_MARK {
                         flush_text(&mut cur, &mut pending);
                         flush_content(&mut pending, &mut out);
-                        let k = s.text[..seg_start + ci].matches(designcraft_doc::INDEX_MARK).count();
+                        let k = s.text[..seg_start + ci].matches(evodesign_doc::INDEX_MARK).count();
                         if let Some(r) = s.index_refs.get(k).filter(|r| !r.topics.is_empty()) {
-                            use designcraft_doc::index::IndexRange as R;
+                            use evodesign_doc::index::IndexRange as R;
                             for n in 1..=r.topics.len() {
                                 // A shared topic has one key: keep the first reference's
                                 // value (even empty), rather than inventing a merged key.
@@ -2481,7 +2481,7 @@ impl<'a> Ex<'a> {
                                 out.push(Node::El(el));
                             }
                         }
-                    } else if ch == designcraft_doc::XREF_MARK {
+                    } else if ch == evodesign_doc::XREF_MARK {
                         // A source wrapping its current text (InDesign regenerates it on update).
                         flush_text(&mut cur, &mut pending);
                         flush_content(&mut pending, &mut out);
@@ -2490,13 +2490,13 @@ impl<'a> Ex<'a> {
                             c.children.append(&mut out);
                             csrs.push(c);
                         }
-                        let k = s.text[..seg_start + ci].matches(designcraft_doc::XREF_MARK).count();
+                        let k = s.text[..seg_start + ci].matches(evodesign_doc::XREF_MARK).count();
                         if let Some(x) = s.xrefs.get(k) {
                             let me = self.fresh();
                             let fmt = self.d.xref_formats.iter().position(|ff| ff.name == x.format).map_or("n".to_string(), xref_format_self);
                             let text = self.d.xref_values(x.target).map_or("??".into(), |mut v| {
                                 v.page = "?".into();
-                                designcraft_doc::xref::expand(self.d.xref_format(&x.format).map_or("<fullPara />", |ff| ff.definition.as_str()), &v)
+                                evodesign_doc::xref::expand(self.d.xref_format(&x.format).map_or("<fullPara />", |ff| ff.definition.as_str()), &v)
                             });
                             let mut c = self.csr_el(&f);
                             let mut content = El::new("Content");
@@ -2511,7 +2511,7 @@ impl<'a> Ex<'a> {
                             csrs.push(src);
                             self.xref_sources.push((me, x.target));
                         }
-                    } else if let Some(vi) = designcraft_doc::vars::var_index(ch) {
+                    } else if let Some(vi) = evodesign_doc::vars::var_index(ch) {
                         flush_text(&mut cur, &mut pending);
                         flush_content(&mut pending, &mut out);
                         if let Some(v) = self.d.text_variables.get(vi) {
@@ -2524,12 +2524,12 @@ impl<'a> Ex<'a> {
                                     .attr("AssociatedTextVariable", format!("dTextVariablen{}", v.name)),
                             ));
                         }
-                    } else if ch == designcraft_doc::NOTE_MARK {
+                    } else if ch == evodesign_doc::NOTE_MARK {
                         // Editorial notes aren't written to IDML yet.
-                    } else if ch == designcraft_doc::ENDNOTE_REF {
+                    } else if ch == evodesign_doc::ENDNOTE_REF {
                         // Endnotes aren't written to IDML yet: the endnote frame keeps their text
                         // (numbers included) and the references are left out.
-                    } else if ch == designcraft_doc::FOOTNOTE_REF {
+                    } else if ch == evodesign_doc::FOOTNOTE_REF {
                         // The reference: its own range carrying the reference position.
                         flush_text(&mut cur, &mut pending);
                         flush_content(&mut pending, &mut out);
@@ -2541,7 +2541,7 @@ impl<'a> Ex<'a> {
                         if let Some(n) = s.notes.get(s.notes_before(seg_start + ci)) {
                             let mut c = self.csr_el(&f);
                             let pos = self.d.footnote_options.ref_position;
-                            if pos != designcraft_doc::Position::Normal {
+                            if pos != evodesign_doc::Position::Normal {
                                 c.set("Position", names::position_out(pos));
                             }
                             c.push(self.footnote_el(&n.text));
@@ -2604,18 +2604,18 @@ impl<'a> Ex<'a> {
         paras
     }
 
-    fn cell_stroke_attrs(&self, el: &mut El, prefix: &str, s: &designcraft_doc::CellStroke) {
+    fn cell_stroke_attrs(&self, el: &mut El, prefix: &str, s: &evodesign_doc::CellStroke) {
         el.set(&format!("{prefix}StrokeWeight"), num(s.weight));
         el.set(&format!("{prefix}StrokeColor"), self.sw(&s.color));
         el.set(&format!("{prefix}StrokeTint"), pct(s.tint as f64));
         el.set(&format!("{prefix}StrokeType"), names::stroke_type_out(&s.kind));
-        if s.gap_color != designcraft_color::swatch::NONE || s.gap_tint != 1.0 {
+        if s.gap_color != evodesign_color::swatch::NONE || s.gap_tint != 1.0 {
             el.set(&format!("{prefix}StrokeGapColor"), self.sw(&s.gap_color));
             el.set(&format!("{prefix}StrokeGapTint"), pct(s.gap_tint as f64));
         }
     }
 
-    fn partial_cell_stroke_attrs(&self, el: &mut El, prefix: &str, attrs: &designcraft_doc::CellStrokeAttrs) {
+    fn partial_cell_stroke_attrs(&self, el: &mut El, prefix: &str, attrs: &evodesign_doc::CellStrokeAttrs) {
         if let Some(value) = attrs.weight {
             el.set(&format!("{prefix}StrokeWeight"), num(value));
         }
@@ -2636,7 +2636,7 @@ impl<'a> Ex<'a> {
         }
     }
 
-    fn partial_alt_fill_attrs(&self, el: &mut El, kind: &str, attrs: &designcraft_doc::AltFillsAttrs) {
+    fn partial_alt_fill_attrs(&self, el: &mut El, kind: &str, attrs: &evodesign_doc::AltFillsAttrs) {
         if let Some(value) = attrs.first {
             el.set(&format!("Start{kind}FillCount"), value);
         }
@@ -2663,7 +2663,7 @@ impl<'a> Ex<'a> {
         }
     }
 
-    fn partial_alt_stroke_attrs(&self, el: &mut El, kind: &str, attrs: &designcraft_doc::AltStrokesAttrs) {
+    fn partial_alt_stroke_attrs(&self, el: &mut El, kind: &str, attrs: &evodesign_doc::AltStrokesAttrs) {
         if let Some(value) = attrs.first {
             el.set(&format!("Start{kind}StrokeCount"), value);
         }
@@ -2687,7 +2687,7 @@ impl<'a> Ex<'a> {
     }
 
     /// `<Table>` with rows, columns and cells (cell names are `column:row`).
-    fn table_el(&mut self, t: &designcraft_doc::Table) -> El {
+    fn table_el(&mut self, t: &evodesign_doc::Table) -> El {
         let id = uid(t.id);
         let (h, f) = (t.header_rows(), t.footer_rows());
         let mut el = El::new("Table")
@@ -2698,11 +2698,11 @@ impl<'a> Ex<'a> {
             .attr("ColumnCount", t.ncols())
             .attr(
                 "AppliedTableStyle",
-                names::style_self("TableStyle", names::TABLE_BUILTINS, if t.style.is_empty() { designcraft_doc::BASIC_TABLE } else { &t.style }),
+                names::style_self("TableStyle", names::TABLE_BUILTINS, if t.style.is_empty() { evodesign_doc::BASIC_TABLE } else { &t.style }),
             )
             .attr(
                 "TableDirection",
-                if t.options.direction == designcraft_doc::TextDirection::RightToLeft { "RightToLeftDirection" } else { "LeftToRightDirection" },
+                if t.options.direction == evodesign_doc::TextDirection::RightToLeft { "RightToLeftDirection" } else { "LeftToRightDirection" },
             )
             .attr("SpaceBefore", num(t.options.space_before))
             .attr("SpaceAfter", num(t.options.space_after))
@@ -2745,7 +2745,7 @@ impl<'a> Ex<'a> {
             }
         }
         for (r, row) in t.rows.iter().enumerate() {
-            let exact = row.mode == designcraft_doc::RowHeightMode::Exactly;
+            let exact = row.mode == evodesign_doc::RowHeightMode::Exactly;
             el.push(
                 El::new("Row")
                     .attr("Self", format!("{id}Row{r}"))
@@ -2766,10 +2766,10 @@ impl<'a> Ex<'a> {
                 }
                 let Some(cell) = t.cell(r, c) else { continue };
                 let vj = match cell.vj {
-                    designcraft_doc::VerticalJustification::Top => "TopAlign",
-                    designcraft_doc::VerticalJustification::Center => "CenterAlign",
-                    designcraft_doc::VerticalJustification::Bottom => "BottomAlign",
-                    designcraft_doc::VerticalJustification::Justify => "JustifyAlign",
+                    evodesign_doc::VerticalJustification::Top => "TopAlign",
+                    evodesign_doc::VerticalJustification::Center => "CenterAlign",
+                    evodesign_doc::VerticalJustification::Bottom => "BottomAlign",
+                    evodesign_doc::VerticalJustification::Justify => "JustifyAlign",
                 };
                 let mut ce = El::new("Cell")
                     .attr("Self", format!("{id}i{}", r * t.ncols() + c))
@@ -2781,7 +2781,7 @@ impl<'a> Ex<'a> {
                         names::style_self(
                             "CellStyle",
                             names::CELL_BUILTINS,
-                            if cell.style.is_empty() { designcraft_doc::NO_CELL_STYLE } else { &cell.style },
+                            if cell.style.is_empty() { evodesign_doc::NO_CELL_STYLE } else { &cell.style },
                         ),
                     )
                     .attr("FillColor", self.sw(&cell.fill))
@@ -2799,7 +2799,7 @@ impl<'a> Ex<'a> {
                     if cell.stroke_defined[i]
                         || cell.border_overrides[i]
                         || cell.stroke_priorities[i] != 0
-                        || cell.strokes[i] != designcraft_doc::CellStroke::default()
+                        || cell.strokes[i] != evodesign_doc::CellStroke::default()
                     {
                         self.cell_stroke_attrs(&mut ce, side, &cell.strokes[i]);
                     }
@@ -2841,11 +2841,11 @@ impl<'a> Ex<'a> {
 
     /// The frame of a table cell's graphic: an inline `Rectangle` around the shown image, or `None`
     /// when the graphic's asset is missing.
-    fn cell_graphic_el(&mut self, g: &designcraft_doc::Graphic) -> Option<El> {
+    fn cell_graphic_el(&mut self, g: &evodesign_doc::Graphic) -> Option<El> {
         self.d.assets.get(&g.asset)?;
-        let shown = g.xf.transform_rect_bbox(designcraft_geom::Rect::new(0.0, 0.0, g.size.0, g.size.1));
-        let layer = self.d.layers.first().map(|l| l.id).unwrap_or(designcraft_doc::ids::LayerId(0));
-        let mut item = Item::new(designcraft_doc::ids::ItemId(0), layer, Shape::Rectangle, designcraft_geom::shapes::rectangle(shown));
+        let shown = g.xf.transform_rect_bbox(evodesign_geom::Rect::new(0.0, 0.0, g.size.0, g.size.1));
+        let layer = self.d.layers.first().map(|l| l.id).unwrap_or(evodesign_doc::ids::LayerId(0));
+        let mut item = Item::new(evodesign_doc::ids::ItemId(0), layer, Shape::Rectangle, evodesign_geom::shapes::rectangle(shown));
         item.content = Content::Graphic(g.clone());
         let mut el = self.item_el(&item, Affine::IDENTITY);
         el.set("Self", self.fresh());
@@ -2877,7 +2877,7 @@ impl<'a> Ex<'a> {
 }
 
 /// The left stop the composer adds for a list's Tab Position, if it adds one.
-fn list_tab_stop(pp: &designcraft_doc::ParaProps) -> Option<f64> {
+fn list_tab_stop(pp: &evodesign_doc::ParaProps) -> Option<f64> {
     if !matches!(pp.list_type, ListType::Bullets | ListType::Numbers) {
         return None;
     }
@@ -2888,7 +2888,7 @@ fn list_tab_stop(pp: &designcraft_doc::ParaProps) -> Option<f64> {
 /// stop the composer adds for it, in the TabList of each level (style or paragraph) that sets the
 /// list type, the tab position or the tabs. `resolved` gives this level's resolved attributes and
 /// those it inherits; the stop comes back on import as an ordinary tab stop.
-fn with_list_tab(mut a: ParaAttrs, resolved: impl FnOnce() -> (designcraft_doc::ParaProps, designcraft_doc::ParaProps)) -> ParaAttrs {
+fn with_list_tab(mut a: ParaAttrs, resolved: impl FnOnce() -> (evodesign_doc::ParaProps, evodesign_doc::ParaProps)) -> ParaAttrs {
     if a.list_tab.is_none() && a.tabs.is_none() && a.list_type.is_none() {
         return a;
     }
@@ -2900,7 +2900,7 @@ fn with_list_tab(mut a: ParaAttrs, resolved: impl FnOnce() -> (designcraft_doc::
     }
     let mut tabs = here.tabs;
     if let Some(t) = stop {
-        tabs.push(designcraft_doc::TabStop { position: t, align: designcraft_doc::TabAlign::Left, leader: String::new(), align_on: String::new() });
+        tabs.push(evodesign_doc::TabStop { position: t, align: evodesign_doc::TabAlign::Left, leader: String::new(), align_on: String::new() });
         tabs.sort_by(|a, b| a.position.total_cmp(&b.position));
     }
     a.tabs = Some(tabs);
@@ -2946,7 +2946,7 @@ impl Group {
     }
 }
 
-fn margin_el(pg: &designcraft_doc::Page) -> El {
+fn margin_el(pg: &evodesign_doc::Page) -> El {
     let m = pg.margin_rect();
     // Dragged column guides that still fit the margin box are written as they stand, so they
     // survive the round trip; otherwise the even split, which InDesign writes for unmoved columns.
@@ -2964,7 +2964,7 @@ fn margin_el(pg: &designcraft_doc::Page) -> El {
 
 /// `rule_color` is the IDML reference of the column rule's swatch.
 /// `TextWrapPreference` of a page item or a placed graphic.
-fn text_wrap_pref(w: &designcraft_doc::TextWrap) -> El {
+fn text_wrap_pref(w: &evodesign_doc::TextWrap) -> El {
     with_props(
         El::new("TextWrapPreference")
             .attr("Inverse", bool_s(w.invert))
@@ -3024,7 +3024,7 @@ fn text_frame_pref(o: &TextFrameOptions, rule_color: &str) -> El {
 
 /// `<ClippingPathSettings>` with the outline (graphic space is the image's inner space, whose
 /// `GraphicBounds` start at 0,0).
-fn clipping_settings(c: &designcraft_doc::ClippingPath) -> El {
+fn clipping_settings(c: &evodesign_doc::ClippingPath) -> El {
     let mut geometry = path_geometry(&c.path);
     geometry.name = "ClippingPathGeometry".into();
     let el = El::new("ClippingPathSettings")
@@ -3146,7 +3146,7 @@ fn xref_format_self(i: usize) -> String {
 }
 
 /// A cross-reference format as InDesign building blocks.
-fn xref_format_el(i: usize, f: &designcraft_doc::XrefFormat) -> El {
+fn xref_format_el(i: usize, f: &evodesign_doc::XrefFormat) -> El {
     let me = xref_format_self(i);
     let mut el = El::new("CrossReferenceFormat").attr("Self", &me).attr("Name", &f.name).attr("AppliedCharacterStyle", "n");
     let mut k = 0;
@@ -3200,7 +3200,7 @@ fn topic_self(path: &[String]) -> String {
 
 /// Package metadata: the creation and modification times that date variables show.
 fn metadata_xmp(d: &Document) -> String {
-    use designcraft_doc::vars::format_date;
+    use evodesign_doc::vars::format_date;
     let iso = |t: i64| format!("{}:{:02}Z", format_date(t, "yyyy-MM-ddTHH:mm"), t.rem_euclid(60));
     let modified = if d.modified > 0 { d.modified } else { d.created };
     format!(
@@ -3211,7 +3211,7 @@ fn metadata_xmp(d: &Document) -> String {
 }
 
 /// The page's ruler guides, measured from the ruler origin written in the preferences.
-fn push_page_guides(d: &Document, sp: &Spread, pg: &designcraft_doc::Page, pe: &mut El, page_index: usize) {
+fn push_page_guides(d: &Document, sp: &Spread, pg: &evodesign_doc::Page, pe: &mut El, page_index: usize) {
     let facing = d.settings.facing_pages;
     // Ruler guides, measured from the ruler origin written in the preferences: the
     // spread's top left, the page's, or the spine (the import reads them the same way).
@@ -3220,12 +3220,12 @@ fn push_page_guides(d: &Document, sp: &Spread, pg: &designcraft_doc::Page, pe: &
     let spine = sp.pages.iter().map(|p| p.x - left).filter(|x| *x > 1e-6).fold(f64::INFINITY, f64::min);
     let spine = if spine.is_finite() && facing { spine } else { 0.0 };
     let origin_x = match d.settings.ruler_origin {
-        designcraft_doc::RulerOrigin::Spread => left,
-        designcraft_doc::RulerOrigin::Page => pg.x,
-        designcraft_doc::RulerOrigin::Spine => left + spine,
+        evodesign_doc::RulerOrigin::Spread => left,
+        evodesign_doc::RulerOrigin::Page => pg.x,
+        evodesign_doc::RulerOrigin::Spine => left + spine,
     };
     for g in &pg.guides {
-        let vertical = g.orientation == designcraft_doc::Orientation::Vertical;
+        let vertical = g.orientation == evodesign_doc::Orientation::Vertical;
         let mut ge = El::new("Guide")
             .attr("Self", format!("{}g{}", uid(pg.id.0), pe.elements().count()))
             .attr("Orientation", if vertical { "Vertical" } else { "Horizontal" })
@@ -3243,7 +3243,7 @@ fn push_page_guides(d: &Document, sp: &Spread, pg: &designcraft_doc::Page, pe: &
 }
 
 /// A `MojikumiTable` element with its spacing overrides.
-fn mojikumi_table_el(t: &designcraft_doc::cjk::MojikumiTable) -> El {
+fn mojikumi_table_el(t: &evodesign_doc::cjk::MojikumiTable) -> El {
     let mut e = El::new("MojikumiTable").attr("Self", format!("MojikumiTable/{}", escape_id(&t.name))).attr("Name", &t.name);
     if !t.based_on.is_empty() {
         e.set("BasedOnMojikumiSet", &t.based_on);
@@ -3269,7 +3269,7 @@ fn mojikumi_table_el(t: &designcraft_doc::cjk::MojikumiTable) -> El {
 }
 
 /// A `Layer` element with its colour property.
-fn layer_el(l: &designcraft_doc::Layer) -> El {
+fn layer_el(l: &evodesign_doc::Layer) -> El {
     let color = match names::layer_color_out(l.color) {
         Some(n) => p("LayerColor", "enumeration", n),
         None => {
@@ -3295,8 +3295,8 @@ fn layer_el(l: &designcraft_doc::Layer) -> El {
 }
 
 /// A text variable definition with its type's settings element.
-fn text_variable_el(v: &designcraft_doc::vars::TextVariable) -> El {
-    use designcraft_doc::vars::{Use, VarKind};
+fn text_variable_el(v: &evodesign_doc::vars::TextVariable) -> El {
+    use evodesign_doc::vars::{Use, VarKind};
     let pref = |name: &str| El::new(name).attr("TextBefore", &v.before);
     let (ty, settings) = match &v.kind {
         VarKind::Custom { text } => ("CustomTextType", Some(pref("CustomTextVariablePreference").attr("Contents", text))),
@@ -3375,7 +3375,7 @@ fn cjk_settings_para(el: &mut El, a: &ParaAttrs) {
 impl Ex<'_> {
     /// Kenten Settings, Kenten Color and Shatai of a character range or style.
     fn cjk_settings_chars(&self, el: &mut El, props: &mut Vec<El>, a: &CharAttrs) {
-        use designcraft_doc::cjk_settings::KentenKind;
+        use evodesign_doc::cjk_settings::KentenKind;
         if let Some(k) = a.kenten_kind
             && a.kenten != Some(false)
         {
@@ -3455,10 +3455,10 @@ impl Ex<'_> {
 }
 
 /// The IDML `ChangeType` of a tracked change.
-fn change_type(mark: Option<designcraft_doc::ChangeMark>) -> Option<&'static str> {
+fn change_type(mark: Option<evodesign_doc::ChangeMark>) -> Option<&'static str> {
     match mark {
-        Some(designcraft_doc::ChangeMark::Deleted) => Some("DeletedText"),
-        Some(designcraft_doc::ChangeMark::Inserted) => Some("InsertedText"),
+        Some(evodesign_doc::ChangeMark::Deleted) => Some("DeletedText"),
+        Some(evodesign_doc::ChangeMark::Inserted) => Some("InsertedText"),
         _ => None,
     }
 }

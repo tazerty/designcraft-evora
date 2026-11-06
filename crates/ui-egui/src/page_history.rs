@@ -1,8 +1,8 @@
 //! Layout ▸ Go Back / Go Forward: the pages a window has jumped between, in the order it showed them.
 //! InDesign keeps this order for the session, like a web browser's Back and Forward.
 
-use designcraft_doc::ids::PageId;
-use designcraft_geom::Vec2;
+use evodesign_doc::ids::PageId;
+use evodesign_geom::Vec2;
 
 /// Entries kept: the oldest go first.
 const LIMIT: usize = 256;

@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::io::Read;
 
-use designcraft_doc::story::{BASIC_PARAGRAPH, NO_CHAR_STYLE};
-use designcraft_doc::{CharAttrs, CharFormat, ListCounter, ListType, ParaAttrs, ParaFormat, ParaProps, Story, StoryId, Table};
+use evodesign_doc::story::{BASIC_PARAGRAPH, NO_CHAR_STYLE};
+use evodesign_doc::{CharAttrs, CharFormat, ListCounter, ListType, ParaAttrs, ParaFormat, ParaProps, Story, StoryId, Table};
 use quick_xml::events::Event;
 
 use crate::docx_numbering::{ListPara, Numbering};
@@ -187,20 +187,20 @@ fn run_attrs(rpr: Option<&El>) -> CharAttrs {
         a.strikethrough = Some(s);
     }
     // Half-points; a size the engine cannot mean is dropped (#1593).
-    if let Some(pt) = r.val("sz").and_then(|v| v.parse::<f64>().ok()).map(|sz| sz / 2.0).and_then(designcraft_doc::attrs::imported_type_size) {
+    if let Some(pt) = r.val("sz").and_then(|v| v.parse::<f64>().ok()).map(|sz| sz / 2.0).and_then(evodesign_doc::attrs::imported_type_size) {
         a.size = Some(pt);
     }
     if let Some(f) = r.child("rFonts").and_then(|f| f.attr("ascii").or(f.attr("hAnsi"))) {
         a.font_family = Some(f.to_string());
     }
     if r.on("caps") == Some(true) {
-        a.capitalization = Some(designcraft_doc::Capitalization::AllCaps);
+        a.capitalization = Some(evodesign_doc::Capitalization::AllCaps);
     }
     if let Some(v) = r.val("vertAlign") {
         a.position = Some(match v.as_str() {
-            "superscript" => designcraft_doc::Position::Superscript,
-            "subscript" => designcraft_doc::Position::Subscript,
-            _ => designcraft_doc::Position::Normal,
+            "superscript" => evodesign_doc::Position::Superscript,
+            "subscript" => evodesign_doc::Position::Subscript,
+            _ => evodesign_doc::Position::Normal,
         });
     }
     a
@@ -211,7 +211,7 @@ fn para_attrs(ppr: Option<&El>) -> ParaAttrs {
     let mut a = ParaAttrs::default();
     let Some(p) = ppr else { return a };
     // Twips, clamped: a file can hold 1e300, which became a 5e298 pt indent (#1593).
-    let tw = |v: Option<&str>| v.and_then(|v| v.parse::<f64>().ok()).map(|v| v / 20.0).and_then(designcraft_doc::attrs::imported_measure);
+    let tw = |v: Option<&str>| v.and_then(|v| v.parse::<f64>().ok()).map(|v| v / 20.0).and_then(evodesign_doc::attrs::imported_measure);
     if let Some(sp) = p.child("spacing") {
         a.space_before = tw(sp.attr("before"));
         a.space_after = tw(sp.attr("after"));
@@ -223,10 +223,10 @@ fn para_attrs(ppr: Option<&El>) -> ParaAttrs {
     }
     if let Some(j) = p.val("jc") {
         a.align = Some(match j.as_str() {
-            "center" => designcraft_doc::Align::Center,
-            "right" | "end" => designcraft_doc::Align::Right,
-            "both" | "distribute" => designcraft_doc::Align::LeftJustified,
-            _ => designcraft_doc::Align::Left,
+            "center" => evodesign_doc::Align::Center,
+            "right" | "end" => evodesign_doc::Align::Right,
+            "both" | "distribute" => evodesign_doc::Align::LeftJustified,
+            _ => evodesign_doc::Align::Left,
         });
     }
     a
@@ -324,7 +324,7 @@ impl Ctx {
                 "p" => {
                     let mut st = Story::new(StoryId(0));
                     self.inline(e, &mut st, false);
-                    let is_break = |c: char| matches!(c, designcraft_doc::PAGE_BREAK | designcraft_doc::COLUMN_BREAK);
+                    let is_break = |c: char| matches!(c, evodesign_doc::PAGE_BREAK | evodesign_doc::COLUMN_BREAK);
                     out.push(st.text.chars().map(|c| if is_break(c) { '\n' } else { c }).collect());
                 }
                 "sdt" => {
@@ -405,9 +405,9 @@ impl Ctx {
                 "t" => e.text(),
                 "tab" => "\t".into(),
                 "br" => match e.attr("type") {
-                    Some("page") => designcraft_doc::PAGE_BREAK.to_string(),
-                    Some("column") => designcraft_doc::COLUMN_BREAK.to_string(),
-                    _ => designcraft_doc::FORCED_LINE_BREAK.to_string(),
+                    Some("page") => evodesign_doc::PAGE_BREAK.to_string(),
+                    Some("column") => evodesign_doc::COLUMN_BREAK.to_string(),
+                    _ => evodesign_doc::FORCED_LINE_BREAK.to_string(),
                 },
                 "noBreakHyphen" => "\u{2011}".into(),
                 "softHyphen" => "\u{AD}".into(),
@@ -639,7 +639,7 @@ mod tests {
     /// page and a size the engine cannot mean is dropped (#1593).
     #[test]
     fn a_measure_or_size_a_file_cannot_mean_is_bounded() {
-        use designcraft_doc::attrs::MAX_MEASURE;
+        use evodesign_doc::attrs::MAX_MEASURE;
         let doc = format!(
             r#"<w:document {W}><w:body><w:p><w:pPr>
                  <w:spacing w:before="1e300" w:after="-1e300"/><w:ind w:left="1e300" w:firstLine="-1e300"/>
@@ -783,7 +783,7 @@ mod tests {
         );
         let st = import(&docx(&document, &styles, "")).unwrap().story;
         st.check().unwrap();
-        let (pb, cb) = (designcraft_doc::PAGE_BREAK, designcraft_doc::COLUMN_BREAK);
+        let (pb, cb) = (evodesign_doc::PAGE_BREAK, evodesign_doc::COLUMN_BREAK);
         assert_eq!(st.text, format!("End of one{pb}\n{pb}\nTwo{cb}\n"));
         let styles: Vec<&str> = st.paras.iter().map(|p| p.style.as_str()).collect();
         assert_eq!(styles, [BASIC_PARAGRAPH, "Chapter", "Chapter", "Chapter"]);
@@ -809,10 +809,10 @@ mod tests {
     /// The label composition gives paragraph `i`: numbered paragraphs count per level on one
     /// counter that a paragraph outside a list restarts; bullets and empty paragraphs leave it.
     fn label(st: &Story, i: usize) -> String {
-        let mut counter = designcraft_doc::ListCounter::default();
+        let mut counter = evodesign_doc::ListCounter::default();
         let mut label = String::new();
         for (f, r) in st.paras.iter().zip(st.para_ranges()).take(i + 1) {
-            let mut p = designcraft_doc::ParaProps::default();
+            let mut p = evodesign_doc::ParaProps::default();
             p.apply(&f.para);
             label = match p.list_type {
                 _ if r.is_empty() => String::new(),
@@ -822,7 +822,7 @@ mod tests {
                 }
                 ListType::Bullets => p.bullet_label(),
                 ListType::None => {
-                    counter = designcraft_doc::ListCounter::default();
+                    counter = evodesign_doc::ListCounter::default();
                     String::new()
                 }
             };
@@ -854,7 +854,7 @@ mod tests {
         let types: Vec<Option<ListType>> = st.paras.iter().map(|p| p.para.list_type).collect();
         assert_eq!(types, [None, Some(ListType::Bullets), Some(ListType::Bullets), Some(ListType::Numbers), Some(ListType::Numbers)]);
         assert_eq!(label(&st, 1), "•\t");
-        assert_eq!(st.paras[3].para.number_style, Some(designcraft_doc::NumberStyle::Arabic));
+        assert_eq!(st.paras[3].para.number_style, Some(evodesign_doc::NumberStyle::Arabic));
         assert_eq!((label(&st, 3), label(&st, 4)), ("1.\t".to_string(), "2.\t".to_string()));
         // The model's own counter already starts at 1 and carries on: no Start At needed.
         assert_eq!((st.paras[3].para.start_at, st.paras[4].para.start_at), (None, None));
@@ -1017,7 +1017,7 @@ mod tests {
     #[test]
     fn an_element_with_many_attributes_parses_in_linear_time() {
         // RUSTSEC-2026-0194: before quick-xml 0.41 the duplicate-attribute check compared each name with every
-        // earlier one on the element, so a crafted .docx/.xlsx with one huge tag hung the import (O(N²)).
+        // earlier one on the element, so a built .docx/.xlsx with one huge tag hung the import (O(N²)).
         let attrs: String = (0..100_000).map(|i| format!(" w:a{i}=\"{i}\"")).collect();
         let xml = format!("<w:document><w:body><w:p{attrs}/></w:body></w:document>");
         let started = std::time::Instant::now();

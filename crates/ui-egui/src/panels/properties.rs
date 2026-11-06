@@ -2,9 +2,9 @@
 //! sections per selection state — `plan/indesign/11-observed-ui.md` §4.1) and small
 //! single-purpose panels (Stroke, Character, Paragraph, Text Wrap, Align, Links, Info).
 
-use designcraft_doc::{Align, Arrowhead, Cap, Join, StrokeAlign, StrokeType};
-use designcraft_geom::corners::CornerShape;
-use designcraft_geom::{Unit, units};
+use evodesign_doc::{Align, Arrowhead, Cap, Join, StrokeAlign, StrokeType};
+use evodesign_geom::corners::CornerShape;
+use evodesign_geom::{Unit, units};
 use egui::{Rect, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use serde_json::{Value, json};
 
@@ -392,7 +392,7 @@ fn document_sections(app: &mut DesignApp, ui: &mut Ui) {
     if let Some(p) = shown {
         let linked = temp_bool(ui, "margins_linked", true);
         let b = block(ui, 2.0 * FIELD_H + 5.0);
-        let mut set: Option<designcraft_doc::Margins> = None;
+        let mut set: Option<evodesign_doc::Margins> = None;
         let fields = [
             ("margin-top", "Top", p.margins.top, 0.0, 0.0),
             ("margin-bottom", "Bottom", p.margins.bottom, 0.0, 26.0),
@@ -411,7 +411,7 @@ fn document_sections(app: &mut DesignApp, ui: &mut Ui) {
             if let Some(nv) = nv {
                 let mut m = p.margins;
                 if linked {
-                    m = designcraft_doc::Margins { top: nv, bottom: nv, inside: nv, outside: nv };
+                    m = evodesign_doc::Margins { top: nv, bottom: nv, inside: nv, outside: nv };
                 } else {
                     match k {
                         0 => m.top = nv,
@@ -908,7 +908,7 @@ fn appearance_section(app: &mut DesignApp, ui: &mut Ui, i: &SelInfo) {
 fn swatch_menu(
     app: &mut DesignApp,
     resp: &egui::Response,
-    doc: &designcraft_doc::Document,
+    doc: &evodesign_doc::Document,
     cur: &str,
     stroke: bool,
     text_frame: bool,
@@ -1156,7 +1156,7 @@ fn text_style_section(app: &mut DesignApp, ui: &mut Ui) {
         let Some(st) = app.session.active() else { return };
         if tab == 0 {
             (
-                st.doc.styles.paragraph.iter().map(|p| p.name.clone()).filter(|n| n != designcraft_doc::NO_PARA_STYLE).collect(),
+                st.doc.styles.paragraph.iter().map(|p| p.name.clone()).filter(|n| n != evodesign_doc::NO_PARA_STYLE).collect(),
                 a["paragraphStyle"].as_str().unwrap_or("").to_string(),
             )
         } else {
@@ -1239,7 +1239,7 @@ fn text_appearance_section(app: &mut DesignApp, ui: &mut Ui) {
     let Some(doc) = app.session.active().map(|d| d.doc.clone()) else { return };
     let c = &a["chars"];
     for (k, (key, label)) in [("fill", "Fill"), ("stroke", "Stroke")].into_iter().enumerate() {
-        let sw = c[key].as_str().unwrap_or(designcraft_color::swatch::NONE).to_string();
+        let sw = c[key].as_str().unwrap_or(evodesign_color::swatch::NONE).to_string();
         let b = block(ui, FIELD_H);
         let (col, g) = widgets::swatch_colors(&doc, &sw, 1.0);
         let chip = sub(b, 4.0, 2.0, 17.0, 17.0);
@@ -1548,8 +1548,8 @@ fn paragraph_more(app: &mut DesignApp, ui: &mut Ui, p: &Value, fw: f32) {
     }
     let y = 3.0 * (FIELD_H + 5.0);
     for (right, icon, tip, key, max) in [
-        (false, "drop-lines", "Drop Cap Number of Lines", "dropCapLines", designcraft_compose::MAX_DROP_CAP_LINES),
-        (true, "drop-chars", "Drop Cap One or More Characters", "dropCapChars", designcraft_compose::MAX_DROP_CAP_CHARS),
+        (false, "drop-lines", "Drop Cap Number of Lines", "dropCapLines", evodesign_compose::MAX_DROP_CAP_LINES),
+        (true, "drop-chars", "Drop Cap One or More Characters", "dropCapChars", evodesign_compose::MAX_DROP_CAP_CHARS),
     ] {
         let field = NumField::number(key, p[key].as_f64(), "", 0).spinner().range(0.0, max as f64);
         if let Some(v) = half_field(ui, b, right, y, half, icon, &tr(tip), field) {
@@ -1580,7 +1580,7 @@ fn bullets_section(app: &mut DesignApp, ui: &mut Ui) {
         ui.spacing_mut().item_spacing.x = 10.0;
         // As InDesign's: a list with the default hanging indent, or (pressed: every selected
         // paragraph has it, as Type › Apply Bullets shows) no list.
-        use designcraft_doc::ListType;
+        use evodesign_doc::ListType;
         for (icon, kind, cmd, tip) in
             [("bullets", ListType::Bullets, "list.bullets", "Bulleted List"), ("numbering", ListType::Numbers, "list.numbers", "Numbered List")]
         {
@@ -1997,8 +1997,8 @@ pub fn paragraph_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
         let _ = app.run("type.para", json!({"attrs": {"sameParaStyleSpacing": v}}));
     }
     for (right, icon, tip, key, max) in [
-        (false, "drop-lines", "Drop Cap Number of Lines", "dropCapLines", designcraft_compose::MAX_DROP_CAP_LINES),
-        (true, "drop-chars", "Drop Cap One or More Characters", "dropCapChars", designcraft_compose::MAX_DROP_CAP_CHARS),
+        (false, "drop-lines", "Drop Cap Number of Lines", "dropCapLines", evodesign_compose::MAX_DROP_CAP_LINES),
+        (true, "drop-chars", "Drop Cap One or More Characters", "dropCapChars", evodesign_compose::MAX_DROP_CAP_CHARS),
     ] {
         let field = NumField::number(key, p[key].as_f64(), "", 0).spinner().range(0.0, max as f64);
         if let Some(v) = half_field(ui, b, right, 4.0 * row, half, icon, &tr(tip), field) {
@@ -2285,7 +2285,7 @@ pub fn stroke_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
 
 /// Stroke panel while text is selected: the text's outline colour, weight and whether it sits behind the fill.
 fn text_stroke_panel(app: &mut DesignApp, ui: &mut egui::Ui, c: &Value) {
-    let swatch = c["stroke"].as_str().unwrap_or(designcraft_color::swatch::NONE).to_string();
+    let swatch = c["stroke"].as_str().unwrap_or(evodesign_color::swatch::NONE).to_string();
     egui::Grid::new("text_stroke_panel").num_columns(2).spacing(vec2(8.0, 6.0)).show(ui, |ui| {
         caption(ui, crate::i18n::tr(&app.ui.language, "Weight:"));
         if let Some(v) = number(ui, "tsw_panel", c["strokeWeight"].as_f64(), " pt", 60.0, 3) {
@@ -2306,7 +2306,7 @@ fn text_stroke_panel(app: &mut DesignApp, ui: &mut egui::Ui, c: &Value) {
 
 /// A short line ending in arrowhead `a` (pointing left for Start, right for End).
 fn arrow_preview(ui: &mut egui::Ui, a: Arrowhead, start: bool, color: egui::Color32) {
-    use designcraft_geom::kurbo;
+    use evodesign_geom::kurbo;
     let (r, _) = ui.allocate_exact_size(vec2(56.0, 14.0), Sense::hover());
     let mut line = kurbo::BezPath::new();
     let (y, x0, x1) = (r.center().y as f64, r.left() as f64 + 6.0, r.right() as f64 - 6.0);
@@ -2317,8 +2317,8 @@ fn arrow_preview(ui: &mut egui::Ui, a: Arrowhead, start: bool, color: egui::Colo
         line.move_to((x0, y));
         line.line_to((x1, y));
     }
-    let st = designcraft_doc::Stroke { weight: 1.5, end: a, ..Default::default() };
-    let (line, heads) = designcraft_doc::arrow::apply(&line, &st, false).unwrap_or((line, vec![]));
+    let st = evodesign_doc::Stroke { weight: 1.5, end: a, ..Default::default() };
+    let (line, heads) = evodesign_doc::arrow::apply(&line, &st, false).unwrap_or((line, vec![]));
     let pts = |p: &kurbo::BezPath| {
         let mut v = Vec::new();
         kurbo::flatten(p.iter(), 0.1, |el| match el {
@@ -2810,7 +2810,7 @@ pub fn info_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     match sel_info(app) {
         Some(i) => {
-            let f = |v: f64| designcraft_geom::format_measure(v, u);
+            let f = |v: f64| evodesign_geom::format_measure(v, u);
             crate::rtl::label(ui, format!("X: {}   Y: {}", f(i.page_rect.x0), f(i.page_rect.y0)));
             crate::rtl::label(ui, format!("W: {}   H: {}", f(i.page_rect.width()), f(i.page_rect.height())));
             crate::rtl::label(
@@ -2844,7 +2844,7 @@ pub fn effects_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
         crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, "Select an object."));
         return;
     };
-    use designcraft_color::BlendMode as B;
+    use evodesign_color::BlendMode as B;
     const MODES: [B; 16] = [
         B::Normal,
         B::Multiply,
@@ -2960,7 +2960,7 @@ pub fn effects_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
 
 pub fn preflight_panel(app: &mut DesignApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    let issues = designcraft_engine::cmd::preflight::check(&app.session, 150.0);
+    let issues = evodesign_engine::cmd::preflight::check(&app.session, 150.0);
     let errors = issues.iter().filter(|i| i.severity == "error").count();
     ui.horizontal(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(10.0, 10.0), egui::Sense::hover());
@@ -3038,7 +3038,7 @@ fn variable_font_axes(app: &mut DesignApp, ui: &mut egui::Ui, family: &str, styl
     if axes.is_empty() {
         return;
     }
-    let base = designcraft_fonts::base_style(style).to_string();
+    let base = evodesign_fonts::base_style(style).to_string();
     let face = db.face(family, style);
     let cur = |tag: &str, default: f32| face.coords.iter().find(|(t, _)| t == tag.as_bytes()).map_or(default, |c| c.1);
     let mut values: Vec<(String, f32)> = axes.iter().map(|a| (a.0.clone(), cur(&a.0, a.3))).collect();
@@ -3180,10 +3180,10 @@ mod tests {
         text_attrs(app).unwrap()["chars"]["language"].clone()
     }
 
-    fn linked_graphics(paths: &[Option<&str>]) -> (DesignApp, Vec<designcraft_doc::ItemId>, Vec<designcraft_doc::AssetId>) {
-        use designcraft_doc::{Asset, AssetId, Content, Graphic, ItemId};
+    fn linked_graphics(paths: &[Option<&str>]) -> (DesignApp, Vec<evodesign_doc::ItemId>, Vec<evodesign_doc::AssetId>) {
+        use evodesign_doc::{Asset, AssetId, Content, Graphic, ItemId};
         use std::sync::Arc;
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"title": "Linked graphics"})).unwrap();
         let mut items = Vec::new();
         let mut assets = Vec::new();
@@ -3211,7 +3211,7 @@ mod tests {
                 layer_options: None,
                 asset: aid,
                 size: (72.0, 72.0),
-                xf: designcraft_geom::Affine::IDENTITY,
+                xf: evodesign_geom::Affine::IDENTITY,
                 clip: None,
                 auto_fit: Default::default(),
                 fit_align: 4,
@@ -3259,7 +3259,7 @@ mod tests {
 
     #[test]
     fn stroke_panel_shows_the_text_stroke_options_while_text_is_selected() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [72, 72, 400, 400], "content": "text", "caret": true})).unwrap();
         let mut ready = false;
@@ -3284,7 +3284,7 @@ mod tests {
     /// page alone; Back returns to the document.
     #[test]
     fn edit_page_shows_the_page_and_sets_its_size_alone() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"pages": 3, "facingPages": false})).unwrap();
         app.ui.dock_tab = "properties".into();
         let mut h = crate::test_window::open(app, vec2(1400.0, 900.0));
@@ -3353,7 +3353,7 @@ mod tests {
 
     #[test]
     fn properties_character_section_sets_the_language() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [72, 72, 300, 200], "content": "text", "text": "bunun", "caret": true})).unwrap();
         app.run("edit.selectAll", json!({})).unwrap();
@@ -3389,7 +3389,7 @@ mod tests {
     /// pressed, and a click turns alignment off instead of making it All Lines.
     #[test]
     fn more_options_grid_button_keeps_first_line_only() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [72, 72, 300, 200], "content": "text", "text": "If fine plants", "caret": true})).unwrap();
         app.run("edit.selectAll", json!({})).unwrap();
@@ -3407,7 +3407,7 @@ mod tests {
 
     #[test]
     fn more_options_expand_character_and_paragraph_in_place() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [72, 72, 300, 200], "content": "text", "text": "If fine plants", "caret": true})).unwrap();
         app.run("edit.selectAll", json!({})).unwrap();
@@ -3579,7 +3579,7 @@ mod tests {
     }
 
     fn text_app() -> DesignApp {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         app.run("frame.create", json!({"rect": [72, 72, 300, 200], "content": "text", "text": "AVATAR", "caret": true})).unwrap();
         app.run("edit.selectAll", json!({})).unwrap();
@@ -3673,7 +3673,7 @@ mod tests {
         let candidates = [("/System/Library/Fonts/Supplemental/Skia.ttf", "Skia"), ("/System/Library/Fonts/NewYork.ttf", "New York")];
         candidates.into_iter().find_map(|(path, family)| {
             let bytes = std::fs::read(path).ok()?;
-            let db = designcraft_fonts::FontDb::global();
+            let db = evodesign_fonts::FontDb::global();
             db.add_font(bytes);
             let style = db.styles(family).first().cloned()?;
             (db.axes(family, &style).len() >= 2).then_some(family)
@@ -3761,18 +3761,18 @@ mod tests {
         h.key_press(egui::Key::Enter);
         h.run_steps(3);
         let st = h.state_mut().session.active().unwrap().doc.story(story).unwrap().format_after(0).over.kerning;
-        assert_eq!(st, Some(designcraft_doc::Kerning::Manual(-80.0)), "A of the A|V pair");
+        assert_eq!(st, Some(evodesign_doc::Kerning::Manual(-80.0)), "A of the A|V pair");
         assert_eq!(kerning(h.state_mut()), json!({"kind": "manual", "value": -80.0}));
     }
 
     #[test]
     fn clicking_a_swatch_chip_in_the_appearance_fill_menu_applies_it() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         // A graphic frame: the Appearance section shows a single Fill chip.
         let id = app.run("frame.create", json!({"rect": [72, 72, 300, 200]})).unwrap()["id"].as_u64().unwrap();
         app.run("selection.set", json!({"ids": [id]})).unwrap();
-        let before = app.session.active().unwrap().doc.item(designcraft_doc::ids::ItemId(id)).unwrap().fill.swatch.clone();
+        let before = app.session.active().unwrap().doc.item(evodesign_doc::ids::ItemId(id)).unwrap().fill.swatch.clone();
         assert_ne!(before, "[Paper]");
         let mut h = Harness::builder().with_size(vec2(320.0, 1400.0)).build_ui_state(
             |ui, app: &mut DesignApp| {
@@ -3800,7 +3800,7 @@ mod tests {
         h.drag_at(p);
         h.drop_at(p);
         h.run_steps(4);
-        let after = h.state().session.active().unwrap().doc.item(designcraft_doc::ids::ItemId(id)).unwrap().fill.swatch.clone();
+        let after = h.state().session.active().unwrap().doc.item(evodesign_doc::ids::ItemId(id)).unwrap().fill.swatch.clone();
         assert_eq!(after, name, "clicking the swatch chip applies it");
     }
 
@@ -3825,7 +3825,7 @@ mod tests {
     /// bullets with InDesign's hanging indent; pressed again, both go.
     #[test]
     fn the_bulleted_list_button_applies_a_hanging_indent() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let f = app
             .run(
@@ -3852,7 +3852,7 @@ mod tests {
 
     #[test]
     fn several_shapes_show_pathfinder_and_intersect_combines_them() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [100, 100, 300, 300], "shape": "ellipse"})).unwrap()["id"].clone();
         let b = app.run("frame.create", json!({"rect": [200, 100, 300, 200]})).unwrap()["id"].clone();
@@ -3880,7 +3880,7 @@ mod tests {
 
     #[test]
     fn the_fill_menu_sets_a_tint() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let id = app.run("frame.create", json!({"rect": [72, 72, 300, 200]})).unwrap()["id"].as_u64().unwrap();
         app.run("object.fill", json!({"swatch": CYAN, "ids": [id]})).unwrap();
@@ -3901,13 +3901,13 @@ mod tests {
         h.event(egui::Event::Text("25".into()));
         h.key_press(egui::Key::Enter);
         h.run_steps(3);
-        let fill = h.state().session.active().unwrap().doc.item(designcraft_doc::ids::ItemId(id)).unwrap().fill.clone();
+        let fill = h.state().session.active().unwrap().doc.item(evodesign_doc::ids::ItemId(id)).unwrap().fill.clone();
         assert_eq!((fill.swatch.as_str(), fill.tint), (CYAN, 0.25), "the tint, on the same swatch");
     }
 
     #[test]
     fn a_tint_on_several_objects_keeps_each_ones_swatch() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [72, 72, 200, 200]})).unwrap()["id"].as_u64().unwrap();
         let b = app.run("frame.create", json!({"rect": [220, 72, 300, 200]})).unwrap()["id"].as_u64().unwrap();
@@ -3928,17 +3928,17 @@ mod tests {
         h.key_press(egui::Key::Enter);
         h.run_steps(3);
         let doc = &h.state().session.active().unwrap().doc;
-        let fill = |id: u64| doc.item(designcraft_doc::ids::ItemId(id)).unwrap().fill.clone();
+        let fill = |id: u64| doc.item(evodesign_doc::ids::ItemId(id)).unwrap().fill.clone();
         assert_eq!((fill(a).swatch.as_str(), fill(a).tint), (CYAN, 0.25));
         assert_eq!((fill(b).swatch.as_str(), fill(b).tint), ("[Black]", 0.25), "the second keeps its own swatch");
     }
 
     #[test]
     fn apply_to_text_colours_a_text_frames_text_not_the_frame() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let r = app.run("frame.create", json!({"rect": [72, 72, 300, 200], "content": "text", "text": "Heading"})).unwrap();
-        let (id, story) = (r["id"].as_u64().unwrap(), designcraft_doc::StoryId(r["story"].as_u64().unwrap()));
+        let (id, story) = (r["id"].as_u64().unwrap(), evodesign_doc::StoryId(r["story"].as_u64().unwrap()));
         app.run("selection.set", json!({"ids": [id]})).unwrap();
         let mut h = panel(app);
         h.get_by_label("Fill swatch").click();
@@ -3949,17 +3949,17 @@ mod tests {
         h.run_steps(3);
         let doc = &h.state().session.active().unwrap().doc;
         assert_eq!(doc.story(story).unwrap().char_format_at(0).over.fill.as_deref(), Some(CYAN), "the text is cyan");
-        assert_eq!(doc.item(designcraft_doc::ids::ItemId(id)).unwrap().fill.swatch, "[None]", "the frame isn't");
+        assert_eq!(doc.item(evodesign_doc::ids::ItemId(id)).unwrap().fill.swatch, "[None]", "the frame isn't");
     }
 
     #[test]
     fn transform_flips_and_rotates_from_properties() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), crate::Services::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({})).unwrap();
         let id = app.run("frame.create", json!({"rect": [72, 72, 300, 200]})).unwrap()["id"].as_u64().unwrap();
         app.run("selection.set", json!({"ids": [id]})).unwrap();
         let mut h = panel(app);
-        let xf = |h: &Harness<'_, DesignApp>| h.state().session.active().unwrap().doc.item(designcraft_doc::ids::ItemId(id)).unwrap().xf;
+        let xf = |h: &Harness<'_, DesignApp>| h.state().session.active().unwrap().doc.item(evodesign_doc::ids::ItemId(id)).unwrap().xf;
         // Flip Horizontal mirrors the frame (a negative determinant); Flip Vertical as well brings it
         // back to a half turn, as in the tutorial's petal.
         h.get_by_label("Flip Horizontal").click();
@@ -4018,7 +4018,7 @@ mod effects_panel_tests {
 
     #[test]
     fn the_effects_panel_shows_the_level_and_isolate_blending_and_knockout_group_for_groups() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Default::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), Default::default());
         app.run("file.new", json!({})).unwrap();
         let a = app.run("frame.create", json!({"rect": [72, 72, 144, 144]})).unwrap()["id"].as_u64().unwrap();
         let b = app.run("frame.create", json!({"rect": [100, 100, 200, 200]})).unwrap()["id"].as_u64().unwrap();
@@ -4032,7 +4032,7 @@ mod effects_panel_tests {
         for expected in ["Group:", "Color Dodge 100%", "Isolate Blending", "Knockout Group"] {
             assert!(texts.iter().any(|t| t == expected), "{expected} in {texts:?}");
         }
-        let item = |app: &DesignApp, id: u64| app.session.doc().unwrap().doc.item(designcraft_doc::ItemId(id)).cloned().unwrap();
+        let item = |app: &DesignApp, id: u64| app.session.doc().unwrap().doc.item(evodesign_doc::ItemId(id)).cloned().unwrap();
         click(&mut app, &ctx, "Isolate Blending");
         assert!(item(&app, g).isolate);
         click(&mut app, &ctx, "Knockout Group");
@@ -4047,7 +4047,7 @@ mod effects_panel_tests {
 
     #[test]
     fn pasted_into_frames_keep_object_level_and_disable_group_blending() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Default::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), Default::default());
         app.run("file.new", json!({})).unwrap();
         let child = app.run("frame.create", json!({"rect": [80, 80, 120, 120]})).unwrap()["id"].clone();
         app.run("selection.set", json!({"ids": [child]})).unwrap();
@@ -4065,7 +4065,7 @@ mod effects_panel_tests {
         click(&mut app, &ctx, "Isolate Blending");
         click(&mut app, &ctx, "Knockout Group");
         let st = app.session.doc().unwrap();
-        let it = st.doc.item(designcraft_doc::ItemId(container)).unwrap();
+        let it = st.doc.item(evodesign_doc::ItemId(container)).unwrap();
         assert!(it.has_nested_items());
         assert!(!it.isolate && !it.knockout, "group-only options stay disabled for a frame holding content");
         assert_eq!(st.history.undo.len(), undo, "disabled controls do not create undo steps");
@@ -4091,7 +4091,7 @@ mod wrap_panel_tests {
 
     #[test]
     fn the_text_wrap_panel_shows_each_offset_and_invert() {
-        let mut app = DesignApp::new(designcraft_engine::Session::new(), Default::default());
+        let mut app = DesignApp::new(evodesign_engine::Session::new(), Default::default());
         app.run("file.new", json!({})).unwrap();
         let id = app.run("frame.create", json!({"rect": [72, 72, 144, 144]})).unwrap()["id"].as_u64().unwrap();
         app.run("object.textWrap", json!({"mode": "boundingBox", "offset": [1, 2, 3, 4]})).unwrap();
@@ -4113,7 +4113,7 @@ mod wrap_panel_tests {
                 ],
             );
         }
-        assert!(app.session.doc().unwrap().doc.item(designcraft_doc::ItemId(id)).unwrap().wrap.invert);
+        assert!(app.session.doc().unwrap().doc.item(evodesign_doc::ItemId(id)).unwrap().wrap.invert);
     }
 }
 
@@ -4130,11 +4130,11 @@ const FLEX_JUSTIFY: [(&str, &str, &str); 6] = [
 ];
 
 /// The selected Flex Layout container (the first), with its objects' bounds.
-fn selected_container(app: &DesignApp) -> Option<(designcraft_doc::Item, Vec<designcraft_geom::Rect>)> {
+fn selected_container(app: &DesignApp) -> Option<(evodesign_doc::Item, Vec<evodesign_geom::Rect>)> {
     let st = app.session.active()?;
     let it = st.selection.items.iter().filter_map(|i| st.doc.item(*i)).find(|it| it.flex.is_some())?.clone();
     let kids = match &it.content {
-        designcraft_doc::Content::Group { items } => items.iter().map(|c| c.bounds()).collect(),
+        evodesign_doc::Content::Group { items } => items.iter().map(|c| c.bounds()).collect(),
         _ => Vec::new(),
     };
     Some((it, kids))
@@ -4142,8 +4142,8 @@ fn selected_container(app: &DesignApp) -> Option<(designcraft_doc::Item, Vec<des
 
 /// The alignment grid: 3 × 3 cells (one column or row of three when a space justification spreads
 /// the objects along the main axis); the chosen cell shows the direction's arrow.
-fn flex_grid(ui: &mut Ui, r: Rect, f: Option<&designcraft_doc::FlexLayout>) -> Option<u8> {
-    use designcraft_doc::{FlexAlign, FlexJustify};
+fn flex_grid(ui: &mut Ui, r: Rect, f: Option<&evodesign_doc::FlexLayout>) -> Option<u8> {
+    use evodesign_doc::{FlexAlign, FlexJustify};
     let t = Tokens::get(ui.ctx());
     let resp = ui.interact(r, ui.id().with("flex_grid"), Sense::click());
     ui.painter().rect_stroke(r, 2.0, Stroke::new(1.0, t.field_border), StrokeKind::Inside);
@@ -4184,9 +4184,9 @@ fn flex_grid(ui: &mut Ui, r: Rect, f: Option<&designcraft_doc::FlexLayout>) -> O
             if on && f.is_some() {
                 ui.painter().rect_filled(c.shrink(2.0), 2.0, t.well);
                 let icon = match f.map(|f| f.direction) {
-                    Some(designcraft_doc::FlexDirection::RowReverse) => "flex-left",
-                    Some(designcraft_doc::FlexDirection::Column) => "flex-down",
-                    Some(designcraft_doc::FlexDirection::ColumnReverse) => "flex-up",
+                    Some(evodesign_doc::FlexDirection::RowReverse) => "flex-left",
+                    Some(evodesign_doc::FlexDirection::Column) => "flex-down",
+                    Some(evodesign_doc::FlexDirection::ColumnReverse) => "flex-up",
                     _ => "flex-right",
                 };
                 icons::paint(ui.painter(), c.shrink(3.0), icon, t.text_strong);
@@ -4204,7 +4204,7 @@ fn flex_grid(ui: &mut Ui, r: Rect, f: Option<&designcraft_doc::FlexLayout>) -> O
 /// Flex Layout controls, as InDesign's panel: Create Flex Layout; alignment grid, width and height
 /// (Auto/Fixed); justification, direction and wrap; padding and spacing.
 fn flex_section(app: &mut DesignApp, ui: &mut Ui) {
-    use designcraft_doc::{FlexSize, flex};
+    use evodesign_doc::{FlexSize, flex};
     let t = Tokens::get(ui.ctx());
     let lang = app.ui.language.clone();
     let tr = |s: &str| crate::i18n::tr(&lang, s).to_string();
@@ -4299,10 +4299,10 @@ fn flex_section(app: &mut DesignApp, ui: &mut Ui) {
         place(ui, sub(b, 78.0, 0.0, 132.0, FIELD_H), |ui| {
             ui.spacing_mut().item_spacing.x = 2.0;
             for (d, icon, tip) in [
-                (designcraft_doc::FlexDirection::Row, "flex-right", "Row"),
-                (designcraft_doc::FlexDirection::RowReverse, "flex-left", "Reverse Row"),
-                (designcraft_doc::FlexDirection::Column, "flex-down", "Column"),
-                (designcraft_doc::FlexDirection::ColumnReverse, "flex-up", "Reverse Column"),
+                (evodesign_doc::FlexDirection::Row, "flex-right", "Row"),
+                (evodesign_doc::FlexDirection::RowReverse, "flex-left", "Reverse Row"),
+                (evodesign_doc::FlexDirection::Column, "flex-down", "Column"),
+                (evodesign_doc::FlexDirection::ColumnReverse, "flex-up", "Reverse Column"),
             ] {
                 if widgets::icon_toggle_sized(ui, icon, enabled && dir == d, &tr(tip), vec2(31.0, 21.0)).clicked() {
                     set = Some(json!({"direction": d}));

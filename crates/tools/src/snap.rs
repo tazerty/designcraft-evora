@@ -10,9 +10,9 @@
 
 use std::collections::HashSet;
 
-use designcraft_doc::{Document, Item, ItemId, Orientation, Selection, SpreadRef, StrokeAlign};
-use designcraft_geom::snap::snap_to_grid;
-use designcraft_geom::{Affine, Point, Rect, Vec2, format_measure};
+use evodesign_doc::{Document, Item, ItemId, Orientation, Selection, SpreadRef, StrokeAlign};
+use evodesign_geom::snap::snap_to_grid;
+use evodesign_geom::{Affine, Point, Rect, Vec2, format_measure};
 
 pub use crate::{Gesture, Snap, SnapRequest, SnapView};
 
@@ -278,7 +278,7 @@ fn rotation_of(xf: Affine) -> Option<f64> {
     if !xf_finite(xf) {
         return None;
     }
-    let rotation = designcraft_geom::decompose::decompose(xf).rotation;
+    let rotation = evodesign_geom::decompose::decompose(xf).rotation;
     rotation.is_finite().then_some(rotation)
 }
 
@@ -410,7 +410,7 @@ fn grid_origin(cx: &ToolContext, req: &SnapRequest<'_>, axis: Axis) -> Option<f6
 ///
 /// Lines are `page.y0 + origin + n * increment` for n >= 0 while the line is inside the page
 /// (the bottom edge is not a line, matching the canvas), `origin` from
-/// [`BaselineGrid::origin`](designcraft_doc::BaselineGrid::origin). An increment of 0 or less
+/// [`BaselineGrid::origin`](evodesign_doc::BaselineGrid::origin). An increment of 0 or less
 /// skips the pass. `view_threshold` is not read, and hiding the baseline grid does not turn this
 /// off. Only a page the rect crosses on x contributes. A dragged ruler guide
 /// ([`Gesture::Guide`]) doesn't snap to it.
@@ -978,7 +978,7 @@ fn leaf_own_size(item: &Item, abs: Affine) -> Option<(f64, f64)> {
     if !rect_finite(local) {
         return None;
     }
-    let decomposed = designcraft_geom::decompose::decompose(abs);
+    let decomposed = evodesign_geom::decompose::decompose(abs);
     let sx = decomposed.scale_x.abs();
     let sy = decomposed.scale_y.abs();
     if !sx.is_finite() || !sy.is_finite() {
@@ -1031,7 +1031,7 @@ fn pass_guides(cx: &ToolContext, req: &SnapRequest<'_>, axis: Axis, tol: f64) ->
             .guides
             .iter()
             .enumerate()
-            .filter(|&(gi, _)| !req.exclude_guides.contains(&designcraft_doc::GuideSel { spread: req.spread, page: pi, index: gi }));
+            .filter(|&(gi, _)| !req.exclude_guides.contains(&evodesign_doc::GuideSel { spread: req.spread, page: pi, index: gi }));
         for guide in own.map(|(_, g)| g.clone()).chain(cx.doc.parent_guides(page)) {
             if !guide.visible_in(cx.doc) || !guide.position.is_finite() || guide.orientation != axis_orientation(axis) {
                 continue;
@@ -1371,11 +1371,11 @@ fn push_alignment_guide(out: &mut Vec<Overlay>, cx: &ToolContext, spread: Spread
 mod tests {
     use std::sync::Arc;
 
-    use designcraft_compose::Cache;
-    use designcraft_doc::build::NewDocument;
-    use designcraft_doc::{Document, Guide, Item, Margins, PageSide, Selection, Shape, Stroke};
-    use designcraft_geom::shapes;
-    use designcraft_geom::{Affine, Unit};
+    use evodesign_compose::Cache;
+    use evodesign_doc::build::NewDocument;
+    use evodesign_doc::{Document, Guide, Item, Margins, PageSide, Selection, Shape, Stroke};
+    use evodesign_geom::shapes;
+    use evodesign_geom::{Affine, Unit};
 
     use crate::layout::CanvasLayout;
 
@@ -1549,7 +1549,7 @@ mod tests {
         let sel = Selection::default();
         let cx = ctx_on(&doc, &sel, &cache, &layout);
         let line = Rect::new(102.0, 100.0, 102.0, 300.0);
-        let dragged = [designcraft_doc::GuideSel { spread: SpreadRef::Doc(0), page: 0, index: 0 }];
+        let dragged = [evodesign_doc::GuideSel { spread: SpreadRef::Doc(0), page: 0, index: 0 }];
         let hit = snap(&cx, move_req(line, &[]));
         assert!((hit.delta.x - 2.0).abs() < 1e-6, "{:?}", hit.delta);
         let hit = snap(&cx, SnapRequest { exclude_guides: &dragged, ..move_req(line, &[]) });
@@ -1807,7 +1807,7 @@ mod tests {
         std::sync::Arc::make_mut(&mut doc.spreads[0]).pages[0].margins.top = 37.0;
         doc.settings.baseline_grid.start = 0.0;
         doc.settings.baseline_grid.increment = 10.0;
-        doc.settings.baseline_grid.relative_to = designcraft_doc::GridRelative::TopMargin;
+        doc.settings.baseline_grid.relative_to = evodesign_doc::GridRelative::TopMargin;
         let cache = Cache::new();
         let layout = CanvasLayout::new(&doc, false);
         let sel = Selection::default();
@@ -1821,7 +1821,7 @@ mod tests {
     fn nearer_of_margin_and_baseline_wins() {
         // Bottom margin at 792 - 54 = 738, between baseline lines 732 and 744.
         let doc = Document::new(&NewDocument {
-            margins: designcraft_doc::Margins { top: 54.0, bottom: 54.0, inside: 54.0, outside: 42.0 },
+            margins: evodesign_doc::Margins { top: 54.0, bottom: 54.0, inside: 54.0, outside: 42.0 },
             ..Default::default()
         });
         let cache = Cache::new();
@@ -1882,9 +1882,9 @@ mod tests {
         let mut child = Item::new(child_id, layer, Shape::Rectangle, shapes::rectangle(Rect::new(0.0, 0.0, 100.0, 40.0)));
         child.xf = Affine::rotate((-90.0_f64).to_radians());
         let group_id = ItemId(doc.alloc());
-        let mut group = Item::new(group_id, layer, Shape::Group, designcraft_geom::PathData::default());
+        let mut group = Item::new(group_id, layer, Shape::Group, evodesign_geom::PathData::default());
         group.xf = Affine::scale_non_uniform(2.0, 1.0);
-        group.content = designcraft_doc::Content::Group { items: vec![std::sync::Arc::new(child)] };
+        group.content = evodesign_doc::Content::Group { items: vec![std::sync::Arc::new(child)] };
         doc.insert_item(SpreadRef::Doc(0), group, None).unwrap();
         let cache = Cache::new();
         let layout = CanvasLayout::new(&doc, false);
@@ -2141,7 +2141,7 @@ mod tests {
         let mut item = Item::new(id, layer, Shape::Rectangle, shapes::rectangle(rect));
         item.xf = Affine::translate((center.x, center.y)) * Affine::rotate((-30.0_f64).to_radians()) * Affine::translate((-center.x, -center.y));
         doc.insert_item(SpreadRef::Parent(ppi), item, None).unwrap();
-        assert!(doc.spreads[0].items.iter().all(|it| (designcraft_geom::decompose::decompose(it.xf).rotation - 30.0).abs() > 1.0));
+        assert!(doc.spreads[0].items.iter().all(|it| (evodesign_geom::decompose::decompose(it.xf).rotation - 30.0).abs() > 1.0));
         let cache = Cache::new();
         let layout = CanvasLayout::new(&doc, false);
         let sel = Selection::default();
@@ -2177,10 +2177,10 @@ mod tests {
         let mut child_a = Item::new(ItemId(doc.alloc()), layer, Shape::Rectangle, shapes::rectangle(Rect::new(0.0, 0.0, 10.0, 10.0)));
         child_a.stroke = Stroke { weight: 2.0, ..Stroke::default() };
         let child_b = Item::new(ItemId(doc.alloc()), layer, Shape::Rectangle, shapes::rectangle(Rect::new(40.0, 30.0, 50.0, 40.0)));
-        let mut group = Item::new(ItemId(doc.alloc()), layer, Shape::Group, designcraft_geom::PathData::default());
+        let mut group = Item::new(ItemId(doc.alloc()), layer, Shape::Group, evodesign_geom::PathData::default());
         let xf = Affine::translate((300.0, 400.0)) * Affine::rotate((-45.0_f64).to_radians());
         group.xf = xf;
-        group.content = designcraft_doc::Content::Group { items: vec![Arc::new(child_a), Arc::new(child_b)] };
+        group.content = evodesign_doc::Content::Group { items: vec![Arc::new(child_a), Arc::new(child_b)] };
         doc.insert_item(SpreadRef::Doc(0), group, None).unwrap();
         let a_vis = Rect::new(-1.0, -1.0, 11.0, 11.0);
         let b_vis = Rect::new(40.0, 30.0, 50.0, 40.0);
@@ -2210,9 +2210,9 @@ mod tests {
         let mut doc = Document::new(&NewDocument::default());
         let layer = doc.default_layer();
         let child = Item::new(ItemId(doc.alloc()), layer, Shape::Rectangle, shapes::rectangle(Rect::new(0.0, 0.0, 40.0, 20.0)));
-        let mut group = Item::new(ItemId(doc.alloc()), layer, Shape::Group, designcraft_geom::PathData::default());
+        let mut group = Item::new(ItemId(doc.alloc()), layer, Shape::Group, evodesign_geom::PathData::default());
         group.xf = Affine::rotate((-30.0_f64).to_radians());
-        group.content = designcraft_doc::Content::Group { items: vec![Arc::new(child)] };
+        group.content = evodesign_doc::Content::Group { items: vec![Arc::new(child)] };
         doc.insert_item(SpreadRef::Doc(0), group, None).unwrap();
         let cache = Cache::new();
         let layout = CanvasLayout::new(&doc, false);

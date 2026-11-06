@@ -9,9 +9,9 @@
 
 use std::ops::Range;
 
-use designcraft_compose as compose;
-use designcraft_doc::{ItemId, TextSel};
-use designcraft_geom::{Affine, Point, Vec2};
+use evodesign_compose as compose;
+use evodesign_doc::{ItemId, TextSel};
+use evodesign_geom::{Affine, Point, Vec2};
 use serde_json::json;
 
 use crate::{Action, Cursor, Mods, Overlay, PointerEvent, PointerKind, Tool, ToolContext, ToolKey, frame::snapped_drag_rect, rect_json, spread_json};
@@ -153,7 +153,7 @@ fn text_canvas_xf(cx: &ToolContext, fid: ItemId) -> Option<Affine> {
 /// Where the marked text starts: the preview typed it just before the caret.
 fn marked_start(cx: &ToolContext, ts: TextSel, p: &Preedit) -> usize {
     let text = cx.doc.text_story(ts.story, ts.cell).map_or("", |s| s.text.as_str());
-    designcraft_doc::story::floor_char_boundary(text, ts.focus.saturating_sub(p.text.len()))
+    evodesign_doc::story::floor_char_boundary(text, ts.focus.saturating_sub(p.text.len()))
 }
 
 /// The caret line (top, bottom) at byte `pos` of the selection's text, in canvas space; `None`
@@ -230,7 +230,7 @@ impl TypeTool {
         // becomes one, unless it's locked: then the press draws a new text frame over it.
         if let Some((_, id)) = cx.hit(ev.pos)
             && let Some(it) = cx.doc.item(id)
-            && !matches!(it.content, designcraft_doc::Content::Graphic(_) | designcraft_doc::Content::Group { .. })
+            && !matches!(it.content, evodesign_doc::Content::Graphic(_) | evodesign_doc::Content::Group { .. })
             && (it.is_text_frame() || !it.locked)
         {
             let sp = cx.layout.spread_at(ev.pos).map(|(_, p)| p).unwrap_or(ev.pos);

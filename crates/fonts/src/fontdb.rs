@@ -18,7 +18,7 @@ use crate::group::{FamilyInfo, FontGroup};
 pub const FALLBACK_FAMILY: &str = "Source Sans 3";
 
 /// The bundled fonts (OFL), as font file bytes. Japanese fonts are not bundled: they come from
-/// the optional craft-fonts build input ([`crate::japanese_document_fonts`]).
+/// the optional evo-fonts build input ([`crate::japanese_document_fonts`]).
 pub fn bundled() -> &'static [&'static [u8]] {
     BUNDLED
 }
@@ -48,7 +48,7 @@ enum FontBytes {
 /// Where a face's font came from.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FontSource {
-    /// Compiled into DesignCraft.
+    /// Compiled into EvoDesign.
     Bundled,
     /// Font data handed to [`FontDb::add_font`], with no file behind it.
     Memory,
@@ -503,7 +503,7 @@ const SYSTEM_FALLBACKS: &[&str] = &[
 /// CJK fallback chains: the families tried first (user-added, else installed) for characters of
 /// each language that the primary font lacks. Each lists macOS, then Windows, then Linux /
 /// cross-platform families, serif first; a platform only has its own installed. Japanese tries
-/// the craft-fonts Japanese faces before these ([`japanese_chain`]).
+/// the evo-fonts Japanese faces before these ([`japanese_chain`]).
 const JAPANESE_FALLBACKS: &[&str] = &[
     "Hiragino Mincho ProN",
     "YuMincho",
@@ -576,8 +576,8 @@ fn script_chain(c: char) -> Option<&'static [&'static str]> {
     }
 }
 
-/// The Japanese fallback chain: the craft-fonts Japanese faces' families in document order
-/// (Mincho first; none without craft-fonts), then [`JAPANESE_FALLBACKS`].
+/// The Japanese fallback chain: the evo-fonts Japanese faces' families in document order
+/// (Mincho first; none without evo-fonts), then [`JAPANESE_FALLBACKS`].
 fn japanese_chain() -> &'static [&'static str] {
     static CHAIN: std::sync::OnceLock<Vec<&str>> = std::sync::OnceLock::new();
     CHAIN.get_or_init(|| {
@@ -1067,13 +1067,13 @@ fn style_italic(style: &str) -> bool {
 }
 
 impl FontDb {
-    /// A database holding the bundled fonts, then the craft-fonts Japanese faces (Mincho first,
+    /// A database holding the bundled fonts, then the evo-fonts Japanese faces (Mincho first,
     /// so they are the fallback for Japanese text after the requested and bundled fonts; empty
-    /// without `CRAFT_FONTS_DIR`), whose system font scan reads `font_dirs`.
+    /// without `EVO_FONTS_DIR`), whose system font scan reads `font_dirs`.
     pub fn with_font_dirs(font_dirs: Vec<std::path::PathBuf>) -> Self {
         let mut faces = Vec::new();
-        let craft = crate::japanese_document_fonts().into_iter().map(|f| f.bytes);
-        for data in BUNDLED.iter().copied().chain(craft) {
+        let evo = crate::japanese_document_fonts().into_iter().map(|f| f.bytes);
+        for data in BUNDLED.iter().copied().chain(evo) {
             for (i, family, style, coords) in enumerate_faces(data) {
                 if let Some(f) = make_face(FontBytes::Static(data), FontSource::Bundled, i, family, style, coords) {
                     faces.push(Arc::new(f));

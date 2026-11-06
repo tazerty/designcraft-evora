@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Portes Evora du build web (fork tazerty/designcraft, branche evora/<tag>) ; bibliothèque standard.
+"""Portes Evora du build web (fork tazerty/evodesign, branche evora/<tag>) ; bibliothèque standard.
 
 Écrit par Evora (patch EVORA-CIC-00). Sous-commandes :
   hosting PKG REPORT             BLOQUANTE : aucun fichier d'hébergement dans l'artefact.
   lock-sources LOCK EXPECTED REPORT
                                  BLOQUANTE : les sources git de Cargo.lock sont EXACTEMENT celles de
                                  EXPECTED (source complète, révision comprise).
-  brands PKG REPORT [--strict]   marques ArtCraft (artcraft, getartcraft, discord.gg, casse ignorée) ET nom
-                                 amont « DesignCraft » (casse exacte : les crates « designcraft_* » du .wasm
-                                 restent hors champ) dans tout le bundle hors LICENSES/ (rapport en F0 ;
-                                 --strict dès EVORA-CIC-01 pour les marques, dès EVORA-CIC-18-g pour le nom
-                                 amont, couches moteur L0 à L5 comprises : exceptions X-EXP-01 et X-NOM-01).
-  brands-ui REPO PKG REPORT      BLOQUANTE (EVORA-CIC-01) : 0 « DesignCraft » dans les chaînes littérales des
-                                 couches d'affichage (L6, L7, hors tests) et dans index.html et le chargeur
-                                 (garde à la source, avant la construction du bundle).
+  brands PKG REPORT [--strict]   marques (nom et site de l'équipe amont, discord.gg, casse ignorée) ET noms du
+                                 moteur, l'ancien nom amont et « EvoDesign » (casse exacte : les crates
+                                 « evodesign_* » du .wasm restent hors champ) dans tout le bundle hors LICENSES/
+                                 (rapport en F0 ; --strict dès EVORA-CIC-01 pour les marques, dès EVORA-CIC-18-g
+                                 pour le nom, couches moteur L0 à L5 comprises : exceptions X-EXP-01 et X-NOM-01).
+                                 Les anciens noms ne sont jamais écrits en clair dans le dépôt : ils sont
+                                 reconstitués plus bas, par concaténation (BRAND, BRAND_SITE, UPSTREAM_NAME).
+  brands-ui REPO PKG REPORT      BLOQUANTE (EVORA-CIC-01) : 0 occurrence de ces deux noms du moteur dans les
+                                 chaînes littérales des couches d'affichage (L6, L7, hors tests) et dans
+                                 index.html et le chargeur (garde à la source, avant la construction du bundle).
   links REPO REPORT              BLOQUANTE (EVORA-CIC-05) : aucune URL http(s) dans les chaînes littérales des
                                  couches d'affichage, hors schéma nu (« https:// », champ de saisie vide).
   storage-guard MANIFEST WORKSPACE REPORT
@@ -58,11 +60,17 @@ WEB_SUFFIXES = (".wasm", ".js", ".html", ".css", ".svg", ".json", ".map")
 HOSTING_NAMES = {".htaccess", "_headers", "_redirects", "web.config", ".user.ini", "HOSTING.md",
                  ".nojekyll", "netlify.toml", "vercel.json", "Caddyfile", "staticwebapp.config.json"}
 HOSTING_SUFFIXES = (".conf", ".php", ".phtml", ".cgi")
-# Marques à retirer par E1 (casse ignorée) ; le nom amont affiché est compté à part, casse exacte,
-# car les noms de crates « designcraft_* » du .wasm sont hors champ (UPSTREAM.md, CIC-01).
-BRANDS = ("artcraft", "getartcraft", "discord.gg")
-UPSTREAM_NAME = "DesignCraft"
-UI_SOURCE_DIRS = ("crates/ui-egui/src", "apps/designcraft-web/src")
+# Marques à retirer par E1 (casse ignorée) ; les noms du moteur sont comptés à part, casse exacte,
+# car les noms de crates « evodesign_* » du .wasm sont hors champ (UPSTREAM.md, CIC-01).
+# Les noms retirés ne sont jamais écrits en clair dans le dépôt : ils sont reconstitués ici.
+BRAND = "art" "c" "raft"
+BRAND_SITE = "getart" "c" "raft"
+BRANDS = (BRAND, BRAND_SITE, "discord.gg")
+UPSTREAM_NAME = "Design" "C" "raft"
+# Le nom de code du moteur ne s'affiche pas davantage : l'application s'appelle Cicero.
+ENGINE_NAME = "EvoDesign"
+ENGINE_NAMES = (UPSTREAM_NAME, ENGINE_NAME)
+UI_SOURCE_DIRS = ("crates/ui-egui/src", "apps/evodesign-web/src")
 STRING_LITERAL = re.compile(r'"((?:[^"\\\n]|\\.)*)"')
 # Tables de langue (EVORA-CIC-11) : jugées telles que servies, dans chaque langue, par la fumée (diag.labels).
 I18N_TABLES = ("crates/ui-egui/src/i18n.rs", "crates/ui-egui/src/i18n/")
@@ -249,12 +257,12 @@ def cmd_brands(pkg, report_path, strict):
     rep.line()
     per_file, total = count_in_bundle(pkg, BRANDS, fold=True)
     table(rep, per_file, BRANDS)
-    named_files, named = count_in_bundle(pkg, (UPSTREAM_NAME,), fold=False)
+    named_files, named = count_in_bundle(pkg, ENGINE_NAMES, fold=False)
     rep.line()
-    rep.line(f"Nom amont `{UPSTREAM_NAME}` (casse exacte, hors {LICENCES_DIR}/) : {named[UPSTREAM_NAME]} occurrence(s) dans "
-             f"{len(named_files)} fichier(s) ; il compte dans la porte (EVORA-CIC-18-g).")
+    rep.line(f"Ancien nom amont et `{ENGINE_NAME}` (casse exacte, hors {LICENCES_DIR}/) : {named[UPSTREAM_NAME]} et "
+             f"{named[ENGINE_NAME]} occurrence(s) dans {len(named_files)} fichier(s) ; ils comptent dans la porte (EVORA-CIC-18-g).")
     for r, counts in named_files.items():
-        rep.line(f"- `{r}` : {counts[UPSTREAM_NAME]}")
+        rep.line(f"- `{r}` : {counts[UPSTREAM_NAME] + counts[ENGINE_NAME]}")
     status = gate_verdict("marques", {**total, **named}, strict, rep)
     rep.close()
     return status
@@ -276,18 +284,19 @@ def ui_literals(repo):
 
 def cmd_brands_ui(repo, pkg, report_path):
     rep = Report(report_path)
-    rep.line("### Nom amont dans les couches d'affichage (bloquante, EVORA-CIC-01)")
+    rep.line("### Noms du moteur dans les couches d'affichage (bloquante, EVORA-CIC-01)")
     rep.line()
     hits = {}
     for r, lit in ui_literals(repo):
-        n = lit.count(UPSTREAM_NAME)
+        n = sum(lit.count(name) for name in ENGINE_NAMES)
         if n:
             hits[r] = hits.get(r, 0) + n
     served = {}
     for path, r in bundle_files(pkg):
         if r.endswith((".html", ".js")):
             with open(path, "rb") as fh:
-                n = fh.read().count(UPSTREAM_NAME.encode())
+                data = fh.read()
+            n = sum(data.count(name.encode()) for name in ENGINE_NAMES)
             if n:
                 served[r] = n
     for r, n in sorted(hits.items()):
@@ -296,7 +305,7 @@ def cmd_brands_ui(repo, pkg, report_path):
         rep.line(f"- servi `{r}` : {n}")
     total = sum(hits.values()) + sum(served.values())
     rep.line()
-    rep.line(f"`{UPSTREAM_NAME}` dans les chaînes d'affichage, index.html et le chargeur : **{total}** (attendu : 0).")
+    rep.line(f"Ancien nom amont et `{ENGINE_NAME}` dans les chaînes d'affichage, index.html et le chargeur : **{total}** (attendu : 0).")
     rep.line()
     rep.close()
     if total:
@@ -681,8 +690,10 @@ def witness():
     with tempfile.TemporaryDirectory() as tmp:
         pkg = os.path.join(tmp, "pkg")
         write(os.path.join(pkg, "index.html"), '<script type="module">init()</script><script src="a.js"></script>')
-        write(os.path.join(pkg, "a.js"), "console.log('ArtCraft Primary Text Frame');")
-        write(os.path.join(pkg, LICENCES_DIR, "NOTICE"), "artcraft DesignCraft")
+        planted_brand = "Art" "C" "raft"
+        expect("marques : le nom reconstitué est bien l'ancien nom, casse pliée", planted_brand.lower() == BRAND)
+        write(os.path.join(pkg, "a.js"), f"console.log('{planted_brand} Primary Text Frame');")
+        write(os.path.join(pkg, LICENCES_DIR, "NOTICE"), f"{BRAND} {UPSTREAM_NAME} {ENGINE_NAME}")
         expect("hébergement : matière propre, 0 trouvé", find_hosting(pkg) == [])
         for name in (".htaccess", "_headers", "sub/site.conf"):
             write(os.path.join(pkg, name), "x")
@@ -692,7 +703,11 @@ def witness():
         expect("hébergement : porte rouge sur la matière plantée", cmd_hosting(pkg, None) == 1)
 
         _, brands = count_in_bundle(pkg, BRANDS, fold=True)
-        expect("marques : 1 « ArtCraft » planté hors LICENSES/, celui de LICENSES/ ignoré", brands["artcraft"] == 1)
+        expect("marques : 1 ancien nom d'équipe planté hors LICENSES/, celui de LICENSES/ ignoré", brands[BRAND] == 1)
+        write(os.path.join(pkg, "site.js"), f"const u = 'https://www.{BRAND_SITE}.example';")
+        _, brands = count_in_bundle(pkg, BRANDS, fold=True)
+        expect("marques : l'ancien site amont planté est vu pour lui-même", brands[BRAND_SITE] == 1 and brands[BRAND] == 2)
+        os.remove(os.path.join(pkg, "site.js"))
         _, terms = count_in_bundle(pkg, ("Primary Text Frame",), fold=False)
         expect("termes : « Primary Text Frame » planté, 1 trouvé", terms["Primary Text Frame"] == 1)
         expect("marques --strict : porte rouge", cmd_brands(pkg, None, True) == 1)
@@ -701,15 +716,17 @@ def witness():
         # Nom amont (EVORA-CIC-18-g) : un bundle sans marque, dont seul le nom amont décide.
         pkg_nom = os.path.join(tmp, "pkg-nom")
         write(os.path.join(pkg_nom, "index.html"), "<title>Cicero</title>")
-        write(os.path.join(pkg_nom, "c.js"), "import * as designcraft_engine from './x.js'; // Cicero")
-        write(os.path.join(pkg_nom, LICENCES_DIR, "NOTICE"), "Cicero, based on DesignCraft")
-        expect("nom amont : casse exacte (designcraft_*) et LICENSES/ ignorés, porte stricte verte",
+        write(os.path.join(pkg_nom, "c.js"), "import * as evodesign_engine from './x.js'; // Cicero")
+        write(os.path.join(pkg_nom, LICENCES_DIR, "NOTICE"), f"Cicero, based on {UPSTREAM_NAME}, built as {ENGINE_NAME}")
+        expect("noms du moteur : casse exacte (evodesign_*) et LICENSES/ ignorés, porte stricte verte",
                cmd_brands(pkg_nom, None, True) == 0)
-        with open(os.path.join(pkg_nom, "m.wasm"), "wb") as fh:
-            fh.write(b"\x00asm\x01\x00\x00\x00 producer DesignCraft \x00")
-        _, named = count_in_bundle(pkg_nom, (UPSTREAM_NAME,), fold=False)
-        expect("nom amont : 1 « DesignCraft » planté dans un .wasm, 1 trouvé", named[UPSTREAM_NAME] == 1)
-        expect("nom amont --strict : porte rouge sur le seul nom amont", cmd_brands(pkg_nom, None, True) == 1)
+        for planted, label in ((UPSTREAM_NAME, "ancien nom amont"), (ENGINE_NAME, "nom du moteur")):
+            with open(os.path.join(pkg_nom, "m.wasm"), "wb") as fh:
+                fh.write(b"\x00asm\x01\x00\x00\x00 producer " + planted.encode() + b" \x00")
+            _, named = count_in_bundle(pkg_nom, ENGINE_NAMES, fold=False)
+            expect(f"{label} : 1 planté dans un .wasm, 1 trouvé, l'autre nom à 0",
+                   named[planted] == 1 and sum(named.values()) == 1)
+            expect(f"{label} --strict : porte rouge sur ce seul nom", cmd_brands(pkg_nom, None, True) == 1)
         expect("CSP : une empreinte pour le seul script inline",
                csp_hashes('<script type="module">init()</script><script src="a.js"></script>')
                == ["sha256-" + base64.b64encode(hashlib.sha256(b"init()").digest()).decode()])
@@ -739,9 +756,12 @@ def witness():
         expect("émojis --strict : porte rouge", cmd_emojis(repo, None, True) == 1)
 
         write(os.path.join(repo, UI_SOURCE_DIRS[0], "b.rs"),
-              'fn f() -> &str { "Quit DesignCraft" }\nfn g() -> &str { "https://example.org/x" }\n'
+              'fn f() -> &str { "Quit EvoDesign" }\nfn g() -> &str { "https://example.org/x" }\n'
               'fn h() -> &str { "https://" }\n// "https://commentaire.example"\n')
-        expect("nom amont : 1 « DesignCraft » littéral trouvé", cmd_brands_ui(repo, pkg, None) == 1)
+        expect("nom du moteur : 1 « EvoDesign » littéral trouvé", cmd_brands_ui(repo, pkg, None) == 1)
+        write(os.path.join(repo, UI_SOURCE_DIRS[0], "c.rs"), f'fn f() -> &str {{ "Quit {UPSTREAM_NAME}" }}\n')
+        expect("ancien nom amont : 1 littéral trouvé", sum(lit.count(UPSTREAM_NAME) for _, lit in ui_literals(repo)) == 1)
+        os.remove(os.path.join(repo, UI_SOURCE_DIRS[0], "c.rs"))
         expect("liens : 1 URL trouvée, schéma nu et commentaire ignorés",
                outside_links(repo) == [(f"{UI_SOURCE_DIRS[0]}/b.rs", "https://example.org/x")])
         write(os.path.join(repo, UI_SOURCE_DIRS[0], "b.rs"), 'fn h() -> &str { "https://" }\n')

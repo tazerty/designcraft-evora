@@ -1,6 +1,6 @@
 //! Hyperlinks and bookmarks (Window → Interactive), exported to PDF as link annotations and the outline.
 
-use designcraft_doc::{Bookmark, Hyperlink, HyperlinkDest, HyperlinkSource};
+use evodesign_doc::{Bookmark, Hyperlink, HyperlinkDest, HyperlinkSource};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, cmd, has_doc, str_param};
@@ -45,10 +45,10 @@ pub fn specs() -> Vec<CommandSpec> {
             let st = s.doc_mut()?;
             let h = st.doc.hyperlinks.iter().find(|h| h.id == id).cloned().ok_or_else(|| bad("hyperlink.goToSource", format!("no hyperlink {id}")))?;
             st.selection = match h.source {
-                HyperlinkSource::Item { id } => designcraft_doc::Selection::items(vec![id]),
+                HyperlinkSource::Item { id } => evodesign_doc::Selection::items(vec![id]),
                 HyperlinkSource::Text { story, start, end } => {
                     let frame = st.doc.story(story).and_then(|x| x.frames.first().copied());
-                    designcraft_doc::Selection::text(designcraft_doc::TextSel { story, anchor: start, focus: end, frame, cell: None })
+                    evodesign_doc::Selection::text(evodesign_doc::TextSel { story, anchor: start, focus: end, frame, cell: None })
                 }
             };
             st.bump_revision();

@@ -14,9 +14,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use designcraft_compose::Cache;
-use designcraft_doc::{AssetId, Content, Document, Fingerprint, Item, ItemId, Selection, Story, StoryId, TextFileLink};
-use designcraft_geom::Affine;
+use evodesign_compose::Cache;
+use evodesign_doc::{AssetId, Content, Document, Fingerprint, Item, ItemId, Selection, Story, StoryId, TextFileLink};
+use evodesign_geom::Affine;
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, cmd, has_doc, str_param};
@@ -140,7 +140,7 @@ pub fn refused(link: &str, document: Option<&Path>) -> Option<crate::io::Refused
 /// Whether an asset's linked file is gone ([`status`] "missing" without reading the file). An
 /// asset can hold data while its file is missing: the document's preview of it. `document` is
 /// the document's file, which relative links are resolved against.
-pub fn link_missing(a: &designcraft_doc::Asset, document: Option<&Path>) -> bool {
+pub fn link_missing(a: &evodesign_doc::Asset, document: Option<&Path>) -> bool {
     let Some(link) = &a.link else { return false };
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -155,7 +155,7 @@ pub fn link_missing(a: &designcraft_doc::Asset, document: Option<&Path>) -> bool
 
 /// Link status of an asset in the document at `document`. Only a regular file is compared, so a
 /// link to a device (`/dev/zero`) or a FIFO is missing rather than read.
-pub fn status(a: &designcraft_doc::Asset, document: Option<&Path>) -> &'static str {
+pub fn status(a: &evodesign_doc::Asset, document: Option<&Path>) -> &'static str {
     let Some(link) = &a.link else { return "embedded" };
     // Nothing was read from the file (a package's link that wasn't followed): missing, as in
     // Preflight.
@@ -341,7 +341,7 @@ fn list(d: &Document, cache: &Cache, document: Option<&Path>, checks: &mut TextC
                         }
                         let (pw, _) = a.pixels?;
                         let xf = u.parent_xf * it.xf * g.xf;
-                        let shown_w = xf.transform_rect_bbox(designcraft_geom::Rect::new(0.0, 0.0, g.size.0, g.size.1)).width();
+                        let shown_w = xf.transform_rect_bbox(evodesign_geom::Rect::new(0.0, 0.0, g.size.0, g.size.1)).width();
                         (shown_w > 0.0).then(|| (pw as f64 / (shown_w / 72.0)).round())
                     })();
                     let page = u.page.map(|p| d.page_name(p));
@@ -413,10 +413,10 @@ fn reload_capped(path: impl AsRef<Path>, cap: u64) -> Result<(Vec<u8>, (u32, u32
     if b.len() as u64 > cap {
         return Err(bad("links", format!("{}: the linked file is larger than {} MB", path.display(), cap / (1024 * 1024))));
     }
-    if designcraft_render::is_pdf(&b) {
-        designcraft_render::check_pdf_input_size(b.len()).map_err(|e| bad("links", format!("{}: {e}", path.display())))?;
+    if evodesign_render::is_pdf(&b) {
+        evodesign_render::check_pdf_input_size(b.len()).map_err(|e| bad("links", format!("{}: {e}", path.display())))?;
     }
-    let px = designcraft_render::image_size(&b).ok_or_else(|| bad("links", format!("{}: unsupported or corrupt image", path.display())))?;
+    let px = evodesign_render::image_size(&b).ok_or_else(|| bad("links", format!("{}: unsupported or corrupt image", path.display())))?;
     Ok((b, px))
 }
 
@@ -428,18 +428,18 @@ fn reload(path: impl AsRef<Path>) -> Result<(Vec<u8>, (u32, u32))> {
 /// The replacement for `a`: bytes read from `read`, with `link` recorded as the stored link.
 /// Relink passes the file the user chose as both. Update passes the path the stored link resolved
 /// to and the stored link itself, so refreshing a link never rewrites what the document holds.
-fn relinked_asset(a: &designcraft_doc::Asset, read: &Path, link: &str) -> Result<Arc<designcraft_doc::Asset>> {
+fn relinked_asset(a: &evodesign_doc::Asset, read: &Path, link: &str) -> Result<Arc<evodesign_doc::Asset>> {
     let (bytes, px) = reload(read)?;
-    let page = if designcraft_render::is_pdf(&bytes) { a.page } else { 0 };
+    let page = if evodesign_render::is_pdf(&bytes) { a.page } else { 0 };
     let px = if page > 0 {
-        designcraft_render::pdf_page_size(&bytes, page as usize)
+        evodesign_render::pdf_page_size(&bytes, page as usize)
             .map(|(w, h)| (w.round().max(1.0) as u32, h.round().max(1.0) as u32))
             .ok_or_else(|| bad("links", format!("{}: can't read PDF page {}", read.display(), u64::from(page) + 1)))?
     } else {
         px
     };
     let mut a = a.clone();
-    a.mime = designcraft_render::image_mime(&bytes).to_string();
+    a.mime = evodesign_render::image_mime(&bytes).to_string();
     a.data = Arc::new(bytes);
     a.pixels = Some(px);
     a.page = page;
@@ -551,7 +551,7 @@ fn update(s: &mut Session, p: &Value) -> Result<Value> {
     let checks = &mut s.text_link_checks;
     let (only_asset, only_story) = (p.get("asset").and_then(Value::as_u64), story_param(p));
     let all = only_asset.is_none() && only_story.is_none();
-    // A link craft-docpath refuses is missing, so it is never read or refreshed.
+    // A link evo-docpath refuses is missing, so it is never read or refreshed.
     let resolved = |link: &str| crate::io::document_path(link, document).ok();
     let texts: Vec<(StoryId, String, std::path::PathBuf)> = d
         .stories
@@ -596,7 +596,7 @@ mod tests {
     use super::*;
 
     fn png(w: u32, h: u32) -> Vec<u8> {
-        designcraft_render::Rendered { width: w, height: h, pixels: vec![200u8; (w * h * 4) as usize] }.to_png()
+        evodesign_render::Rendered { width: w, height: h, pixels: vec![200u8; (w * h * 4) as usize] }.to_png()
     }
 
     /// A linked file's size is the document's choice, so a link is read under a cap (#1596).
@@ -672,8 +672,8 @@ mod tests {
         let encoded = html["text"].as_str().unwrap().split("data:image/png;base64,").nth(1).unwrap().split('"').next().unwrap();
         let png = super::super::file::base64_decode(encoded);
         assert!(png.starts_with(b"\x89PNG"));
-        assert_eq!(designcraft_render::image_size(&png), Some((2, 2)));
-        assert_eq!(designcraft_render::decode_pixmap(&png).unwrap().data()[0], designcraft_render::decode_pixmap(&bytes).unwrap().data()[0]);
+        assert_eq!(evodesign_render::image_size(&png), Some((2, 2)));
+        assert_eq!(evodesign_render::decode_pixmap(&png).unwrap().data()[0], evodesign_render::decode_pixmap(&bytes).unwrap().data()[0]);
         let result = s.execute("file.exportEpub", &json!({})).unwrap();
         let mut z = zip::ZipArchive::new(std::io::Cursor::new(super::super::file::base64_decode(result["base64"].as_str().unwrap()))).unwrap();
         let mut image = Vec::new();
@@ -714,7 +714,7 @@ mod tests {
         let first = b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 20 10\n0 0 0 setrgbcolor\n%%EOF\n";
         let changed = b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 20 10\n1 0 0 setrgbcolor\n%%EOF\n";
         assert_eq!(first.len(), changed.len());
-        assert_eq!(designcraft_images::eps_proxy(first), designcraft_images::eps_proxy(changed), "same preview, different source");
+        assert_eq!(evodesign_images::eps_proxy(first), evodesign_images::eps_proxy(changed), "same preview, different source");
         std::fs::write(&path, first).unwrap();
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
@@ -723,8 +723,8 @@ mod tests {
         let before = s.doc().unwrap().doc.clone();
         assert_eq!(s.execute("links.update", &json!({})).unwrap()["updated"], 0);
         assert!(Arc::ptr_eq(&s.doc().unwrap().doc, &before), "unchanged EPS must not create an edit");
-        let saved = designcraft_format::save(&before).unwrap();
-        let reopened = designcraft_format::load(&saved).unwrap();
+        let saved = evodesign_format::save(&before).unwrap();
+        let reopened = evodesign_format::load(&saved).unwrap();
         assert_eq!(reopened.assets[&aid].data.as_slice(), first);
         let mut s = Session::new();
         s.add_document(crate::DocState::new(reopened, None));
@@ -747,11 +747,11 @@ mod tests {
         s.execute("links.embed", &json!({"asset": aid.0})).unwrap();
         assert_eq!(s.execute("links.list", &json!({})).unwrap()[0]["status"], "embedded");
         std::fs::remove_file(&replacement).unwrap();
-        let embedded = designcraft_format::load(&designcraft_format::save(&s.doc().unwrap().doc).unwrap()).unwrap();
+        let embedded = evodesign_format::load(&evodesign_format::save(&s.doc().unwrap().doc).unwrap()).unwrap();
         // The asset is embedded, so no link is followed and the document is irrelevant.
         assert_eq!(status(&embedded.assets[&aid], None), "embedded");
         assert_eq!(embedded.assets[&aid].data.as_slice(), changed);
-        assert!(designcraft_render::decode_pixmap(&embedded.assets[&aid].data).is_some());
+        assert!(evodesign_render::decode_pixmap(&embedded.assets[&aid].data).is_some());
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -765,7 +765,7 @@ mod tests {
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         let aid = AssetId(s.execute("file.place", &json!({"path": path.to_string_lossy()})).unwrap()["asset"].as_u64().unwrap());
-        let proxy = designcraft_images::eps_proxy(source).unwrap().0;
+        let proxy = evodesign_images::eps_proxy(source).unwrap().0;
         s.edit(|d, _| {
             let a = Arc::make_mut(d.assets.get_mut(&aid).unwrap());
             a.data = Arc::new(proxy);
@@ -773,14 +773,14 @@ mod tests {
             Ok(())
         })
         .unwrap();
-        let old = designcraft_format::load(&designcraft_format::save(&s.doc().unwrap().doc).unwrap()).unwrap();
+        let old = evodesign_format::load(&evodesign_format::save(&s.doc().unwrap().doc).unwrap()).unwrap();
         let mut s = Session::new();
         s.add_document(crate::DocState::new(old, None));
         assert_eq!(s.execute("links.update", &json!({})).unwrap()["updated"], 1);
         assert_eq!(s.execute("links.list", &json!({})).unwrap()[0]["status"], "ok");
         assert_eq!(s.doc().unwrap().doc.assets[&aid].data.as_slice(), source);
         s.execute("edit.undo", &json!({})).unwrap();
-        assert!(designcraft_render::decode_pixmap(&s.doc().unwrap().doc.assets[&aid].data).is_some(), "old preview remains renderable");
+        assert!(evodesign_render::decode_pixmap(&s.doc().unwrap().doc.assets[&aid].data).is_some(), "old preview remains renderable");
         s.execute("edit.redo", &json!({})).unwrap();
         assert_eq!(s.execute("links.list", &json!({})).unwrap()[0]["status"], "ok");
         let _ = std::fs::remove_dir_all(dir);
@@ -792,7 +792,7 @@ mod tests {
         use std::io::Read;
 
         let source = b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 20 10\n%%EOF\n";
-        let proxy = designcraft_images::eps_proxy(source).unwrap().0;
+        let proxy = evodesign_images::eps_proxy(source).unwrap().0;
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         let aid = AssetId(
@@ -882,7 +882,7 @@ mod tests {
         let a = &s.doc().unwrap().doc.assets[&aid];
         assert_eq!(a.page, 1);
         assert_eq!(a.pixels, Some((50, 60)));
-        assert!(designcraft_render::render_pdf_page(&a.data, a.page as usize, 64).is_some());
+        assert!(evodesign_render::render_pdf_page(&a.data, a.page as usize, 64).is_some());
         std::fs::write(&replacement, pdf(&[(70, 70), (80, 90)])).unwrap();
         assert_eq!(s.execute("links.update", &json!({})).unwrap()["updated"], 1);
         assert_eq!(s.doc().unwrap().doc.assets[&aid].pixels, Some((80, 90)));
@@ -928,7 +928,7 @@ mod tests {
             assert_eq!(st.revision, revision);
             assert_eq!(st.history.undo.len(), undo);
             assert_eq!(s.journal.len(), journal);
-            assert!(designcraft_render::render_pdf_page(&st.doc.assets[&aid].data, 1, 64).is_some());
+            assert!(evodesign_render::render_pdf_page(&st.doc.assets[&aid].data, 1, 64).is_some());
         }
         let _ = std::fs::remove_dir_all(dir);
     }
@@ -1075,7 +1075,7 @@ mod shared_asset_tests {
     use super::*;
 
     fn png(w: u32, h: u32) -> Vec<u8> {
-        designcraft_render::Rendered { width: w, height: h, pixels: vec![200u8; (w * h * 4) as usize] }.to_png()
+        evodesign_render::Rendered { width: w, height: h, pixels: vec![200u8; (w * h * 4) as usize] }.to_png()
     }
 
     #[test]
@@ -1100,7 +1100,7 @@ mod shared_asset_tests {
         let d = &s.doc().unwrap().doc;
         assert_eq!(d.assets.len(), 3);
         assert_eq!(s.execute("links.list", &json!({})).unwrap().as_array().unwrap().len(), 2);
-        let back = designcraft_format::load(&designcraft_format::save(&s.doc().unwrap().doc).unwrap()).unwrap();
+        let back = evodesign_format::load(&evodesign_format::save(&s.doc().unwrap().doc).unwrap()).unwrap();
         let mut names: Vec<&str> = back.assets.values().map(|a| a.name.as_str()).collect();
         names.sort();
         assert_eq!(names, ["a.png", "c.png"]);
@@ -1140,8 +1140,8 @@ mod shared_asset_tests {
 
     #[test]
     fn pasted_graphics_reuse_the_identical_asset_of_the_target() {
-        use designcraft_doc::build::NewDocument;
-        use designcraft_doc::{Asset, Graphic, Item, ItemId, Shape, SpreadRef};
+        use evodesign_doc::build::NewDocument;
+        use evodesign_doc::{Asset, Graphic, Item, ItemId, Shape, SpreadRef};
         let asset = |id: u64, data: Vec<u8>| Asset {
             id: AssetId(id),
             name: "p.png".into(),
@@ -1165,13 +1165,13 @@ mod shared_asset_tests {
             iid,
             src.default_layer(),
             Shape::Rectangle,
-            designcraft_geom::shapes::rectangle(designcraft_geom::Rect::new(0.0, 0.0, 9.0, 9.0)),
+            evodesign_geom::shapes::rectangle(evodesign_geom::Rect::new(0.0, 0.0, 9.0, 9.0)),
         );
         it.content = Content::Graphic(Graphic {
             layer_options: None,
             asset: sid,
             size: (4.0, 4.0),
-            xf: designcraft_geom::Affine::IDENTITY,
+            xf: evodesign_geom::Affine::IDENTITY,
             clip: None,
             auto_fit: Default::default(),
             fit_align: 4,
@@ -1180,7 +1180,7 @@ mod shared_asset_tests {
             fill: Default::default(),
         });
         src.insert_item(SpreadRef::Doc(0), it, None).unwrap();
-        let ids = super::super::object::duplicate_from(&mut dst, &src, &[iid], SpreadRef::Doc(0), designcraft_geom::Vec2::ZERO).unwrap();
+        let ids = super::super::object::duplicate_from(&mut dst, &src, &[iid], SpreadRef::Doc(0), evodesign_geom::Vec2::ZERO).unwrap();
         let g = dst.item(ids[0]).and_then(|i| i.graphic()).unwrap();
         assert_eq!((g.asset, g.crop), (same, [1.0; 4]));
         assert_eq!(dst.assets.len(), 2);
@@ -1188,8 +1188,8 @@ mod shared_asset_tests {
 
     #[test]
     fn pasted_missing_graphic_does_not_show_an_unrelated_target_asset() {
-        use designcraft_doc::build::NewDocument;
-        use designcraft_doc::{Asset, Graphic, Item, ItemId, Shape, SpreadRef};
+        use evodesign_doc::build::NewDocument;
+        use evodesign_doc::{Asset, Graphic, Item, ItemId, Shape, SpreadRef};
         let mut src = Document::new(&NewDocument::default());
         let mut dst = Document::new(&NewDocument::default());
         // The source graphic points at an asset the source does not have; the target uses that id for another image.
@@ -1211,13 +1211,13 @@ mod shared_asset_tests {
             iid,
             src.default_layer(),
             Shape::Rectangle,
-            designcraft_geom::shapes::rectangle(designcraft_geom::Rect::new(0.0, 0.0, 9.0, 9.0)),
+            evodesign_geom::shapes::rectangle(evodesign_geom::Rect::new(0.0, 0.0, 9.0, 9.0)),
         );
         it.content = Content::Graphic(Graphic {
             layer_options: None,
             asset: missing,
             size: (4.0, 4.0),
-            xf: designcraft_geom::Affine::IDENTITY,
+            xf: evodesign_geom::Affine::IDENTITY,
             clip: None,
             auto_fit: Default::default(),
             fit_align: 4,
@@ -1226,7 +1226,7 @@ mod shared_asset_tests {
             fill: Default::default(),
         });
         src.insert_item(SpreadRef::Doc(0), it, None).unwrap();
-        let ids = super::super::object::duplicate_from(&mut dst, &src, &[iid], SpreadRef::Doc(0), designcraft_geom::Vec2::ZERO).unwrap();
+        let ids = super::super::object::duplicate_from(&mut dst, &src, &[iid], SpreadRef::Doc(0), evodesign_geom::Vec2::ZERO).unwrap();
         let g = dst.item(ids[0]).and_then(|i| i.graphic()).unwrap();
         assert_ne!(g.asset, missing);
         assert!(!dst.assets.contains_key(&g.asset));
@@ -1234,8 +1234,8 @@ mod shared_asset_tests {
 
     #[test]
     fn pasted_missing_graphic_never_takes_an_asset_placed_later() {
-        use designcraft_doc::build::NewDocument;
-        use designcraft_doc::{Graphic, Item, ItemId, Shape, SpreadRef};
+        use evodesign_doc::build::NewDocument;
+        use evodesign_doc::{Graphic, Item, ItemId, Shape, SpreadRef};
         let mut src = Document::new(&NewDocument::default());
         let mut dst = Document::new(&NewDocument::default());
         // The source's missing id is ahead of the target's counter: the target would allocate it to its next image.
@@ -1248,13 +1248,13 @@ mod shared_asset_tests {
             iid,
             src.default_layer(),
             Shape::Rectangle,
-            designcraft_geom::shapes::rectangle(designcraft_geom::Rect::new(0.0, 0.0, 9.0, 9.0)),
+            evodesign_geom::shapes::rectangle(evodesign_geom::Rect::new(0.0, 0.0, 9.0, 9.0)),
         );
         it.content = Content::Graphic(Graphic {
             layer_options: None,
             asset: missing,
             size: (4.0, 4.0),
-            xf: designcraft_geom::Affine::IDENTITY,
+            xf: evodesign_geom::Affine::IDENTITY,
             clip: None,
             auto_fit: Default::default(),
             fit_align: 4,
@@ -1263,7 +1263,7 @@ mod shared_asset_tests {
             fill: Default::default(),
         });
         src.insert_item(SpreadRef::Doc(0), it, None).unwrap();
-        let ids = super::super::object::duplicate_from(&mut dst, &src, &[iid], SpreadRef::Doc(0), designcraft_geom::Vec2::ZERO).unwrap();
+        let ids = super::super::object::duplicate_from(&mut dst, &src, &[iid], SpreadRef::Doc(0), evodesign_geom::Vec2::ZERO).unwrap();
         let g = dst.item(ids[0]).and_then(|i| i.graphic()).unwrap().asset;
         assert!((0..100).all(|_| AssetId(dst.alloc()) != g), "a later image in the target takes the pasted graphic's id");
     }
@@ -1274,7 +1274,7 @@ mod text_link_tests {
     use serde_json::{Value, json};
 
     use crate::Session;
-    use designcraft_doc::{ItemId, StoryId};
+    use evodesign_doc::{ItemId, StoryId};
 
     /// A small Word file: a Title paragraph, then Body paragraphs (`body` is WordprocessingML).
     fn docx(body: &str) -> Vec<u8> {
@@ -1302,11 +1302,11 @@ mod text_link_tests {
         l.as_array().unwrap().iter().filter(|r| r.get("story").is_some()).cloned().collect()
     }
 
-    fn story(s: &Session, sid: StoryId) -> designcraft_doc::Story {
+    fn story(s: &Session, sid: StoryId) -> evodesign_doc::Story {
         s.doc().unwrap().doc.story(sid).unwrap().clone()
     }
 
-    fn styles(st: &designcraft_doc::Story) -> Vec<String> {
+    fn styles(st: &evodesign_doc::Story) -> Vec<String> {
         st.paras.iter().map(|p| p.style.clone()).collect()
     }
 
@@ -1384,7 +1384,7 @@ mod text_link_tests {
         s.execute("edit.redo", &json!({})).unwrap();
 
         // Saved and opened again: the link and its options are kept.
-        let back = designcraft_format::load(&designcraft_format::save(&s.doc().unwrap().doc).unwrap()).unwrap();
+        let back = evodesign_format::load(&evodesign_format::save(&s.doc().unwrap().doc).unwrap()).unwrap();
         assert_eq!(back.story(sid).unwrap().file_link, story(&s, sid).file_link);
         assert_eq!(super::text_status(back.story(sid).unwrap().file_link.as_ref().unwrap(), &mut Default::default(), None), "ok");
 
@@ -1509,7 +1509,7 @@ mod text_link_tests {
 mod text_link_read_tests {
     use std::time::Duration;
 
-    use designcraft_doc::TextFileLink;
+    use evodesign_doc::TextFileLink;
 
     use super::{MAX_TEXT_LINK_BYTES, read_text, text_status};
 

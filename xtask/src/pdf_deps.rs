@@ -6,7 +6,7 @@ use serde_json::Value;
 
 const REV: &str = "9f75d3dc19b4b514c4f3d4847ed1ec1b0e86b4ef";
 const PACKAGES: &[(&str, &str)] = &[
-    ("craft-pdf", "0.1.0"),
+    ("evo-pdf", "0.1.0"),
     ("krilla", "0.8.2"),
     ("hayro", "0.7.1"),
     ("hayro-interpret", "0.7.0"),
@@ -32,7 +32,7 @@ pub fn run(root: &Path) -> Result<(), String> {
 
 fn validate(metadata: &Value) -> Result<(), String> {
     let packages = metadata.get("packages").and_then(Value::as_array).ok_or("cargo metadata has no packages")?;
-    let source = format!("git+https://github.com/storytold/craft-libs?rev={REV}#{REV}");
+    let source = format!("git+vendor/evo-libs?rev={REV}#{REV}");
     for (name, version) in PACKAGES {
         let matching: Vec<_> = packages.iter().filter(|p| p.get("name").and_then(Value::as_str) == Some(name)).collect();
         let [package] = matching.as_slice() else {
@@ -43,12 +43,12 @@ fn validate(metadata: &Value) -> Result<(), String> {
         }
     }
     let nodes = metadata.pointer("/resolve/nodes").and_then(Value::as_array).ok_or("cargo metadata has no resolved nodes")?;
-    let facade = packages.iter().find(|p| p["name"] == "craft-pdf").ok_or("craft-pdf: missing package")?;
-    let node = nodes.iter().find(|n| n["id"] == facade["id"]).ok_or("craft-pdf: missing resolved node")?;
-    let features = node["features"].as_array().ok_or("craft-pdf: missing features")?;
+    let facade = packages.iter().find(|p| p["name"] == "evo-pdf").ok_or("evo-pdf: missing package")?;
+    let node = nodes.iter().find(|n| n["id"] == facade["id"]).ok_or("evo-pdf: missing resolved node")?;
+    let features = node["features"].as_array().ok_or("evo-pdf: missing features")?;
     for required in ["read", "interpret", "raster", "write", "write-pdf"] {
         if !features.iter().any(|f| f.as_str() == Some(required)) {
-            return Err(format!("craft-pdf: missing required {required} feature"));
+            return Err(format!("evo-pdf: missing required {required} feature"));
         }
     }
     Ok(())
@@ -61,7 +61,7 @@ mod tests {
 
     fn metadata() -> Value {
         json!({"packages": PACKAGES.iter().map(|(name, version)| json!({"id":name,"name":name,"version":version,
-            "source":format!("git+https://github.com/storytold/craft-libs?rev={REV}#{REV}")})).collect::<Vec<_>>(), "resolve": {"nodes": [{"id": "craft-pdf", "features": ["read", "interpret", "raster", "write", "write-pdf"]}]}})
+            "source":format!("git+vendor/evo-libs?rev={REV}#{REV}")})).collect::<Vec<_>>(), "resolve": {"nodes": [{"id": "evo-pdf", "features": ["read", "interpret", "raster", "write", "write-pdf"]}]}})
     }
 
     #[test]
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn rejects_facade_revision_drift_and_malformed_metadata() {
         let mut m = metadata();
-        m["packages"][0]["source"] = json!("git+https://github.com/storytold/craft-libs?branch=main#other");
+        m["packages"][0]["source"] = json!("git+vendor/evo-libs?branch=main#other");
         assert!(validate(&m).is_err());
         assert!(validate(&json!({})).is_err());
     }

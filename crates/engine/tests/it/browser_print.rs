@@ -1,6 +1,6 @@
 //! Browser Print must reject native spooler operations without trapping the editor.
 
-use designcraft_engine::Session;
+use evodesign_engine::Session;
 use serde_json::json;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 

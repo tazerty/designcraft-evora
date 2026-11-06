@@ -9,10 +9,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
-use designcraft_compose::{ComposedStory, FrameText, Line, ShownOn};
-use designcraft_doc::ItemId;
-use designcraft_fonts::FontDb;
-use designcraft_geom::{Affine, BezPath, Rect, Shape};
+use evodesign_compose::{ComposedStory, FrameText, Line, ShownOn};
+use evodesign_doc::ItemId;
+use evodesign_fonts::FontDb;
+use evodesign_geom::{Affine, BezPath, Rect, Shape};
 use vello_cpu::RenderContext;
 use vello_cpu::kurbo;
 use vello_cpu::peniko;
@@ -24,19 +24,19 @@ use crate::{Frame, Renderer, color_of, rect_overlaps, screen_color};
 #[derive(Clone)]
 enum TextPaint {
     Solid(peniko::Color),
-    Gradient(designcraft_doc::Fill),
+    Gradient(evodesign_doc::Fill),
 }
 
 impl TextPaint {
-    fn of(doc: &designcraft_doc::Document, swatch: &str, tint: f32) -> Option<Self> {
-        if designcraft_color::swatch::resolve_gradient(&doc.swatches, swatch).is_some() {
-            return Some(TextPaint::Gradient(designcraft_doc::Fill { swatch: swatch.into(), tint, ..designcraft_doc::Fill::none() }));
+    fn of(doc: &evodesign_doc::Document, swatch: &str, tint: f32) -> Option<Self> {
+        if evodesign_color::swatch::resolve_gradient(&doc.swatches, swatch).is_some() {
+            return Some(TextPaint::Gradient(evodesign_doc::Fill { swatch: swatch.into(), tint, ..evodesign_doc::Fill::none() }));
         }
         doc.resolve_color(swatch, tint).map(|c| TextPaint::Solid(color_of(&c, 1.0)))
     }
 
     /// Make this the context's paint; a gradient runs across `area` (text space).
-    fn set(&self, ctx: &mut RenderContext, doc: &designcraft_doc::Document, area: Rect) {
+    fn set(&self, ctx: &mut RenderContext, doc: &evodesign_doc::Document, area: Rect) {
         match self {
             TextPaint::Solid(c) => ctx.set_paint(*c),
             TextPaint::Gradient(fill) => {
@@ -48,7 +48,7 @@ impl TextPaint {
 
 /// The box a gradient on a frame's text spans: the frame's, in text space (the union of its lines
 /// when the frame is gone).
-fn text_area(doc: &designcraft_doc::Document, ft: &FrameText) -> Rect {
+fn text_area(doc: &evodesign_doc::Document, ft: &FrameText) -> Rect {
     if let Some(it) = doc.item(ft.frame) {
         let local = doc.text_local(it);
         if local.determinant().abs() > 1e-12 {
@@ -184,7 +184,7 @@ fn build_line(db: &FontDb, cs: &ComposedStory, l: &Line, vertical: bool) -> Line
         let style = &cs.styles[g.style as usize];
         for (on, rule, bars) in [(style.underline, &style.underline_rule, &mut underlines), (style.strikethrough, &style.strike_rule, &mut strikes)] {
             if on {
-                let r = rule.rect(g.x, g.x + g.adv, designcraft_compose::rule_baseline(style, l, g));
+                let r = rule.rect(g.x, g.x + g.adv, evodesign_compose::rule_baseline(style, l, g));
                 // One bar per stretch, as the PDF export draws them: a bar per glyph left
                 // anti-aliased seams between the letters.
                 push_bar(bars, &rule.color, rule.tint, r);
@@ -223,7 +223,7 @@ fn build_line(db: &FontDb, cs: &ComposedStory, l: &Line, vertical: bool) -> Line
     let mut bounds = None;
     for (si, bp) in &runs {
         let st = &cs.styles[*si as usize];
-        let sw = if st.stroke != designcraft_color::swatch::NONE { st.stroke_weight } else { 0.0 };
+        let sw = if st.stroke != evodesign_color::swatch::NONE { st.stroke_weight } else { 0.0 };
         bounds = union(bounds, bp.bounding_box().inflate(sw, sw));
     }
     for (_, _, r) in underlines.iter().chain(&strikes) {
@@ -314,7 +314,7 @@ impl Renderer {
             ctx.set_transform(m);
             let px = 1.0 / m.determinant().abs().sqrt().max(1e-9);
             for l in &ft.lines {
-                let tag_of = |g: &designcraft_compose::PlacedGlyph| cs.styles.get(g.style as usize).and_then(|s| s.xml_tag.clone());
+                let tag_of = |g: &evodesign_compose::PlacedGlyph| cs.styles.get(g.style as usize).and_then(|s| s.xml_tag.clone());
                 let gs: Vec<_> = l.glyphs.iter().filter(|g| g.len > 0).collect();
                 let mut i = 0;
                 while i < gs.len() {
@@ -359,7 +359,7 @@ impl Renderer {
             ctx.set_transform(m);
             ctx.set_paint(screen_color([232, 160, 32], 255));
             for l in &ft.lines {
-                for g in l.glyphs.iter().filter(|g| st.text.get(g.byte..).is_some_and(|t| t.starts_with(designcraft_doc::NOTE_MARK))) {
+                for g in l.glyphs.iter().filter(|g| st.text.get(g.byte..).is_some_and(|t| t.starts_with(evodesign_doc::NOTE_MARK))) {
                     let h = l.ascent.max(4.0);
                     let mut p = BezPath::new();
                     p.move_to((g.x - h * 0.25, l.baseline - h));
@@ -449,7 +449,7 @@ impl Renderer {
             }
         }
         if !greek.elements().is_empty() {
-            ctx.set_paint(color_of(&designcraft_color::Color::gray(0.35), 0.5));
+            ctx.set_paint(color_of(&evodesign_color::Color::gray(0.35), 0.5));
             ctx.fill_path(&greek);
         }
         for n in &ft.notes {
@@ -500,7 +500,7 @@ impl Renderer {
                 let (ca, cb) = t.corner_capped(s);
                 let capped = kurbo::Line::new(ca, cb).to_path(0.1);
                 // Gap colour under dashes, dots and stripes: the whole edge, solid.
-                if !matches!(kind, designcraft_doc::StrokeType::Solid)
+                if !matches!(kind, evodesign_doc::StrokeType::Solid)
                     && let Some(gap) = doc.resolve_color(&s.stroke.gap_color, s.stroke.gap_tint)
                 {
                     ctx.set_paint(color_of(&gap, 1.0));
@@ -521,8 +521,8 @@ impl Renderer {
 }
 
 /// A run's stroke colour, if it has one.
-fn stroke_of(doc: &designcraft_doc::Document, st: &designcraft_compose::RunStyle) -> Option<TextPaint> {
-    if st.stroke == designcraft_color::swatch::NONE {
+fn stroke_of(doc: &evodesign_doc::Document, st: &evodesign_compose::RunStyle) -> Option<TextPaint> {
+    if st.stroke == evodesign_color::swatch::NONE {
         return None;
     }
     TextPaint::of(doc, &st.stroke, st.stroke_tint)
@@ -546,7 +546,7 @@ fn overprinting(ctx: &mut RenderContext, overprint: bool, paint: impl FnOnce(&mu
 #[allow(clippy::too_many_arguments)]
 fn paint_glyphs(
     ctx: &mut RenderContext,
-    doc: &designcraft_doc::Document,
+    doc: &evodesign_doc::Document,
     area: Rect,
     bp: &BezPath,
     fill: Option<(TextPaint, bool)>,
@@ -599,8 +599,8 @@ fn paint_glyphs(
 }
 
 /// Kurbo stroke for a table edge `length` points long of a resolved stroke type.
-pub(crate) fn cell_stroke(kind: &designcraft_doc::StrokeType, weight: f64, length: f64) -> kurbo::Stroke {
-    use designcraft_doc::StrokeType;
+pub(crate) fn cell_stroke(kind: &evodesign_doc::StrokeType, weight: f64, length: f64) -> kurbo::Stroke {
+    use evodesign_doc::StrokeType;
     let st = kurbo::Stroke::new(weight).with_caps(kurbo::Cap::Square);
     match kind {
         StrokeType::Dashed { pattern } if StrokeType::expandable_dashes(pattern, length) => {
@@ -624,13 +624,13 @@ impl Renderer {
         ft: &FrameText,
         xf: Affine,
         path: &BezPath,
-        pt: &designcraft_doc::PathType,
+        pt: &evodesign_doc::PathType,
     ) {
         let doc = f.doc;
         ctx.set_transform(f.view * xf);
         // A gradient on type on a path spans the path's box.
         let area = path.bounding_box();
-        for (si, bp) in designcraft_compose::path_glyphs(cs, ft, path, pt) {
+        for (si, bp) in evodesign_compose::path_glyphs(cs, ft, path, pt) {
             let st = &cs.styles[si as usize];
             let fill = TextPaint::of(doc, &st.fill, st.fill_tint).map(|c| (c, false));
             paint_glyphs(ctx, doc, area, &bp, fill, stroke_of(doc, st).map(|c| (c, false)), st.stroke_weight, st.stroke_behind_fill);
@@ -648,18 +648,18 @@ mod cache_identity_tests {
     }
 
     fn rich_composition() -> (crate::Cache, Arc<ComposedStory>) {
-        let mut doc = designcraft_doc::Document::new(&Default::default());
+        let mut doc = evodesign_doc::Document::new(&Default::default());
         for style in &mut doc.styles_mut().paragraph {
             style.chars.underline = Some(true);
         }
         let layer = doc.default_layer();
         let (_, sid) = doc
             .add_text_frame(
-                designcraft_doc::SpreadRef::Doc(0),
+                evodesign_doc::SpreadRef::Doc(0),
                 Rect::new(36.0, 36.0, 300.0, 300.0),
                 layer,
                 "Visible decorated glyphs.",
-                designcraft_doc::ParaFormat::default(),
+                evodesign_doc::ParaFormat::default(),
             )
             .unwrap();
         let owner = crate::Cache::new();
@@ -745,18 +745,18 @@ mod rule_tests {
     /// (#1466).
     #[test]
     fn an_underline_runs_across_a_tab() {
-        let mut doc = designcraft_doc::Document::new(&Default::default());
+        let mut doc = evodesign_doc::Document::new(&Default::default());
         for style in &mut doc.styles_mut().paragraph {
             style.chars.underline = Some(true);
         }
         let layer = doc.default_layer();
         let (_, sid) = doc
             .add_text_frame(
-                designcraft_doc::SpreadRef::Doc(0),
+                evodesign_doc::SpreadRef::Doc(0),
                 Rect::new(36.0, 36.0, 400.0, 300.0),
                 layer,
                 "Name\tCity",
-                designcraft_doc::ParaFormat::default(),
+                evodesign_doc::ParaFormat::default(),
             )
             .unwrap();
         let owner = crate::Cache::new();

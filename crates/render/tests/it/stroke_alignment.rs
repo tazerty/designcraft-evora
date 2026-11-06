@@ -1,10 +1,10 @@
 //! Synthetic pixel regressions for stroke alignment. No imported artwork is needed.
-use designcraft_color::{Color, swatch::Swatch};
-use designcraft_compose::Cache;
-use designcraft_doc::build::NewDocument;
-use designcraft_doc::{Document, Fill, Item, ItemId, Join, Shape, SpreadRef, Stroke, StrokeAlign, StrokeType};
-use designcraft_geom::{Affine, PathData, Point, Rect, shapes};
-use designcraft_render::{Placed, RenderOptions, Rendered, Renderer};
+use evodesign_color::{Color, swatch::Swatch};
+use evodesign_compose::Cache;
+use evodesign_doc::build::NewDocument;
+use evodesign_doc::{Document, Fill, Item, ItemId, Join, Shape, SpreadRef, Stroke, StrokeAlign, StrokeType};
+use evodesign_geom::{Affine, PathData, Point, Rect, shapes};
+use evodesign_render::{Placed, RenderOptions, Rendered, Renderer};
 
 const WHITE: [u8; 4] = [255, 255, 255, 255];
 const RED: [u8; 4] = [255, 0, 0, 255];
@@ -19,7 +19,7 @@ fn render_with(path: PathData, fill: bool, stroke: Stroke, xf: Affine, threads: 
     d.swatches.push(Swatch::color("Red", Color::rgb8(255, 0, 0)));
     let id = ItemId(d.alloc());
     let mut item = Item::new(id, d.default_layer(), Shape::Rectangle, path);
-    item.fill = if fill { Fill::swatch(designcraft_color::swatch::PAPER) } else { Fill::default() };
+    item.fill = if fill { Fill::swatch(evodesign_color::swatch::PAPER) } else { Fill::default() };
     item.stroke = stroke;
     item.xf = xf;
     item.opacity = opacity;

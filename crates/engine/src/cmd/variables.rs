@@ -1,6 +1,6 @@
 //! Type → Text Variables: define, list, delete and insert variables.
 
-use designcraft_doc::vars::{TextVariable, VarKind, var_char};
+use evodesign_doc::vars::{TextVariable, VarKind, var_char};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, cmd, has_doc, str_param};
@@ -51,7 +51,7 @@ pub fn specs() -> Vec<CommandSpec> {
                         if !d.story(sid).is_some_and(|st| needs_unvar(st, i, 0)) {
                             continue;
                         }
-                        let st = d.story_mut(sid).ok_or(designcraft_doc::DocError::NoStory(sid))?;
+                        let st = d.story_mut(sid).ok_or(evodesign_doc::DocError::NoStory(sid))?;
                         unvar(st, i, n, &value, 0);
                     }
                     d.text_variables.remove(i);
@@ -106,28 +106,28 @@ fn has_selected_instance(s: &Session) -> std::result::Result<(), String> {
             .doc
             .text_story(t.story, t.cell)
             .and_then(|x| x.text.get(t.range()))
-            .is_some_and(|x| x.chars().any(|c| designcraft_doc::vars::var_index(c).is_some()));
+            .is_some_and(|x| x.chars().any(|c| evodesign_doc::vars::var_index(c).is_some()));
     if held { Ok(()) } else { Err("no text variable selected".into()) }
 }
 
 /// The page story byte `pos` is shown on, which a variable's value depends on: overset text takes
 /// the page of the story's last frame; parent pages and the pasteboard have none.
-fn shown_page(d: &designcraft_doc::Document, cs: &designcraft_compose::ComposedStory, pos: usize) -> Option<usize> {
-    designcraft_compose::vars::page_of(d, cs, pos).or_else(|| cs.frames.last().and_then(|f| d.page_of_item(f.frame)))
+fn shown_page(d: &evodesign_doc::Document, cs: &evodesign_compose::ComposedStory, pos: usize) -> Option<usize> {
+    evodesign_compose::vars::page_of(d, cs, pos).or_else(|| cs.frames.last().and_then(|f| d.page_of_item(f.frame)))
 }
 
 /// Values of every variable on the pages asked for, as composition shows them (running headers
 /// included), computed once per page.
 struct PageValues<'a> {
-    doc: &'a designcraft_doc::Document,
-    running: std::sync::Arc<designcraft_compose::vars::RunningIndex>,
+    doc: &'a evodesign_doc::Document,
+    running: std::sync::Arc<evodesign_compose::vars::RunningIndex>,
     pages: std::collections::HashMap<Option<usize>, Vec<String>>,
 }
 
 impl PageValues<'_> {
     fn get(&mut self, i: usize, page: Option<usize>) -> String {
         let (doc, running) = (self.doc, &self.running);
-        let v = self.pages.entry(page).or_insert_with(|| designcraft_compose::vars::values(doc, page, Some(running)));
+        let v = self.pages.entry(page).or_insert_with(|| evodesign_compose::vars::values(doc, page, Some(running)));
         v.get(i).cloned().unwrap_or_default()
     }
 }
@@ -137,13 +137,13 @@ impl PageValues<'_> {
 fn instances(text: &str, range: std::ops::Range<usize>, which: Option<usize>) -> Vec<(usize, usize)> {
     let Some(t) = text.get(range.clone()) else { return Vec::new() };
     t.char_indices()
-        .filter_map(|(k, c)| designcraft_doc::vars::var_index(c).filter(|i| which.is_none_or(|w| w == *i)).map(|i| (range.start + k, i)))
+        .filter_map(|(k, c)| evodesign_doc::vars::var_index(c).filter(|i| which.is_none_or(|w| w == *i)).map(|i| (range.start + k, i)))
         .collect()
 }
 
 /// Replaces the instances at `at` (byte, variable) in `st` with `value(byte)`, last first so the
 /// earlier offsets hold. Returns the change in length before each replaced byte, in text order.
-fn replace_instances(st: &mut designcraft_doc::Story, at: &[(usize, usize)], value: &dyn Fn(usize) -> String) -> Vec<(usize, isize)> {
+fn replace_instances(st: &mut evodesign_doc::Story, at: &[(usize, usize)], value: &dyn Fn(usize) -> String) -> Vec<(usize, isize)> {
     let mut grown = Vec::new();
     for &(pos, i) in at.iter().rev() {
         let len = var_char(i).map_or(0, char::len_utf8);
@@ -163,7 +163,7 @@ fn shifted(b: usize, grown: &[(usize, isize)]) -> usize {
 
 /// Replaces every instance of variable `i` in `st`, its table cells and its notes with `value`.
 /// Returns the growth of `st`'s own text, as [`replace_instances`].
-fn replace_nested(st: &mut designcraft_doc::Story, i: usize, value: &str, depth: usize) -> Vec<(usize, isize)> {
+fn replace_nested(st: &mut evodesign_doc::Story, i: usize, value: &str, depth: usize) -> Vec<(usize, isize)> {
     if depth > MAX_DEPTH {
         return Vec::new();
     }
@@ -191,18 +191,18 @@ fn replace_nested(st: &mut designcraft_doc::Story, i: usize, value: &str, depth:
 }
 
 /// Whether `st` or text nested in it holds an instance of variable `i`.
-fn holds(st: &designcraft_doc::Story, i: usize, depth: usize) -> bool {
+fn holds(st: &evodesign_doc::Story, i: usize, depth: usize) -> bool {
     depth <= MAX_DEPTH
-        && (st.text.chars().any(|c| designcraft_doc::vars::var_index(c) == Some(i))
+        && (st.text.chars().any(|c| evodesign_doc::vars::var_index(c) == Some(i))
             || st.tables.values().any(|t| t.cells.iter().any(|c| holds(&c.text, i, depth + 1)))
             || st.notes.iter().chain(st.endnotes.iter()).any(|n| holds(&n.text, i, depth + 1)))
 }
 
 /// Byte offset in `st` of the anchor of table `id`.
-fn table_anchor(st: &designcraft_doc::Story, id: u64) -> Option<usize> {
+fn table_anchor(st: &evodesign_doc::Story, id: u64) -> Option<usize> {
     let (pi, _) = st.paras.iter().enumerate().find(|(_, p)| p.table == Some(id))?;
     let r = st.para_ranges().into_iter().nth(pi)?;
-    Some(r.start + st.text.get(r)?.find(designcraft_doc::story::TABLE_ANCHOR)?)
+    Some(r.start + st.text.get(r)?.find(evodesign_doc::story::TABLE_ANCHOR)?)
 }
 
 fn convert_selection(s: &mut Session, _: &Value) -> Result<Value> {
@@ -211,12 +211,12 @@ fn convert_selection(s: &mut Session, _: &Value) -> Result<Value> {
     let range = t.range();
     let (at, values) = {
         let d = &s.doc()?.doc;
-        let st = d.story(t.story).ok_or(designcraft_doc::DocError::NoStory(t.story))?;
-        let text = d.text_story(t.story, t.cell).ok_or(designcraft_doc::DocError::NoStory(t.story))?;
+        let st = d.story(t.story).ok_or(evodesign_doc::DocError::NoStory(t.story))?;
+        let text = d.text_story(t.story, t.cell).ok_or(evodesign_doc::DocError::NoStory(t.story))?;
         // Text in a cell or a footnote is on the page of its table's or note's anchor.
         let anchor = match t.cell {
             None => None,
-            Some(c) if c.table == designcraft_doc::FOOTNOTE_TABLE => st.note_anchor(c.row as u64),
+            Some(c) if c.table == evodesign_doc::FOOTNOTE_TABLE => st.note_anchor(c.row as u64),
             Some(c) => table_anchor(st, c.table),
         };
         let cs = s.cache.get(d, t.story, None);
@@ -230,10 +230,10 @@ fn convert_selection(s: &mut Session, _: &Value) -> Result<Value> {
         return Err(bad(ID, "no text variable selected"));
     }
     s.edit(|d, sel| {
-        let st = d.text_story_mut(t.story, t.cell).ok_or(designcraft_doc::DocError::NoStory(t.story))?;
+        let st = d.text_story_mut(t.story, t.cell).ok_or(evodesign_doc::DocError::NoStory(t.story))?;
         let grown = replace_instances(st, &at, &|pos| values.get(&pos).cloned().unwrap_or_default());
         // The converted text stays selected.
-        sel.text = Some(designcraft_doc::TextSel { anchor: range.start, focus: shifted(range.end, &grown), ..t });
+        sel.text = Some(evodesign_doc::TextSel { anchor: range.start, focus: shifted(range.end, &grown), ..t });
         Ok(json!({"converted": at.len()}))
     })
 }
@@ -242,7 +242,7 @@ fn convert_selection(s: &mut Session, _: &Value) -> Result<Value> {
 /// its own text, and for the text of each table (by id), footnote and endnote, the value on the
 /// page of its anchor.
 struct StoryPlan {
-    sid: designcraft_doc::StoryId,
+    sid: evodesign_doc::StoryId,
     own: Vec<(usize, String)>,
     tables: Vec<(u64, String)>,
     notes: Vec<String>,
@@ -265,8 +265,8 @@ fn convert_all(s: &mut Session, p: &Value) -> Result<Value> {
             let mut value = |pos: usize| pv.get(i, shown_page(d, &cs, pos));
             let own = instances(&st.text, 0..st.text.len(), Some(i)).into_iter().map(|(pos, _)| (pos, value(pos))).collect();
             let tables = st.tables.keys().map(|id| (*id, table_anchor(st, *id).map(&mut value).unwrap_or_default())).collect();
-            let notes = st.text.match_indices(designcraft_doc::FOOTNOTE_REF).map(|(k, _)| value(k)).collect();
-            let endnotes = st.text.match_indices(designcraft_doc::ENDNOTE_REF).map(|(k, _)| value(k)).collect();
+            let notes = st.text.match_indices(evodesign_doc::FOOTNOTE_REF).map(|(k, _)| value(k)).collect();
+            let endnotes = st.text.match_indices(evodesign_doc::ENDNOTE_REF).map(|(k, _)| value(k)).collect();
             plans.push(StoryPlan { sid: *sid, own, tables, notes, endnotes });
         }
         (i, plans)
@@ -290,7 +290,7 @@ fn convert_all(s: &mut Session, p: &Value) -> Result<Value> {
                     t.focus = shifted(t.focus, &grown);
                 }
             }
-            let st = d.story_mut(plan.sid).ok_or(designcraft_doc::DocError::NoStory(plan.sid))?;
+            let st = d.story_mut(plan.sid).ok_or(evodesign_doc::DocError::NoStory(plan.sid))?;
             let at: Vec<(usize, usize)> = plan.own.iter().map(|(pos, _)| (*pos, i)).collect();
             let grown = replace_instances(st, &at, &|pos| plan.own.iter().find(|(k, _)| *k == pos).map(|(_, v)| v.clone()).unwrap_or_default());
             let mut nested = false;
@@ -328,11 +328,11 @@ const MAX_DEPTH: usize = 32;
 
 /// Whether `st` or a table cell or foot/endnote nested in it holds an instance of variable `i`
 /// or a later variable.
-fn needs_unvar(st: &designcraft_doc::Story, i: usize, depth: usize) -> bool {
+fn needs_unvar(st: &evodesign_doc::Story, i: usize, depth: usize) -> bool {
     if depth > MAX_DEPTH {
         return false;
     }
-    st.text.chars().any(|c| designcraft_doc::vars::var_index(c).is_some_and(|k| k >= i))
+    st.text.chars().any(|c| evodesign_doc::vars::var_index(c).is_some_and(|k| k >= i))
         || st.tables.values().any(|t| t.cells.iter().any(|c| needs_unvar(&c.text, i, depth + 1)))
         || st.notes.iter().chain(st.endnotes.iter()).any(|n| needs_unvar(&n.text, i, depth + 1))
 }
@@ -341,11 +341,11 @@ fn needs_unvar(st: &designcraft_doc::Story, i: usize, depth: usize) -> bool {
 /// `i + 1..n` down by one, including table cells and foot/endnotes nested in the story. Only
 /// touches (and unshares) the parts that hold such instances; a story whose nested text changed
 /// gets a new revision.
-fn unvar(st: &mut designcraft_doc::Story, i: usize, n: usize, value: &str, depth: usize) {
+fn unvar(st: &mut evodesign_doc::Story, i: usize, n: usize, value: &str, depth: usize) {
     if depth > MAX_DEPTH {
         return;
     }
-    if st.text.chars().any(|c| designcraft_doc::vars::var_index(c).is_some_and(|k| k >= i)) {
+    if st.text.chars().any(|c| evodesign_doc::vars::var_index(c).is_some_and(|k| k >= i)) {
         let target = var_char(i).unwrap_or(' ').to_string();
         while let Some(pos) = st.text.find(&target) {
             st.replace(pos..pos + target.len(), value);
@@ -393,7 +393,7 @@ fn define(s: &mut Session, p: &Value) -> Result<Value> {
         "outputDate" => VarKind::OutputDate { format: fmt() },
         "runningHeader" => VarKind::RunningHeader {
             style: str_param(p, "style").ok_or_else(|| bad("variables.define", "runningHeader needs `style`"))?.into(),
-            use_: if str_param(p, "use") == Some("lastOnPage") { designcraft_doc::vars::Use::LastOnPage } else { Default::default() },
+            use_: if str_param(p, "use") == Some("lastOnPage") { evodesign_doc::vars::Use::LastOnPage } else { Default::default() },
             character: p.get("character").and_then(Value::as_bool).unwrap_or(false),
         },
         t => return Err(bad("variables.define", format!("unknown type `{t}`"))),
@@ -408,7 +408,7 @@ fn define(s: &mut Session, p: &Value) -> Result<Value> {
                 i
             }
             None => {
-                if d.text_variables.len() >= designcraft_doc::vars::VAR_MAX {
+                if d.text_variables.len() >= evodesign_doc::vars::VAR_MAX {
                     return Err(bad("variables.define", "too many variables"));
                 }
                 d.text_variables.push(v.clone());
@@ -430,11 +430,11 @@ mod tests {
     fn parent_page_number_follows_section_renumbering() {
         let mut s = Session::new();
         s.execute("file.new", &json!({"pages": 3, "facingPages": false})).unwrap();
-        let marker = designcraft_doc::story::PAGE_NUMBER.to_string();
+        let marker = evodesign_doc::story::PAGE_NUMBER.to_string();
         let r = s
             .execute("frame.create", &json!({"spread": {"kind": "parent", "index": 0}, "rect": [72, 30, 500, 60], "content": "text", "text": marker}))
             .unwrap();
-        let sid = s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
+        let sid = s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
         assert_eq!(s.doc().unwrap().doc.story(sid).unwrap().text, marker);
         let shown = |s: &Session, page: usize| -> usize {
             let d = s.doc().unwrap().doc.clone();
@@ -455,14 +455,14 @@ mod tests {
         let mut s = Session::new();
         s.execute("file.new", &json!({"pages": 4, "facingPages": false})).unwrap();
         s.execute("layout.section", &json!({"page": 3, "startNumber": 1, "marker": "Intro"})).unwrap();
-        let marker = designcraft_doc::story::SECTION_MARKER.to_string();
+        let marker = evodesign_doc::story::SECTION_MARKER.to_string();
         let r = s
             .execute("frame.create", &json!({"spread": {"kind": "parent", "index": 0}, "rect": [72, 30, 500, 60], "content": "text", "text": marker}))
             .unwrap();
-        let parent = s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
+        let parent = s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
         let sp = s.doc().unwrap().doc.page_loc(3).unwrap().0;
         let r = s.execute("frame.create", &json!({"spread": sp, "rect": [72, 200, 400, 260], "content": "text", "text": marker})).unwrap();
-        let own = s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
+        let own = s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
         let shown = |s: &Session, sid, page: Option<usize>| -> usize {
             let d = s.doc().unwrap().doc.clone();
             let cs = s.cache.get(&d, sid, page);
@@ -492,14 +492,14 @@ mod tests {
         // The only heading is on the third page (the second section's page 1).
         let sp = s.doc().unwrap().doc.page_loc(2).unwrap().0;
         let r = s.execute("frame.create", &json!({"spread": sp, "rect": [72, 200, 400, 260], "content": "text", "text": "Epsilon"})).unwrap();
-        let sid = s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
+        let sid = s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
         s.execute("text.select", &json!({"story": sid.0, "anchor": 0, "focus": 1})).unwrap();
         s.execute("style.paragraph.apply", &json!({"name": "Heading"})).unwrap();
         s.execute("variables.define", &json!({"name": "Chapter Head", "type": "runningHeader", "style": "Heading"})).unwrap();
         let r = s
             .execute("frame.create", &json!({"spread": {"kind": "parent", "index": 0}, "rect": [72, 30, 500, 60], "content": "text", "text": ""}))
             .unwrap();
-        let sid = s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
+        let sid = s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
         s.execute("text.select", &json!({"story": sid.0, "anchor": 0, "focus": 0})).unwrap();
         s.execute("variables.insert", &json!({"name": "Chapter Head"})).unwrap();
         let d = s.doc().unwrap().doc.clone();
@@ -515,14 +515,14 @@ mod tests {
     /// Three pages with "Alpha" in the Heading style on page 1 and "Epsilon" on page 3, a
     /// `Chapter Head` running header on Heading, and a text frame on pages 1 and 3 that each hold
     /// "<head>|<head>" (two instances). Returns the two frames' stories.
-    fn running_heads() -> (Session, designcraft_doc::StoryId, designcraft_doc::StoryId) {
+    fn running_heads() -> (Session, evodesign_doc::StoryId, evodesign_doc::StoryId) {
         let mut s = Session::new();
         s.execute("file.new", &json!({"pages": 3, "facingPages": false})).unwrap();
         s.execute("style.paragraph.create", &json!({"name": "Heading"})).ok();
         let frame = |s: &mut Session, page: usize, y: f64, text: &str| {
             let sp = s.doc().unwrap().doc.page_loc(page).unwrap().0;
             let r = s.execute("frame.create", &json!({"spread": sp, "rect": [72, y, 400, y + 60.0], "content": "text", "text": text})).unwrap();
-            s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story
+            s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story
         };
         for (page, text) in [(0, "Alpha"), (2, "Epsilon")] {
             let sid = frame(&mut s, page, 200.0, text);
@@ -574,16 +574,16 @@ mod tests {
     /// A story threaded from a frame on page 1, which holds only "Lead", to a frame on page 3,
     /// where the caret is left at the end of "Body". A cell's or a note's own byte 0 read in this
     /// story is on page 1, its anchor on page 3.
-    fn threaded(s: &mut Session) -> designcraft_doc::StoryId {
+    fn threaded(s: &mut Session) -> evodesign_doc::StoryId {
         let sp1 = s.doc().unwrap().doc.page_loc(0).unwrap().0;
         let sp3 = s.doc().unwrap().doc.page_loc(2).unwrap().0;
         let r = s.execute("frame.create", &json!({"spread": sp1, "rect": [72, 500, 400, 520], "content": "text", "text": "Lead\nBody"})).unwrap();
         let from = r["id"].as_u64().unwrap();
         s.execute("text.thread", &json!({"from": from, "rect": [72, 500, 400, 700], "spread": sp3})).unwrap();
         let d = s.doc().unwrap().doc.clone();
-        let sid = d.item(designcraft_doc::ItemId(from)).unwrap().text_frame().unwrap().story;
+        let sid = d.item(evodesign_doc::ItemId(from)).unwrap().text_frame().unwrap().story;
         let cs = s.cache.get(&d, sid, None);
-        let page = |pos| designcraft_compose::vars::page_of(&d, &cs, pos);
+        let page = |pos| evodesign_compose::vars::page_of(&d, &cs, pos);
         assert_eq!((page(0), page("Lead\nB".len())), (Some(0), Some(2)), "Lead on page 1, Body on page 3");
         s.execute("text.select", &json!({"story": sid.0, "anchor": "Lead\nBody".len(), "focus": "Lead\nBody".len()})).unwrap();
         sid
@@ -598,9 +598,9 @@ mod tests {
         s.execute("table.insert", &json!({"rows": 1, "cols": 1})).unwrap();
         s.execute("table.setCell", &json!({"row": 0, "col": 0, "text": c.to_string()})).unwrap();
         let table = *s.doc().unwrap().doc.story(sid).unwrap().tables.keys().next().unwrap();
-        let cell = designcraft_doc::CellAddr { table, row: 0, col: 0 };
+        let cell = evodesign_doc::CellAddr { table, row: 0, col: 0 };
         s.doc_mut().unwrap().selection =
-            designcraft_doc::Selection::text(designcraft_doc::TextSel { story: sid, anchor: 0, focus: c.len_utf8(), frame: None, cell: Some(cell) });
+            evodesign_doc::Selection::text(evodesign_doc::TextSel { story: sid, anchor: 0, focus: c.len_utf8(), frame: None, cell: Some(cell) });
         s.execute("variables.convertToText", &json!({})).unwrap();
         let d = &s.doc().unwrap().doc;
         assert_eq!(d.text_story(sid, Some(cell)).unwrap().text, "Epsilon");
@@ -614,9 +614,9 @@ mod tests {
         let sid = threaded(&mut s);
         s.execute("footnote.insert", &json!({"text": c.to_string()})).unwrap();
         let id = s.doc().unwrap().doc.story(sid).unwrap().notes[0].id;
-        let note = designcraft_doc::CellAddr::footnote(id);
+        let note = evodesign_doc::CellAddr::footnote(id);
         let at = s.doc().unwrap().doc.text_story(sid, Some(note)).unwrap().text.find(c).unwrap();
-        s.doc_mut().unwrap().selection = designcraft_doc::Selection::text(designcraft_doc::TextSel {
+        s.doc_mut().unwrap().selection = evodesign_doc::Selection::text(evodesign_doc::TextSel {
             story: sid,
             anchor: at,
             focus: at + c.len_utf8(),
@@ -669,16 +669,16 @@ mod tests {
             let text = format!("{c}|");
             let at = if footnote {
                 s.execute("footnote.insert", &json!({"text": text})).unwrap();
-                designcraft_doc::CellAddr::footnote(s.doc().unwrap().doc.story(sid).unwrap().notes[0].id)
+                evodesign_doc::CellAddr::footnote(s.doc().unwrap().doc.story(sid).unwrap().notes[0].id)
             } else {
                 s.execute("table.insert", &json!({"rows": 1, "cols": 1})).unwrap();
                 s.execute("table.setCell", &json!({"row": 0, "col": 0, "text": text})).unwrap();
                 let table = *s.doc().unwrap().doc.story(sid).unwrap().tables.keys().next().unwrap();
-                designcraft_doc::CellAddr { table, row: 0, col: 0 }
+                evodesign_doc::CellAddr { table, row: 0, col: 0 }
             };
             let n = s.doc().unwrap().doc.text_story(sid, Some(at)).unwrap().text.len();
             s.doc_mut().unwrap().selection =
-                designcraft_doc::Selection::text(designcraft_doc::TextSel { story: sid, anchor: n, focus: n, frame: None, cell: Some(at) });
+                evodesign_doc::Selection::text(evodesign_doc::TextSel { story: sid, anchor: n, focus: n, frame: None, cell: Some(at) });
             s.execute("variables.convertAllToText", &json!({"name": "Chapter Head"})).unwrap();
             s.execute("text.insert", &json!({"text": "x"})).unwrap();
             let text = &s.doc().unwrap().doc.text_story(sid, Some(at)).unwrap().text;
@@ -696,7 +696,7 @@ mod tests {
         let b = s.execute("variables.define", &json!({"name": "B", "type": "custom", "text": "Beta"})).unwrap()["index"].as_u64().unwrap() as usize;
         let a = s.doc().unwrap().doc.variable("A").unwrap();
         let r = s.execute("frame.create", &json!({"rect": [72, 72, 400, 300], "content": "text", "text": ""})).unwrap();
-        let sid = s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
+        let sid = s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
         s.execute("text.select", &json!({"story": sid.0, "anchor": 0, "focus": 0})).unwrap();
         s.execute("table.insert", &json!({"rows": 1, "cols": 2})).unwrap();
         let text = format!("{}|{}", var_char(a).unwrap(), var_char(b).unwrap());
@@ -718,7 +718,7 @@ mod tests {
         let b = s.execute("variables.define", &json!({"name": "B", "type": "custom", "text": "Beta"})).unwrap()["index"].as_u64().unwrap() as usize;
         let a = s.doc().unwrap().doc.variable("A").unwrap();
         let r = s.execute("frame.create", &json!({"rect": [72, 72, 400, 300], "content": "text", "text": "x"})).unwrap();
-        let sid = s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
+        let sid = s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
         let text = format!("{}|{}", var_char(a).unwrap(), var_char(b).unwrap());
         s.execute("text.select", &json!({"story": sid.0, "anchor": 1, "focus": 1})).unwrap();
         s.execute("footnote.insert", &json!({"text": text})).unwrap();
@@ -741,7 +741,7 @@ mod tests {
         for (page, text) in [(0, "Alpha"), (2, "Epsilon")] {
             let sp = s.doc().unwrap().doc.page_loc(page).unwrap().0;
             let r = s.execute("frame.create", &json!({"spread": sp, "rect": [72, 200, 400, 260], "content": "text", "text": text})).unwrap();
-            let sid = s.doc().unwrap().doc.item(designcraft_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
+            let sid = s.doc().unwrap().doc.item(evodesign_doc::ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story;
             s.execute("text.select", &json!({"story": sid.0, "anchor": 0, "focus": 1})).unwrap();
             s.execute("style.paragraph.apply", &json!({"name": "Heading"})).unwrap();
         }
@@ -751,14 +751,14 @@ mod tests {
         let r = s
             .execute("frame.create", &json!({"spread": {"kind": "parent", "index": 0}, "rect": [72, 30, 500, 60], "content": "text", "text": ""}))
             .unwrap();
-        let fid = designcraft_doc::ItemId(r["id"].as_u64().unwrap());
+        let fid = evodesign_doc::ItemId(r["id"].as_u64().unwrap());
         let sid = s.doc().unwrap().doc.item(fid).unwrap().text_frame().unwrap().story;
         s.execute("text.select", &json!({"story": sid.0, "anchor": 0, "focus": 0})).unwrap();
         s.execute("variables.insert", &json!({"name": "Chapter Head"})).unwrap();
         s.execute("text.insert", &json!({"text": " · "})).unwrap();
         s.execute("variables.insert", &json!({"name": "Last Page Number"})).unwrap();
         let d = s.doc().unwrap().doc.clone();
-        assert!(matches!(d.find(fid).unwrap().spread, designcraft_doc::SpreadRef::Parent(0)));
+        assert!(matches!(d.find(fid).unwrap().spread, evodesign_doc::SpreadRef::Parent(0)));
         // Visible glyphs of the header composed for each page: "Alpha · 3" vs "Epsilon · 3".
         let shown = |page: usize| -> usize {
             let cs = s.cache.get(&d, sid, Some(page));

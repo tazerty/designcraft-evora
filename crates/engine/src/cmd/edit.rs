@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use designcraft_doc::{ItemId, Selection, SpreadRef};
+use evodesign_doc::{ItemId, Selection, SpreadRef};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bool_or, cmd, has_doc, has_selection, ids_param, ok};
@@ -28,7 +28,7 @@ fn has_selection_or_text(s: &Session) -> std::result::Result<(), String> {
 }
 
 /// Plain text of a story slice: markers and anchored objects dropped, footnote text omitted.
-fn plain(st: &designcraft_doc::Story) -> String {
+fn plain(st: &evodesign_doc::Story) -> String {
     st.text.chars().filter(|c| !('\u{E000}'..='\u{E1FF}').contains(c)).map(|c| if c == '\u{2028}' { '\n' } else { c }).collect()
 }
 
@@ -81,15 +81,15 @@ fn paste_text(s: &mut Session, text: Option<String>, formatted: bool) -> Result<
         && t.cell.is_none()
         && let Some(items) = s.clipboard.clone()
     {
-        let list: Vec<designcraft_doc::Item> = items.spreads.first().map(|sp| sp.items.iter().map(|i| (**i).clone()).collect()).unwrap_or_default();
+        let list: Vec<evodesign_doc::Item> = items.spreads.first().map(|sp| sp.items.iter().map(|i| (**i).clone()).collect()).unwrap_or_default();
         if !list.is_empty() && list.iter().all(|i| super::anchored::check_item(i).is_ok()) {
             return s.edit(|d, sel| {
-                let st = d.story_mut(t.story).ok_or(designcraft_doc::DocError::NoStory(t.story))?;
+                let st = d.story_mut(t.story).ok_or(evodesign_doc::DocError::NoStory(t.story))?;
                 let r = t.range();
                 st.delete(r.start.min(st.len())..r.end.min(st.len()));
                 // Fresh ids, story and asset copies for every paste, as on the page.
                 let mut stories = std::collections::HashMap::new();
-                let fresh: Vec<designcraft_doc::Item> = list
+                let fresh: Vec<evodesign_doc::Item> = list
                     .iter()
                     .map(|i| {
                         let mut i = i.clone();
@@ -101,7 +101,7 @@ fn paste_text(s: &mut Session, text: Option<String>, formatted: bool) -> Result<
                     })
                     .collect();
                 let end = super::anchored::anchor_items(d, t.story, r.start, fresh, &Default::default())?;
-                sel.text = Some(designcraft_doc::TextSel { anchor: end, focus: end, ..t });
+                sel.text = Some(evodesign_doc::TextSel { anchor: end, focus: end, ..t });
                 Ok(json!({"pos": end, "anchored": list.len()}))
             });
         }
@@ -111,12 +111,12 @@ fn paste_text(s: &mut Session, text: Option<String>, formatted: bool) -> Result<
     if use_clip && let Some((slice, _)) = clip {
         let slice = if t.cell.is_some() { strip_objects(&slice) } else { (*slice).clone() };
         return s.edit(|d, sel| {
-            let st = d.text_story_mut(t.story, t.cell).ok_or(designcraft_doc::DocError::NoStory(t.story))?;
+            let st = d.text_story_mut(t.story, t.cell).ok_or(evodesign_doc::DocError::NoStory(t.story))?;
             let r = t.range();
             let r = r.start.min(st.len())..r.end.min(st.len());
             st.delete(r.clone());
             let end = st.insert_story(r.start, &slice);
-            sel.text = Some(designcraft_doc::TextSel { anchor: end, focus: end, ..t });
+            sel.text = Some(evodesign_doc::TextSel { anchor: end, focus: end, ..t });
             Ok(json!({"pos": end, "formatted": true}))
         });
     }
@@ -139,8 +139,8 @@ fn outside_text(text: &str) -> Result<String> {
 /// of the page's margin area and as tall as the text (at most the margin area's height), centred
 /// on `at` (spread coordinates) or else on the margin area. The frame ends up selected. With
 /// `slice` (the text copied here), the frame's story is that formatted copy.
-fn paste_text_frame(s: &mut Session, p: &Value, text: &str, slice: Option<&designcraft_doc::Story>) -> Result<Value> {
-    use designcraft_geom::{Point, Rect, shapes};
+fn paste_text_frame(s: &mut Session, p: &Value, text: &str, slice: Option<&evodesign_doc::Story>) -> Result<Value> {
+    use evodesign_geom::{Point, Rect, shapes};
     const LIMIT: f64 = 1.0e5;
     let sr = super::spread_param(p, "edit.paste")?;
     let at = super::point_param(p, "at")
@@ -160,12 +160,12 @@ fn paste_text_frame(s: &mut Session, p: &Value, text: &str, slice: Option<&desig
         let c = at.unwrap_or(Point::new(column.center().x, margins.center().y));
         let rect = |h: f64| Rect::new(c.x - w / 2.0, c.y - h / 2.0, c.x + w / 2.0, c.y + h / 2.0);
         let para = match slice.and_then(|sl| sl.paras.first()) {
-            Some(pf) => designcraft_doc::ParaFormat { table: None, ..pf.clone() },
-            None => designcraft_doc::ParaFormat { style: d.styles.default_paragraph.clone(), ..Default::default() },
+            Some(pf) => evodesign_doc::ParaFormat { table: None, ..pf.clone() },
+            None => evodesign_doc::ParaFormat { style: d.styles.default_paragraph.clone(), ..Default::default() },
         };
         let (id, sid) = d.add_text_frame(sr, rect(max_h), lid, &text, para)?;
         if let Some(sl) = slice {
-            d.story_mut(sid).ok_or(designcraft_doc::DocError::NoStory(sid))?.insert_story(0, sl);
+            d.story_mut(sid).ok_or(evodesign_doc::DocError::NoStory(sid))?.insert_story(0, sl);
         }
         // Shrink to the composed text unless it already fills the frame.
         let composed = cache.get(d, sid, None);
@@ -192,14 +192,14 @@ fn paste_text_frame(s: &mut Session, p: &Value, text: &str, slice: Option<&desig
     })
 }
 
-fn strip_objects(st: &designcraft_doc::Story) -> designcraft_doc::Story {
+fn strip_objects(st: &evodesign_doc::Story) -> evodesign_doc::Story {
     let mut out = st.clone();
     let marks = [
-        designcraft_doc::FOOTNOTE_REF,
-        designcraft_doc::ENDNOTE_REF,
-        designcraft_doc::NOTE_MARK,
-        designcraft_doc::XREF_MARK,
-        designcraft_doc::TABLE_ANCHOR,
+        evodesign_doc::FOOTNOTE_REF,
+        evodesign_doc::ENDNOTE_REF,
+        evodesign_doc::NOTE_MARK,
+        evodesign_doc::XREF_MARK,
+        evodesign_doc::TABLE_ANCHOR,
     ];
     while let Some(i) = out.text.find(marks) {
         let n = out.text[i..].chars().next().map_or(1, char::len_utf8);
@@ -289,7 +289,7 @@ pub fn specs() -> Vec<CommandSpec> {
             let st = s.doc_mut()?;
             if let Some(t) = st.selection.text {
                 let len = st.doc.text_story(t.story, t.cell).map(|x| x.len()).unwrap_or(0);
-                st.selection.text = Some(designcraft_doc::TextSel { anchor: 0, focus: len, ..t });
+                st.selection.text = Some(evodesign_doc::TextSel { anchor: 0, focus: len, ..t });
             } else {
                 let mut ids = Vec::new();
                 let parents = st.editing_parents;
@@ -336,8 +336,8 @@ pub fn specs() -> Vec<CommandSpec> {
                 s.edit(|d, sel| {
                     let mut kept = Vec::new();
                     for id in &ids {
-                        if let Some(it) = d.item_mut(*id).filter(|it| content && matches!(it.content, designcraft_doc::Content::Graphic(_))) {
-                            it.content = designcraft_doc::Content::Unassigned;
+                        if let Some(it) = d.item_mut(*id).filter(|it| content && matches!(it.content, evodesign_doc::Content::Graphic(_))) {
+                            it.content = evodesign_doc::Content::Unassigned;
                             kept.push(*id);
                         } else {
                             let _ = d.remove_item(*id);
@@ -402,7 +402,7 @@ pub fn specs() -> Vec<CommandSpec> {
                 s.edit(|d, sel| {
                     // The same place on another spread is the same distance from its spine or left edge.
                     let dx = d.spread(to).map_or(0.0, |sp| paste_origin(sp) - from);
-                    let new = super::object::duplicate_from(d, &clip, &ids, to, designcraft_geom::Vec2::new(dx + off, off))?;
+                    let new = super::object::duplicate_from(d, &clip, &ids, to, evodesign_geom::Vec2::new(dx + off, off))?;
                     *sel = Selection::items(new.clone());
                     Ok(json!({"ids": new.iter().map(|i| i.0).collect::<Vec<_>>()}))
                 })
@@ -455,8 +455,8 @@ fn copy_items(s: &mut Session) -> Result<()> {
 
 /// The x a pasted object keeps its distance from: the spine, or the left edge of single-sided
 /// pages, which have none.
-fn paste_origin(sp: &designcraft_doc::Spread) -> f64 {
-    if sp.pages.iter().all(|p| p.side == designcraft_doc::PageSide::Single) { sp.bounds().x0 } else { sp.spine_x() }
+fn paste_origin(sp: &evodesign_doc::Spread) -> f64 {
+    if sp.pages.iter().all(|p| p.side == evodesign_doc::PageSide::Single) { sp.bounds().x0 } else { sp.spine_x() }
 }
 
 /// `edit.preview`: open the preview (unless one of the same name is open) and show `command` on it.
@@ -488,7 +488,7 @@ fn preview(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 /// A document holding copies of the selected items (and their stories) on spread 0.
-pub(crate) fn clip_doc(s: &Session) -> Result<designcraft_doc::Document> {
+pub(crate) fn clip_doc(s: &Session) -> Result<evodesign_doc::Document> {
     let st = s.doc()?;
     let mut d = (*st.doc).clone();
     let keep: Vec<ItemId> = st.selection.items.clone();
@@ -498,8 +498,8 @@ pub(crate) fn clip_doc(s: &Session) -> Result<designcraft_doc::Document> {
         let (Some(it), Some(loc)) = (st.doc.item(*id), st.doc.find(*id)) else { continue };
         let parent = st.doc.parent_xf(&loc);
         items.push(Arc::new(match &it.content {
-            designcraft_doc::Content::Graphic(g) if st.selection.content => graphic_alone(it, g, parent),
-            _ => designcraft_doc::Item { xf: parent * it.xf, ..it.clone() },
+            evodesign_doc::Content::Graphic(g) if st.selection.content => graphic_alone(it, g, parent),
+            _ => evodesign_doc::Item { xf: parent * it.xf, ..it.clone() },
         }));
     }
     for sp in d.spreads.iter_mut() {
@@ -509,7 +509,7 @@ pub(crate) fn clip_doc(s: &Session) -> Result<designcraft_doc::Document> {
     let mut frames = std::collections::HashSet::new();
     for it in &items {
         it.walk(&mut |i| {
-            if let designcraft_doc::Content::Text(_) = &i.content {
+            if let evodesign_doc::Content::Text(_) = &i.content {
                 frames.insert(i.id);
             }
         });
@@ -536,13 +536,13 @@ pub(crate) fn clip_doc(s: &Session) -> Result<designcraft_doc::Document> {
 /// A placed graphic on its own, as InDesign copies one selected with Direct Selection: a frame of
 /// the whole graphic's bounds (uncropped), where the graphic sits on the spread (`parent` is the
 /// frame's parent transform), without the frame's fill, stroke or effects.
-fn graphic_alone(frame: &designcraft_doc::Item, g: &designcraft_doc::Graphic, parent: designcraft_geom::Affine) -> designcraft_doc::Item {
-    let r = designcraft_geom::Rect::new(0.0, 0.0, g.size.0, g.size.1);
-    let mut it = designcraft_doc::Item::new(frame.id, frame.layer, designcraft_doc::Shape::Rectangle, designcraft_geom::shapes::rectangle(r));
+fn graphic_alone(frame: &evodesign_doc::Item, g: &evodesign_doc::Graphic, parent: evodesign_geom::Affine) -> evodesign_doc::Item {
+    let r = evodesign_geom::Rect::new(0.0, 0.0, g.size.0, g.size.1);
+    let mut it = evodesign_doc::Item::new(frame.id, frame.layer, evodesign_doc::Shape::Rectangle, evodesign_geom::shapes::rectangle(r));
     it.xf = parent * frame.xf * g.xf;
-    it.content = designcraft_doc::Content::Graphic(designcraft_doc::Graphic {
-        xf: designcraft_geom::Affine::IDENTITY,
-        auto_fit: designcraft_doc::Fitting::None,
+    it.content = evodesign_doc::Content::Graphic(evodesign_doc::Graphic {
+        xf: evodesign_geom::Affine::IDENTITY,
+        auto_fit: evodesign_doc::Fitting::None,
         crop: [0.0; 4],
         ..g.clone()
     });
@@ -553,7 +553,7 @@ fn graphic_alone(frame: &designcraft_doc::Item, g: &designcraft_doc::Graphic, pa
 mod text_clipboard_tests {
     use super::*;
 
-    fn frame(s: &mut Session, text: &str) -> designcraft_doc::StoryId {
+    fn frame(s: &mut Session, text: &str) -> evodesign_doc::StoryId {
         let r = s.execute("frame.create", &json!({"rect": [72, 72, 400, 300], "content": "text", "text": text})).unwrap();
         s.doc().unwrap().doc.item(ItemId(r["id"].as_u64().unwrap())).unwrap().text_frame().unwrap().story
     }
@@ -704,7 +704,7 @@ mod text_clipboard_tests {
         // A footnote inside the copied range travels with it.
         s.execute("text.select", &json!({"story": a.0, "anchor": 4, "focus": 4})).unwrap();
         s.execute("footnote.insert", &json!({"text": "n"})).unwrap();
-        let fl = designcraft_doc::FOOTNOTE_REF.len_utf8();
+        let fl = evodesign_doc::FOOTNOTE_REF.len_utf8();
         s.execute("text.select", &json!({"story": a.0, "anchor": 0, "focus": 10 + fl})).unwrap();
         let r = s.execute("edit.copy", &json!({})).unwrap();
         assert_eq!(r["text"], "Bold words");
@@ -712,7 +712,7 @@ mod text_clipboard_tests {
         s.execute("text.select", &json!({"story": b.0, "anchor": 8, "focus": 8})).unwrap();
         s.execute("edit.paste", &json!({"text": "Bold words"})).unwrap();
         let st = s.doc().unwrap().doc.story(b).unwrap().clone();
-        assert_eq!(st.text, format!("Target: Bold{} words.", designcraft_doc::FOOTNOTE_REF));
+        assert_eq!(st.text, format!("Target: Bold{} words.", evodesign_doc::FOOTNOTE_REF));
         assert_eq!(st.char_format_at(9).over.font_style.as_deref(), Some("Bold"));
         assert_eq!(st.notes.len(), 1);
         assert_eq!(st.notes[0].text.text, "n");
@@ -732,7 +732,7 @@ mod text_clipboard_tests {
         s.doc().unwrap().doc.check().unwrap();
     }
 
-    fn note_clipboard_session() -> (Session, designcraft_doc::StoryId) {
+    fn note_clipboard_session() -> (Session, evodesign_doc::StoryId) {
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         let source = frame(&mut s, "aéz");
@@ -748,9 +748,9 @@ mod text_clipboard_tests {
 
     fn assert_child_note_paste(
         s: &mut Session,
-        source: designcraft_doc::StoryId,
-        parent: designcraft_doc::StoryId,
-        cell: designcraft_doc::CellAddr,
+        source: evodesign_doc::StoryId,
+        parent: evodesign_doc::StoryId,
+        cell: evodesign_doc::CellAddr,
         endpoints: (usize, usize),
     ) {
         let before = s.doc().unwrap().doc.clone();
@@ -769,7 +769,7 @@ mod text_clipboard_tests {
         assert_eq!(child.text, "LaézR", "root-only note markers must not enter child text");
         assert_eq!(child.len(), 6);
         assert_eq!(result, json!({"pos": 5, "formatted": true}));
-        assert_eq!(s.doc().unwrap().selection, Selection::text(designcraft_doc::TextSel { anchor: 5, focus: 5, ..selected }));
+        assert_eq!(s.doc().unwrap().selection, Selection::text(evodesign_doc::TextSel { anchor: 5, focus: 5, ..selected }));
         assert!(child.endnotes.is_empty() && child.editorial.is_empty());
         for pos in [1, 2, 4] {
             let (_, format) = child.runs().find(|(range, _)| range.contains(&pos)).unwrap();
@@ -816,7 +816,7 @@ mod text_clipboard_tests {
             s.execute("text.move", &json!({"dir": "right", "extend": true})).unwrap();
         }
         let before_table = s.doc().unwrap().doc.story(parent).unwrap().tables[&table_id].clone();
-        let cell = designcraft_doc::CellAddr { table: table_id, row: 0, col: 0 };
+        let cell = evodesign_doc::CellAddr { table: table_id, row: 0, col: 0 };
         assert_child_note_paste(&mut s, source, parent, cell, (1, 5));
         let table = &s.doc().unwrap().doc.story(parent).unwrap().tables[&table_id];
         assert_eq!(table.cell(0, 1).unwrap().text.text, "NEIGHBOR");
@@ -843,7 +843,7 @@ mod text_clipboard_tests {
             s.execute("text.move", &json!({"dir": "left", "extend": true})).unwrap();
         }
         let before = s.doc().unwrap().doc.story(parent).unwrap().clone();
-        assert_child_note_paste(&mut s, source, parent, designcraft_doc::CellAddr::footnote(target), (5, 1));
+        assert_child_note_paste(&mut s, source, parent, evodesign_doc::CellAddr::footnote(target), (5, 1));
         let after = s.doc().unwrap().doc.story(parent).unwrap();
         assert_eq!(after.note(neighbor).unwrap().text.text, "NEIGHBOR");
         assert_eq!(after.note(neighbor), before.note(neighbor));
@@ -906,14 +906,14 @@ fn paste_into(s: &mut Session, p: &Value) -> Result<Value> {
         return Err(super::bad("edit.pasteInto", "the clipboard holds no objects"));
     }
     s.edit(|d, sel| {
-        let loc = d.find(target).ok_or(designcraft_doc::DocError::NoItem(target))?;
-        let frame = d.item_at(&loc).ok_or(designcraft_doc::DocError::NoItem(target))?.clone();
+        let loc = d.find(target).ok_or(evodesign_doc::DocError::NoItem(target))?;
+        let frame = d.item_at(&loc).ok_or(evodesign_doc::DocError::NoItem(target))?.clone();
         if frame.is_group() || frame.is_text_frame() {
             return Err(super::bad("edit.pasteInto", "paste into a graphic or empty frame (not a group or text frame)"));
         }
         let world = d.parent_xf(&loc) * frame.xf;
         // Copies on the frame's spread (stories and images come along), then nested in the frame.
-        let new = super::object::duplicate_from(d, &clip, &ids, loc.spread, designcraft_geom::Vec2::ZERO)?;
+        let new = super::object::duplicate_from(d, &clip, &ids, loc.spread, evodesign_geom::Vec2::ZERO)?;
         let mut kids = Vec::new();
         for id in &new {
             kids.push(d.remove_item_keep_story(*id)?);
@@ -921,17 +921,17 @@ fn paste_into(s: &mut Session, p: &Value) -> Result<Value> {
         // Centre the content on the frame when it doesn't overlap it (like InDesign).
         let fb = frame.bounds();
         let cb = kids.iter().map(|k| k.bounds()).reduce(|a, b| a.union(b)).unwrap_or(fb);
-        let shift = if cb.intersect(fb).area() > 0.0 { designcraft_geom::Vec2::ZERO } else { fb.center().to_vec2() - cb.center().to_vec2() };
+        let shift = if cb.intersect(fb).area() > 0.0 { evodesign_geom::Vec2::ZERO } else { fb.center().to_vec2() - cb.center().to_vec2() };
         let inv = world.inverse();
-        let kids: Vec<Arc<designcraft_doc::Item>> = kids
+        let kids: Vec<Arc<evodesign_doc::Item>> = kids
             .into_iter()
             .map(|mut k| {
-                k.xf = inv * designcraft_geom::Affine::translate(shift) * k.xf;
+                k.xf = inv * evodesign_geom::Affine::translate(shift) * k.xf;
                 Arc::new(k)
             })
             .collect();
-        let it = d.item_mut(target).ok_or(designcraft_doc::DocError::NoItem(target))?;
-        it.content = designcraft_doc::Content::Group { items: kids };
+        let it = d.item_mut(target).ok_or(evodesign_doc::DocError::NoItem(target))?;
+        it.content = evodesign_doc::Content::Group { items: kids };
         *sel = Selection::items(vec![target]);
         Ok(json!({"id": target.0, "items": new.len()}))
     })
@@ -956,10 +956,10 @@ mod paste_into_tests {
         assert_eq!(d.spreads[0].items.len(), 1, "the black square is inside the frame now");
         let f = d.item(ItemId(frame)).unwrap();
         assert!(f.has_nested_items() && !f.is_group());
-        assert_eq!(f.bounds(), designcraft_geom::Rect::new(150.0, 150.0, 250.0, 250.0), "bounds stay the frame's");
+        assert_eq!(f.bounds(), evodesign_geom::Rect::new(150.0, 150.0, 250.0, 250.0), "bounds stay the frame's");
         // Rendered clipped: black inside the frame, nothing outside it.
-        let cache = designcraft_compose::Cache::new();
-        let mut r = designcraft_render::Renderer::new();
+        let cache = evodesign_compose::Cache::new();
+        let mut r = evodesign_render::Renderer::new();
         let img = r.render_page(&d, &cache, 0, 1.0, false, &Default::default()).unwrap();
         assert!(img.pixel(200, 200)[0] < 90, "{:?}", img.pixel(200, 200));
         assert!(img.pixel(120, 120)[0] > 200, "{:?}", img.pixel(120, 120));
@@ -971,7 +971,7 @@ mod paste_into_tests {
         let dir = std::env::temp_dir().join(format!("dc-graphic-alone-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let png = dir.join("photo.png");
-        std::fs::write(&png, designcraft_render::Rendered { width: 200, height: 100, pixels: vec![40u8; 200 * 100 * 4] }.to_png()).unwrap();
+        std::fs::write(&png, evodesign_render::Rendered { width: 200, height: 100, pixels: vec![40u8; 200 * 100 * 4] }.to_png()).unwrap();
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
         // A square frame showing the middle of a wide photo (cropped left and right).
@@ -984,8 +984,8 @@ mod paste_into_tests {
         s.execute("edit.copy", &json!({})).unwrap();
         let clip = s.clipboard.clone().unwrap();
         let it = &clip.spreads[0].items[0];
-        assert!(matches!(&it.content, designcraft_doc::Content::Graphic(g) if g.crop == [0.0; 4]));
-        assert_eq!(it.bounds(), designcraft_geom::Rect::new(50.0, 100.0, 250.0, 200.0));
+        assert!(matches!(&it.content, evodesign_doc::Content::Graphic(g) if g.crop == [0.0; 4]));
+        assert_eq!(it.bounds(), evodesign_geom::Rect::new(50.0, 100.0, 250.0, 200.0));
         assert!(it.stroke.weight == 0.0 || it.stroke.swatch == "[None]", "{:?}", it.stroke);
         // Paste Into a shape over it: the photo lands in place, inside the shape.
         let shape = s.execute("frame.create", &json!({"rect": [60, 90, 240, 210], "shape": "ellipse"})).unwrap()["id"].as_u64().unwrap();
@@ -994,13 +994,13 @@ mod paste_into_tests {
         let d = s.doc().unwrap().doc.clone();
         let kid = d.item(ItemId(shape)).unwrap().children()[0].clone();
         let at = d.parent_xf(&d.find(kid.id).unwrap()) * kid.xf;
-        assert!((at * designcraft_geom::Point::new(0.0, 0.0) - designcraft_geom::Point::new(50.0, 100.0)).hypot() < 1e-6);
-        assert!((at * designcraft_geom::Point::new(200.0, 100.0) - designcraft_geom::Point::new(250.0, 200.0)).hypot() < 1e-6);
+        assert!((at * evodesign_geom::Point::new(0.0, 0.0) - evodesign_geom::Point::new(50.0, 100.0)).hypot() < 1e-6);
+        assert!((at * evodesign_geom::Point::new(200.0, 100.0) - evodesign_geom::Point::new(250.0, 200.0)).hypot() < 1e-6);
         // Delete with the photo selected: the frame stays, empty.
         s.execute("selection.set", &json!({"ids": [frame], "content": true})).unwrap();
         assert_eq!(s.execute("edit.clear", &json!({})).unwrap()["deleted"], 1);
         let d = s.doc().unwrap().doc.clone();
-        assert!(matches!(d.item(ItemId(frame)).unwrap().content, designcraft_doc::Content::Unassigned));
+        assert!(matches!(d.item(ItemId(frame)).unwrap().content, evodesign_doc::Content::Unassigned));
         assert_eq!(s.doc().unwrap().selection, Selection::items(vec![ItemId(frame)]));
         d.check().unwrap();
         let _ = std::fs::remove_dir_all(&dir);
@@ -1010,7 +1010,7 @@ mod paste_into_tests {
 #[cfg(test)]
 mod paste_tests {
     use super::*;
-    use designcraft_geom::Rect;
+    use evodesign_geom::Rect;
 
     fn pasted(s: &mut Session, id: &str, p: Value) -> (SpreadRef, Rect) {
         let new = ItemId(s.execute(id, &p).unwrap()["ids"][0].as_u64().unwrap());
@@ -1077,13 +1077,13 @@ mod paste_tests {
     fn copied_text_frames_keep_the_graphics_anchored_in_their_text() {
         let mut s = Session::new();
         s.execute("file.new", &json!({})).unwrap();
-        let png = designcraft_render::Rendered { width: 4, height: 4, pixels: vec![200u8; 64] }.to_png();
+        let png = evodesign_render::Rendered { width: 4, height: 4, pixels: vec![200u8; 64] }.to_png();
         let placed = s.execute("file.place", &json!({"base64": super::super::file::base64_encode(&png), "name": "a.png", "x": 72, "y": 72})).unwrap();
-        let (g, aid) = (ItemId(placed["id"].as_u64().unwrap()), designcraft_doc::AssetId(placed["asset"].as_u64().unwrap()));
+        let (g, aid) = (ItemId(placed["id"].as_u64().unwrap()), evodesign_doc::AssetId(placed["asset"].as_u64().unwrap()));
         let f = ItemId(s.execute("frame.create", &json!({"rect": [36, 200, 300, 400], "content": "text"})).unwrap()["id"].as_u64().unwrap());
         s.edit(|d, _| {
-            let it = d.item(g).cloned().ok_or(designcraft_doc::DocError::NoItem(g))?;
-            let sid = d.item(f).and_then(|i| i.text_frame()).map(|t| t.story).ok_or(designcraft_doc::DocError::NoItem(f))?;
+            let it = d.item(g).cloned().ok_or(evodesign_doc::DocError::NoItem(g))?;
+            let sid = d.item(f).and_then(|i| i.text_frame()).map(|t| t.story).ok_or(evodesign_doc::DocError::NoItem(f))?;
             super::super::anchored::anchor_items(d, sid, 0, vec![it], &Default::default())?;
             Ok(())
         })

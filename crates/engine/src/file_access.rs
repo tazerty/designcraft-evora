@@ -1,6 +1,6 @@
 //! The folders automation may read and write.
 //!
-//! `designcraft-cli mcp --automation-read-root <dir> --automation-write-root <dir>` confines the
+//! `evodesign-cli mcp --automation-read-root <dir> --automation-write-root <dir>` confines the
 //! files an agent's commands reach; each flag may be given more than once (#1552). [`AutomationRoots`]
 //! holds the folders of each kind. While they are in force, every path a command reads goes through
 //! [`check_read`] and every path it writes through [`check_write`]:
@@ -15,7 +15,7 @@
 //! - Read and write access are separate: a root given alone grants only its own kind of access.
 //!
 //! Roots are in force on a thread inside [`confine`], and in the whole process after
-//! [`confine_process`] (`designcraft-cli mcp`), except inside [`unconfined`]. Without roots
+//! [`confine_process`] (`evodesign-cli mcp`), except inside [`unconfined`]. Without roots
 //! nothing is checked.
 //!
 //! A path is checked, then opened: a process that can change the folders in between (swapping in
@@ -293,8 +293,8 @@ mod tests {
         for d in ["in/sub", "out", "outside", "in2"] {
             std::fs::create_dir_all(base.join(d)).unwrap();
         }
-        std::fs::write(base.join("in/a.designcraft"), "x").unwrap();
-        std::fs::write(base.join("outside/secret.designcraft"), "x").unwrap();
+        std::fs::write(base.join("in/a.evodesign"), "x").unwrap();
+        std::fs::write(base.join("outside/secret.evodesign"), "x").unwrap();
         let roots = AutomationRoots::new(&[&base.join("in")], &[&base.join("out")]).unwrap().unwrap();
         (base, roots)
     }
@@ -306,14 +306,14 @@ mod tests {
     #[test]
     fn paths_inside_the_roots_pass_and_others_dont() {
         let (base, roots) = folders("inside");
-        assert_eq!(roots.check(s(base.join("in/a.designcraft")), Access::Read), Ok(()));
+        assert_eq!(roots.check(s(base.join("in/a.evodesign")), Access::Read), Ok(()));
         assert_eq!(roots.check(s(base.join("in")), Access::Read), Ok(()), "the root itself");
-        assert_eq!(roots.check(s(base.join("in/sub/new.designcraft")), Access::Read), Ok(()), "missing files are checked by their folder");
+        assert_eq!(roots.check(s(base.join("in/sub/new.evodesign")), Access::Read), Ok(()), "missing files are checked by their folder");
         assert_eq!(roots.check(s(base.join("out/new/deeper/x.png")), Access::Write), Ok(()), "and by their nearest folder");
-        let e = roots.check(s(base.join("outside/secret.designcraft")), Access::Read).unwrap_err();
+        let e = roots.check(s(base.join("outside/secret.evodesign")), Access::Read).unwrap_err();
         assert!(e.starts_with("automation path rejected: outside the read root"), "{e}");
         // Read and write access are separate.
-        let e = roots.check(s(base.join("in/a.designcraft")), Access::Write).unwrap_err();
+        let e = roots.check(s(base.join("in/a.evodesign")), Access::Write).unwrap_err();
         assert!(e.contains("outside the write root"), "{e}");
         assert!(roots.check(s(base.join("out/x.png")), Access::Read).unwrap_err().contains("outside the read root"));
         let _ = std::fs::remove_dir_all(base);
@@ -322,9 +322,9 @@ mod tests {
     #[test]
     fn a_sibling_with_the_same_prefix_is_outside() {
         let (base, roots) = folders("prefix");
-        std::fs::write(base.join("in2/b.designcraft"), "x").unwrap();
-        assert!(roots.check(s(base.join("in2/b.designcraft")), Access::Read).is_err(), "in2 is not inside in");
-        assert!(roots.check(format!("{}2/c.designcraft", s(base.join("in"))), Access::Read).is_err());
+        std::fs::write(base.join("in2/b.evodesign"), "x").unwrap();
+        assert!(roots.check(s(base.join("in2/b.evodesign")), Access::Read).is_err(), "in2 is not inside in");
+        assert!(roots.check(format!("{}2/c.evodesign", s(base.join("in"))), Access::Read).is_err());
         let _ = std::fs::remove_dir_all(base);
     }
 
@@ -332,11 +332,11 @@ mod tests {
     fn parent_traversal_is_resolved_or_refused() {
         let (base, roots) = folders("dotdot");
         let sep = std::path::MAIN_SEPARATOR;
-        let up = format!("{}{sep}..{sep}outside{sep}secret.designcraft", s(base.join("in")));
+        let up = format!("{}{sep}..{sep}outside{sep}secret.evodesign", s(base.join("in")));
         assert!(roots.check(&up, Access::Read).unwrap_err().contains("outside the read root"), "`..` out of the root");
-        let back = format!("{}{sep}..{sep}a.designcraft", s(base.join("in/sub")));
+        let back = format!("{}{sep}..{sep}a.evodesign", s(base.join("in/sub")));
         assert_eq!(roots.check(&back, Access::Read), Ok(()), "`..` that stays inside");
-        let missing = format!("{}{sep}nope{sep}..{sep}..{sep}outside{sep}x.designcraft", s(base.join("out")));
+        let missing = format!("{}{sep}nope{sep}..{sep}..{sep}outside{sep}x.evodesign", s(base.join("out")));
         let e = roots.check(&missing, Access::Write).unwrap_err();
         // Windows resolves `..` by name first (so does opening the file there): then it's outside.
         assert!(e.contains("parent traversal below a folder that doesn't exist") || e.contains("outside the write root"), "{e}");
@@ -347,7 +347,7 @@ mod tests {
     fn relative_paths_resolve_against_the_working_directory() {
         let (base, roots) = folders("relative");
         // The tests' working directory is the crate's folder: not inside the roots.
-        assert!(roots.check("a.designcraft", Access::Read).unwrap_err().contains("outside the read root"));
+        assert!(roots.check("a.evodesign", Access::Read).unwrap_err().contains("outside the read root"));
         assert!(roots.check("", Access::Read).unwrap_err().contains("path is empty"));
         let _ = std::fs::remove_dir_all(base);
     }
@@ -357,7 +357,7 @@ mod tests {
         let (base, _) = folders("missing");
         let e = AutomationRoots::new(&[&base.join("nope")], &[]).unwrap_err();
         assert!(e.starts_with("cannot open the automation read root"), "{e}");
-        let e = AutomationRoots::new(&[], &[&base.join("in/a.designcraft")]).unwrap_err();
+        let e = AutomationRoots::new(&[], &[&base.join("in/a.evodesign")]).unwrap_err();
         assert!(
             e.starts_with("cannot open the automation write root")
                 && e.ends_with(&std::io::Error::from(std::io::ErrorKind::NotADirectory).to_string()),
@@ -367,7 +367,7 @@ mod tests {
         assert!(AutomationRoots::new(&[], &[]).unwrap().is_none());
         // One root alone grants only its own access.
         let read_only = AutomationRoots::new(&[&base.join("in")], &[]).unwrap().unwrap();
-        let e = read_only.check(s(base.join("in/x.designcraft")), Access::Write).unwrap_err();
+        let e = read_only.check(s(base.join("in/x.evodesign")), Access::Write).unwrap_err();
         assert!(e.contains("write authority is absent"), "{e}");
         let _ = std::fs::remove_dir_all(base);
     }
@@ -386,25 +386,25 @@ mod tests {
         #[cfg(not(any(unix, windows)))]
         let made = |_: &Path, _: &Path| false;
         // Windows needs Developer Mode or elevation to make links: nothing to test without them.
-        if !made(&base.join("outside/secret.designcraft"), &base.join("in/leak.designcraft")) {
+        if !made(&base.join("outside/secret.evodesign"), &base.join("in/leak.evodesign")) {
             eprintln!("skipped: symbolic links can't be made here");
             let _ = std::fs::remove_dir_all(base);
             return;
         }
-        assert!(roots.check(s(base.join("in/leak.designcraft")), Access::Read).unwrap_err().contains("outside the read root"), "a file link out");
+        assert!(roots.check(s(base.join("in/leak.evodesign")), Access::Read).unwrap_err().contains("outside the read root"), "a file link out");
         assert!(made(&base.join("outside"), &base.join("out/away")));
         let e = roots.check(s(base.join("out/away/new.png")), Access::Write).unwrap_err();
         assert!(e.contains("outside the write root"), "a folder link out: {e}");
-        assert!(made(&base.join("outside/gone.designcraft"), &base.join("out/dangling.png")));
+        assert!(made(&base.join("outside/gone.evodesign"), &base.join("out/dangling.png")));
         let e = roots.check(s(base.join("out/dangling.png")), Access::Write).unwrap_err();
         assert!(e.contains("a link that leads nowhere"), "writing would create the file outside: {e}");
         // A link to a folder inside the root stays inside.
         assert!(made(&base.join("in/sub"), &base.join("in/alias")));
-        assert_eq!(roots.check(s(base.join("in/alias/x.designcraft")), Access::Read), Ok(()));
+        assert_eq!(roots.check(s(base.join("in/alias/x.evodesign")), Access::Read), Ok(()));
         // A root given through a link is the folder it leads to.
         assert!(made(&base.join("in"), &base.join("in-link")));
         let linked = AutomationRoots::new(&[&base.join("in-link")], &[]).unwrap().unwrap();
-        assert_eq!(linked.check(s(base.join("in/a.designcraft")), Access::Read), Ok(()));
+        assert_eq!(linked.check(s(base.join("in/a.evodesign")), Access::Read), Ok(()));
         let _ = std::fs::remove_dir_all(base);
     }
 
@@ -418,7 +418,7 @@ mod tests {
         for d in ["shared", "scratch", "scratch2"] {
             std::fs::create_dir_all(base.join(d)).unwrap();
         }
-        for f in ["shared/b.designcraft", "in2/c.designcraft", "parent.designcraft"] {
+        for f in ["shared/b.evodesign", "in2/c.evodesign", "parent.evodesign"] {
             std::fs::write(base.join(f), "x").unwrap();
         }
         let roots = AutomationRoots::new(&[&base.join("in"), &base.join("shared")], &[&base.join("out"), &base.join("scratch")]).unwrap().unwrap();
@@ -430,20 +430,20 @@ mod tests {
     #[test]
     fn several_roots_of_a_kind_each_grant_their_access() {
         let (base, roots) = several("several");
-        assert_eq!(roots.check(s(base.join("in/a.designcraft")), Access::Read), Ok(()));
-        assert_eq!(roots.check(s(base.join("shared/b.designcraft")), Access::Read), Ok(()));
+        assert_eq!(roots.check(s(base.join("in/a.evodesign")), Access::Read), Ok(()));
+        assert_eq!(roots.check(s(base.join("shared/b.evodesign")), Access::Read), Ok(()));
         assert_eq!(roots.check(s(base.join("out/x.png")), Access::Write), Ok(()));
         assert_eq!(roots.check(s(base.join("scratch/new/x.png")), Access::Write), Ok(()));
-        let e = roots.check(s(base.join("outside/secret.designcraft")), Access::Read).unwrap_err();
+        let e = roots.check(s(base.join("outside/secret.evodesign")), Access::Read).unwrap_err();
         let listed = format!("outside the read roots {}, {}: ", s(base.join("in")), s(base.join("shared")));
         assert!(e.starts_with("automation path rejected: ") && e.contains(&listed), "{e}");
         assert!(roots.check(s(base.join("outside/x.png")), Access::Write).unwrap_err().contains("outside the write roots"));
         // Two sibling roots don't make their parent a root.
-        assert!(roots.check(s(base.join("parent.designcraft")), Access::Read).unwrap_err().contains("outside the read roots"));
+        assert!(roots.check(s(base.join("parent.evodesign")), Access::Read).unwrap_err().contains("outside the read roots"));
         assert!(roots.check(s(base.clone()), Access::Read).is_err());
         assert!(roots.check(s(base.join("x.png")), Access::Write).unwrap_err().contains("outside the write roots"));
         // Read and write stay separate: a read root is not a write root, nor the other way round.
-        assert!(roots.check(s(base.join("shared/b.designcraft")), Access::Write).unwrap_err().contains("outside the write roots"));
+        assert!(roots.check(s(base.join("shared/b.evodesign")), Access::Write).unwrap_err().contains("outside the write roots"));
         assert!(roots.check(s(base.join("in/x.png")), Access::Write).is_err());
         assert!(roots.check(s(base.join("scratch/x.png")), Access::Read).unwrap_err().contains("outside the read roots"));
         assert!(roots.check(s(base.join("out")), Access::Read).is_err());
@@ -453,8 +453,8 @@ mod tests {
     #[test]
     fn several_roots_compare_whole_folder_names() {
         let (base, roots) = several("several-prefix");
-        assert!(roots.check(s(base.join("in2/c.designcraft")), Access::Read).unwrap_err().contains("outside the read roots"), "in2 is not inside in");
-        assert!(roots.check(format!("{}2/x.designcraft", s(base.join("shared"))), Access::Read).is_err());
+        assert!(roots.check(s(base.join("in2/c.evodesign")), Access::Read).unwrap_err().contains("outside the read roots"), "in2 is not inside in");
+        assert!(roots.check(format!("{}2/x.evodesign", s(base.join("shared"))), Access::Read).is_err());
         assert!(
             roots.check(s(base.join("scratch2/x.png")), Access::Write).unwrap_err().contains("outside the write roots"),
             "scratch2 is not inside scratch"
@@ -468,11 +468,11 @@ mod tests {
         let sep = std::path::MAIN_SEPARATOR;
         let up = |root: &str, rest: &str| format!("{}{sep}..{sep}{rest}", s(base.join(root)));
         // `..` out of one root is outside, also when it lands next to another root.
-        assert!(roots.check(up("shared", &format!("outside{sep}secret.designcraft")), Access::Read).unwrap_err().contains("outside the read roots"));
-        assert!(roots.check(up("shared", "parent.designcraft"), Access::Read).is_err());
+        assert!(roots.check(up("shared", &format!("outside{sep}secret.evodesign")), Access::Read).unwrap_err().contains("outside the read roots"));
+        assert!(roots.check(up("shared", "parent.evodesign"), Access::Read).is_err());
         assert!(roots.check(up("scratch", &format!("outside{sep}x.png")), Access::Write).unwrap_err().contains("outside the write roots"));
         // `..` from one root into another of the same kind stays inside.
-        assert_eq!(roots.check(up("shared", &format!("in{sep}a.designcraft")), Access::Read), Ok(()));
+        assert_eq!(roots.check(up("shared", &format!("in{sep}a.evodesign")), Access::Read), Ok(()));
         assert_eq!(roots.check(up("scratch", &format!("out{sep}x.png")), Access::Write), Ok(()));
         // ...but not into a root of the other kind.
         assert!(roots.check(up("scratch", &format!("in{sep}x.png")), Access::Write).unwrap_err().contains("outside the write roots"));
@@ -488,7 +488,7 @@ mod tests {
             let e = AutomationRoots::new(&[&read[0], &read[1]], &[]).unwrap_err();
             assert!(e.starts_with("cannot open the automation read root") && e.contains("nope"), "{e}");
         }
-        let e = AutomationRoots::new(&[&base.join("in")], &[&base.join("out"), &base.join("in/a.designcraft")]).unwrap_err();
+        let e = AutomationRoots::new(&[&base.join("in")], &[&base.join("out"), &base.join("in/a.evodesign")]).unwrap_err();
         assert!(e.starts_with("cannot open the automation write root"), "{e}");
         // A folder given twice (here once through `..`) counts once.
         let twice = AutomationRoots::new(&[&base.join("in"), &base.join("in/sub/.."), &base.join("in")], &[]).unwrap().unwrap();
@@ -506,16 +506,16 @@ mod tests {
     fn links_between_several_roots() {
         let (base, roots) = several("several-links");
         let link = |target: &str, at: &str| std::os::unix::fs::symlink(base.join(target), base.join(at)).unwrap();
-        link("shared/b.designcraft", "in/to-shared.designcraft");
-        link("outside/secret.designcraft", "shared/leak.designcraft");
+        link("shared/b.evodesign", "in/to-shared.evodesign");
+        link("outside/secret.evodesign", "shared/leak.evodesign");
         link("", "shared/up");
         link("out", "in/to-out");
         link("outside", "scratch/away");
         link("in", "scratch/to-in");
-        assert_eq!(roots.check(s(base.join("in/to-shared.designcraft")), Access::Read), Ok(()));
-        assert!(roots.check(s(base.join("shared/leak.designcraft")), Access::Read).unwrap_err().contains("outside the read roots"));
-        assert!(roots.check(s(base.join("shared/up/outside/secret.designcraft")), Access::Read).unwrap_err().contains("outside the read roots"));
-        assert!(roots.check(s(base.join("shared/up/parent.designcraft")), Access::Read).is_err());
+        assert_eq!(roots.check(s(base.join("in/to-shared.evodesign")), Access::Read), Ok(()));
+        assert!(roots.check(s(base.join("shared/leak.evodesign")), Access::Read).unwrap_err().contains("outside the read roots"));
+        assert!(roots.check(s(base.join("shared/up/outside/secret.evodesign")), Access::Read).unwrap_err().contains("outside the read roots"));
+        assert!(roots.check(s(base.join("shared/up/parent.evodesign")), Access::Read).is_err());
         assert!(roots.check(s(base.join("in/to-out/x.png")), Access::Read).unwrap_err().contains("outside the read roots"));
         assert!(roots.check(s(base.join("scratch/away/x.png")), Access::Write).unwrap_err().contains("outside the write roots"));
         assert!(roots.check(s(base.join("scratch/to-in/x.png")), Access::Write).unwrap_err().contains("outside the write roots"));
@@ -526,9 +526,9 @@ mod tests {
     #[test]
     fn windows_ignores_case_and_refuses_devices() {
         let (base, roots) = folders("case");
-        let upper = s(base.join("IN/a.designcraft"));
+        let upper = s(base.join("IN/a.evodesign"));
         assert_eq!(roots.check(&upper, Access::Read), Ok(()), "{upper}");
-        assert_eq!(roots.check(s(base.join("In/Sub/New.designcraft")), Access::Read), Ok(()));
+        assert_eq!(roots.check(s(base.join("In/Sub/New.evodesign")), Access::Read), Ok(()));
         let e = roots.check(s(base.join("out/NUL")), Access::Write).unwrap_err();
         assert!(e.contains("reserved device names"), "{e}");
         assert!(roots.check(s(base.join("out/com1.txt")), Access::Write).is_err());
@@ -539,7 +539,7 @@ mod tests {
     #[test]
     fn scopes_nest_and_stay_on_their_thread() {
         let (base, roots) = folders("scopes");
-        let outside = s(base.join("outside/secret.designcraft"));
+        let outside = s(base.join("outside/secret.evodesign"));
         assert_eq!(check_read(&outside), Ok(()), "nothing is confined by default");
         confine(Some(&roots), || {
             assert!(check_read(&outside).is_err());
@@ -559,10 +559,10 @@ mod tests {
 
     #[test]
     fn device_names() {
-        for d in ["CON", "nul", "Com1", "LPT9.txt", "aux.designcraft", "NUL "] {
+        for d in ["CON", "nul", "Com1", "LPT9.txt", "aux.evodesign", "NUL "] {
             assert!(is_device_name(d), "{d}");
         }
-        for f in ["console", "com10", "COM0", "lpt", "a.designcraft", "nul-x"] {
+        for f in ["console", "com10", "COM0", "lpt", "a.evodesign", "nul-x"] {
             assert!(!is_device_name(f), "{f}");
         }
     }

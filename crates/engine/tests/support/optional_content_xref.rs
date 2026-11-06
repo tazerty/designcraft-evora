@@ -1,7 +1,7 @@
 use super::support::{catalog, document, fixture, nameless_fixture, painted};
-use designcraft_compose::Cache;
-use designcraft_doc::{AssetId, Content};
-use designcraft_pdf::{BookletKind, BookletOptions, PdfOptions, Standard, export_booklet, export_pdf, export_pdf_with_report, merge_pdfs};
+use evodesign_compose::Cache;
+use evodesign_doc::{AssetId, Content};
+use evodesign_pdf::{BookletKind, BookletOptions, PdfOptions, Standard, export_booklet, export_pdf, export_pdf_with_report, merge_pdfs};
 use std::sync::Arc;
 
 fn broken_xref(bytes: Vec<u8>) -> Vec<u8> {
@@ -27,7 +27,7 @@ fn all_visible(standard: Standard) {
     super::assert_vector(&report.bytes);
     painted(&report.bytes, &[true, true]);
     if standard == Standard::PdfX4 {
-        assert!(designcraft_pdf::check_pdfx4(&report.bytes).is_empty());
+        assert!(evodesign_pdf::check_pdfx4(&report.bytes).is_empty());
     }
 }
 
@@ -95,7 +95,7 @@ fn repaired_xref_needing_generated_name_fails_with_named_damage_error() {
     assert!(error.contains("layers.pdf") && error.contains("cross-reference table is damaged"), "{error}");
 }
 
-fn two_assets(first: Vec<u8>, second: Vec<u8>) -> designcraft_doc::Document {
+fn two_assets(first: Vec<u8>, second: Vec<u8>) -> evodesign_doc::Document {
     let mut doc = document(first, &[&[], &[]]);
     let original = doc.assets.values().next().unwrap().as_ref().clone();
     Arc::make_mut(doc.assets.values_mut().next().unwrap()).name = "first.pdf".into();

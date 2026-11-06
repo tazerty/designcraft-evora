@@ -1,7 +1,7 @@
 use super::support::{catalog, document, nameless_fixture, painted, properties_fixture};
-use designcraft_compose::Cache;
-use designcraft_engine::{Session, cmd::base64_encode};
-use designcraft_pdf::{PdfOptions, Standard, export_pdf, export_pdf_with_report};
+use evodesign_compose::Cache;
+use evodesign_engine::{Session, cmd::base64_encode};
+use evodesign_pdf::{PdfOptions, Standard, export_pdf, export_pdf_with_report};
 use serde_json::json;
 
 const CASES: &[&str] = &[
@@ -30,7 +30,7 @@ fn incomplete_inventory(standard: &str, off: bool) {
 
         let result = session.execute("file.exportPdf", &json!({"standard": standard})).unwrap();
 
-        let bytes = designcraft_engine::cmd::base64_decode(result["base64"].as_str().unwrap());
+        let bytes = evodesign_engine::cmd::base64_decode(result["base64"].as_str().unwrap());
         assert_eq!(catalog(&bytes), [("Hidden".into(), true), ("Shown".into(), false)]);
         painted(&bytes, &[true, false]);
         super::assert_vector(&bytes);
@@ -40,7 +40,7 @@ fn incomplete_inventory(standard: &str, off: bool) {
         assert!(warning.contains("incomplete.pdf") && warning.contains("layer list incomplete"), "{warning}");
         assert!(!warning.contains("layer state not readable"), "{warning}");
         if standard == "x4" {
-            assert!(designcraft_pdf::check_pdfx4(&bytes).is_empty());
+            assert!(evodesign_pdf::check_pdfx4(&bytes).is_empty());
         }
     }
 }
@@ -81,7 +81,7 @@ fn incomplete_inventory_reports_both_warnings_during_fallback() {
         );
         painted(&report.bytes, &[true, true]);
         if standard == Standard::PdfX4 {
-            assert!(designcraft_pdf::check_pdfx4(&report.bytes).is_empty());
+            assert!(evodesign_pdf::check_pdfx4(&report.bytes).is_empty());
         }
     }
 }
@@ -96,14 +96,14 @@ fn visible_recovery(source: Vec<u8>, standard: &str) {
     let warnings = result["warnings"].as_array().unwrap();
     assert_eq!(warnings.len(), 1);
     assert!(warnings[0].as_str().unwrap().contains("visible-recovery.pdf"));
-    let bytes = designcraft_engine::cmd::base64_decode(result["base64"].as_str().unwrap());
+    let bytes = evodesign_engine::cmd::base64_decode(result["base64"].as_str().unwrap());
     let groups = catalog(&bytes);
     assert_eq!(groups.len(), 2);
     assert!(groups.iter().all(|(name, hidden)| !name.is_empty() && !hidden));
     super::assert_vector(&bytes);
     painted(&bytes, &[true, true]);
     if standard == "x4" {
-        assert!(designcraft_pdf::check_pdfx4(&bytes).is_empty());
+        assert!(evodesign_pdf::check_pdfx4(&bytes).is_empty());
     }
 }
 
@@ -161,7 +161,7 @@ fn name_repair_preserves_readable_default_off_state() {
         assert_eq!(catalog(&report.bytes).iter().filter(|(_, hidden)| *hidden).count(), 1);
         painted(&report.bytes, &[true, false]);
         if standard == Standard::PdfX4 {
-            assert!(designcraft_pdf::check_pdfx4(&report.bytes).is_empty());
+            assert!(evodesign_pdf::check_pdfx4(&report.bytes).is_empty());
         }
     }
 }
@@ -189,7 +189,7 @@ fn fallback_exports(standard: Standard) {
         super::assert_vector(&report.bytes);
         painted(&report.bytes, &[true, true, false, true]);
         if standard == Standard::PdfX4 {
-            assert!(designcraft_pdf::check_pdfx4(&report.bytes).is_empty());
+            assert!(evodesign_pdf::check_pdfx4(&report.bytes).is_empty());
         }
     }
     assert!(failures.is_empty(), "fallback export failures: {failures:#?}");
@@ -225,7 +225,7 @@ fn file_export_reports_fallback_with_filename_and_preserves_overrides() {
                 let warnings = result["warnings"].as_array().unwrap();
                 assert_eq!(warnings.len(), 1, "{properties}: {result}");
                 assert!(warnings[0].as_str().unwrap().contains("fallback.pdf"));
-                let bytes = designcraft_engine::cmd::base64_decode(result["base64"].as_str().unwrap());
+                let bytes = evodesign_engine::cmd::base64_decode(result["base64"].as_str().unwrap());
                 assert_eq!(catalog(&bytes), [("Hidden".into(), false), ("Shown".into(), hidden)]);
                 painted(&bytes, &[!hidden, true]);
             }

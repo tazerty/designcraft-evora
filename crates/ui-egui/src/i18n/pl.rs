@@ -1,6 +1,6 @@
 //! Polish interface translations. Drafted with AI assistance; corrections from native speakers
 //! are welcome. Terminology follows common Polish DTP usage
-//! (rozkładówka, łam, strona wzorcowa, obszar informacyjny) and the sibling ArtCraft catalogs.
+//! (rozkładówka, łam, strona wzorcowa, obszar informacyjny) and the sibling Upstream catalogs.
 pub(super) const TABLE: &[(&str, &str)] = &[
     ("File", "Plik"),
     ("Edit", "Edycja"),

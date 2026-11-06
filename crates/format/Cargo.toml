@@ -1,16 +1,16 @@
 [package]
-name = "designcraft-format"
+name = "evodesign-format"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "DesignCraft native file format: zip with document.json and embedded assets; versioned"
+description = "EvoDesign native file format: zip with document.json and embedded assets; versioned"
 
 [lints]
 workspace = true
 
 [dependencies]
-designcraft-doc = { workspace = true }
-designcraft-images = { workspace = true }
+evodesign-doc = { workspace = true }
+evodesign-images = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 zip = { workspace = true }

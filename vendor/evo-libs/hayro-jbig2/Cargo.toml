@@ -1,0 +1,32 @@
+[package]
+edition = "2024"
+name = "hayro-jbig2"
+version = "0.3.0"
+authors = ["Laurenz Stampfl <laurenz.stampfl@gmail.com>"]
+exclude = ["/tests/", "/manifest_*.json", "/sync.py", "/generate_huffman_tables.py", "/benches/"]
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+description = "A memory-safe, pure-Rust JBIG2 decoder."
+readme = "README.md"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/LaurenzV/hayro"
+resolver = "2"
+
+[features]
+default = ["std", "image", "simd"]
+image = ["dep:image", "std"]
+simd = ["fearless_simd", "std"]
+std = []
+
+[lib]
+name = "hayro_jbig2"
+path = "src/lib.rs"
+
+[dependencies]
+fearless_simd = { version = "0.4.0", optional = true }
+hayro-ccitt = { version = "0.3.0", default-features = false }
+image = { version = "0.25", optional = true, default-features = false }
+

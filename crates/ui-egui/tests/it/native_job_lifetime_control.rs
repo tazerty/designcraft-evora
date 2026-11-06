@@ -2,11 +2,11 @@
 
 use std::sync::Arc;
 
-use designcraft_doc::StoryId;
-use designcraft_engine::Session;
-use designcraft_geom::Affine;
-use designcraft_render::RenderOptions;
-use designcraft_ui_egui::render_worker::Job;
+use evodesign_doc::StoryId;
+use evodesign_engine::Session;
+use evodesign_geom::Affine;
+use evodesign_render::RenderOptions;
+use evodesign_ui_egui::render_worker::Job;
 use serde_json::json;
 
 #[test]

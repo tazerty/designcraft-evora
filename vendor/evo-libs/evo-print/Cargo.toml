@@ -1,0 +1,12 @@
+[package]
+name = "evo-print"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "vendor/evo-libs"
+rust-version = "1.95"
+description = "System PDF print spooler for the Evo apps: CUPS and Windows"
+
+[target."cfg(windows)".dependencies]
+tempfile = { version = "3" }
+

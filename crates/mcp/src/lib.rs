@@ -1,14 +1,14 @@
-//! DesignCraft's MCP server.
+//! EvoDesign's MCP server.
 //!
 //! [Model Context Protocol](https://modelcontextprotocol.io) over stdio: newline-delimited
-//! JSON-RPC 2.0, hand-written (no async runtime). The server exposes DesignCraft as a set of MCP
+//! JSON-RPC 2.0, hand-written (no async runtime). The server exposes EvoDesign as a set of MCP
 //! tools and resources and forwards everything to a [`Backend`]:
 //!
 //! - [`Remote`] talks to a running desktop app through its loopback JSON-lines control channel
-//!   (`designcraft --control 7979`): one `{"id","method","params"}` line in, one
+//!   (`evodesign --control 7979`): one `{"id","method","params"}` line in, one
 //!   `{"id","ok","result"|"error"}` line out (see `docs/control-protocol.md`).
-//! - [`Headless`] hosts an in-process [`designcraft_engine::Session`] and implements the
-//!   engine-level control-channel methods itself (rendering pages with `designcraft-render`), so
+//! - [`Headless`] hosts an in-process [`evodesign_engine::Session`] and implements the
+//!   engine-level control-channel methods itself (rendering pages with `evodesign-render`), so
 //!   agents can build layouts and look at them without a window.
 //!
 //! Entry points: [`Server::serve`] (stdio loop) and [`Server::handle_line`] (one message).

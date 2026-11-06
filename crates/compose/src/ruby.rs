@@ -7,9 +7,9 @@
 //! After line breaking, [`annotate`] sets the ruby glyphs with the same arithmetic on the placed
 //! line. Ruby doesn't change leading.
 
-use designcraft_doc::cjk_settings::AdornmentOverprint;
-use designcraft_doc::ruby::{MAX_RUBY_CHARS, RubyAlignment, RubyOverhang, RubyParentSpacing, RubyPosition, RubySpec, RubyType};
-use designcraft_fonts::{FaceRef, ScopedFonts};
+use evodesign_doc::cjk_settings::AdornmentOverprint;
+use evodesign_doc::ruby::{MAX_RUBY_CHARS, RubyAlignment, RubyOverhang, RubyParentSpacing, RubyPosition, RubySpec, RubyType};
+use evodesign_fonts::{FaceRef, ScopedFonts};
 
 use crate::shape::Glyph;
 use crate::{PlacedGlyph, RunStyle, upright_in_vertical};
@@ -108,9 +108,9 @@ fn shape_ruby(db: &ScopedFonts<'_>, parent: FaceRef, text: &str, spec: &RubySpec
     let upem = face.units_per_em();
     let k = if upem > 0.0 { size / upem } else { 0.0 };
     let (sx, sy) = (k * spec.x_scale, k * spec.y_scale);
-    let features: Vec<designcraft_fonts::Feature> =
-        if spec.open_type_pro { designcraft_fonts::feature("ruby").into_iter().collect() } else { Vec::new() };
-    let mut glyphs: Vec<RubyGlyph> = designcraft_fonts::shape(&face, text, &features, |c| c)
+    let features: Vec<evodesign_fonts::Feature> =
+        if spec.open_type_pro { evodesign_fonts::feature("ruby").into_iter().collect() } else { Vec::new() };
+    let mut glyphs: Vec<RubyGlyph> = evodesign_fonts::shape(&face, text, &features, |c| c)
         .into_iter()
         .map(|sg| RubyGlyph {
             gid: sg.gid,
@@ -385,7 +385,7 @@ pub(crate) fn reserve(db: &ScopedFonts<'_>, styles: &mut Vec<RunStyle>, glyphs: 
         }
         if mono {
             let parents: Vec<usize> = (i..j).filter(|&k| glyphs.get(k).is_some_and(|g| g.len > 0)).collect();
-            if let Some(readings) = designcraft_doc::ruby::mono_readings(&text, parents.len()) {
+            if let Some(readings) = evodesign_doc::ruby::mono_readings(&text, parents.len()) {
                 for (u, (&k, reading)) in parents.iter().zip(readings).enumerate() {
                     let end = parents.get(u + 1).copied().unwrap_or(j);
                     let Some(mut rs) = glyphs.get(k).and_then(|g| styles.get(g.style as usize)).cloned() else { continue };
@@ -698,7 +698,7 @@ mod tests {
 
     #[test]
     fn overhang_goes_over_kana_and_the_blank_half_of_punctuation_only() {
-        let spec = RubySpec::of(&designcraft_doc::CharProps::default());
+        let spec = RubySpec::of(&evodesign_doc::CharProps::default());
         let kana = Side::Char { ch: 'で', adv: 12.0 };
         let kanji = Side::Char { ch: '字', adv: 12.0 };
         let stop = Side::Char { ch: '。', adv: 12.0 };

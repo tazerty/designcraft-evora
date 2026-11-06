@@ -7,8 +7,8 @@ mod fallback;
 #[path = "support/optional_content_xref.rs"]
 mod xref;
 
-use designcraft_compose::Cache;
-use designcraft_pdf::{PdfOptions, Standard, export_pdf, export_pdf_with_report};
+use evodesign_compose::Cache;
+use evodesign_pdf::{PdfOptions, Standard, export_pdf, export_pdf_with_report};
 use support::{catalog, document, fixture, painted};
 
 const DEFAULT: &str = "/BaseState/ON/OFF[6 3 R]";
@@ -48,7 +48,7 @@ fn pdfx_export_preserves_default_off_catalog() {
     let bytes = exported(DEFAULT, Standard::PdfX4);
 
     assert_eq!(catalog(&bytes), [("Hidden".into(), true), ("Shown".into(), false)]);
-    assert!(designcraft_pdf::check_pdfx4(&bytes).is_empty());
+    assert!(evodesign_pdf::check_pdfx4(&bytes).is_empty());
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn pdfx_export_preserves_defaults_with_usage_applications() {
     let bytes = exported(USAGE_APPLICATIONS, Standard::PdfX4);
 
     assert_eq!(catalog(&bytes), [("Hidden".into(), true), ("Shown".into(), false)]);
-    assert!(designcraft_pdf::check_pdfx4(&bytes).is_empty());
+    assert!(evodesign_pdf::check_pdfx4(&bytes).is_empty());
     assert_vector(&bytes);
     painted(&bytes, &[true, false]);
 }
@@ -102,7 +102,7 @@ fn pdfx_export_draws_groups_without_catalog_properties() {
     let bytes = export_pdf(&doc, &Cache::new(), &PdfOptions { standard: Standard::PdfX4, ..Default::default() }).unwrap();
 
     assert_eq!(catalog(&bytes), [("Hidden".into(), false), ("Shown".into(), false)]);
-    assert!(designcraft_pdf::check_pdfx4(&bytes).is_empty());
+    assert!(evodesign_pdf::check_pdfx4(&bytes).is_empty());
     assert_vector(&bytes);
     painted(&bytes, &[true, true]);
 }
@@ -169,7 +169,7 @@ fn assert_vector(bytes: &[u8]) {
 
 #[test]
 fn layer_options_command_preserves_vector_overrides_in_plain_and_pdfx() {
-    use designcraft_engine::{
+    use evodesign_engine::{
         Session,
         cmd::{base64_decode, base64_encode},
     };
@@ -197,7 +197,7 @@ fn exported_optional_content_survives_replacement_and_book_merge() {
     let doc = document(first.clone(), &[&[]]);
 
     let replaced = export_pdf(&doc, &Cache::new(), &PdfOptions::default()).unwrap();
-    let merged = designcraft_pdf::merge_pdfs(&[(first, vec![(100.0, 100.0)])], None).unwrap();
+    let merged = evodesign_pdf::merge_pdfs(&[(first, vec![(100.0, 100.0)])], None).unwrap();
 
     for bytes in [replaced, merged] {
         assert_eq!(catalog(&bytes), [("Hidden".into(), true), ("Shown".into(), false)]);
@@ -208,9 +208,9 @@ fn exported_optional_content_survives_replacement_and_book_merge() {
 #[test]
 fn booklet_export_preserves_optional_content() {
     let doc = document(fixture(DEFAULT, "Hidden"), &[&[]]);
-    let options = designcraft_pdf::BookletOptions { kind: designcraft_pdf::BookletKind::TwoUpConsecutive, ..Default::default() };
+    let options = evodesign_pdf::BookletOptions { kind: evodesign_pdf::BookletKind::TwoUpConsecutive, ..Default::default() };
 
-    let report = designcraft_pdf::export_booklet(&doc, &Cache::new(), &options).unwrap();
+    let report = evodesign_pdf::export_booklet(&doc, &Cache::new(), &options).unwrap();
 
     assert!(report.warnings.is_empty());
     assert_eq!(catalog(&report.bytes), [("Hidden".into(), true), ("Shown".into(), false)]);
