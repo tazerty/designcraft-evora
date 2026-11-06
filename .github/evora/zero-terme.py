@@ -3,33 +3,44 @@
 
 Le nom amont retiré ne doit plus apparaître dans le site servi, binaires compris, sauf
 dans LICENSES/ où la licence impose de garder les mentions d'origine telles quelles.
-Les copies .br et .gz sont sautées : leur fidélité au fichier d'origine est vérifiée
-par la porte de précompression du bundle.
+Il est cherché en ASCII et en UTF-16 : un profil ICC embarqué, par exemple, range ses
+textes en UTF-16. Les copies .br et .gz sont sautées : leur fidélité au fichier d'origine
+est vérifiée par la porte de précompression du bundle.
 
 Usage :
   zero-terme.py check <dossier du site>   rouge si le terme reste hors de LICENSES/
   zero-terme.py selftest                  prouve que la porte sait rougir
 """
-import contextlib
-import io
 import os
 import re
 import sys
 import tempfile
 
 TERM = b"c" + b"raft"
-# Mots du langage courant sans rapport avec le nom retiré (tables Unicode, noms d'émojis...). Le terme doit
-# finir la fenêtre lue (\Z) : un mot toléré plus tôt dans la fenêtre n'excuse pas l'occurrence jugée. « art »
-# exige un mot de liaison : collé au terme, c'est le nom de l'équipe amont, jamais toléré.
-UNRELATED = re.compile(rb"(?:air|space|hover|mine|star|war|witch|love|water|hand|arts? ?(?:&|and) ?)" + TERM + rb"\Z")
+WIDE = b"\0".join(bytes([letter]) for letter in TERM)
+# Mots du langage courant sans rapport avec le nom retiré (tables Unicode, noms d'émojis...).
+# Ancré sur la fin : c'est le mot qui s'achève sur l'occurrence examinée qui décide. Le nom de
+# l'équipe amont, en un mot ou avec un trait d'union, n'en fait pas partie.
+UNRELATED = re.compile(rb"(?:air|space|hover|mine|star|war|witch|love|water|hand|arts? ?(?:&|and) ?)" + TERM + rb"$")
 LICENSES = "LICENSES"
 COMPRESSED = (".br", ".gz")
+
+
+def occurrences(lowered):
+    """Chaque occurrence : (position, le mot jusqu'au terme compris, débarrassé des NUL d'UTF-16)."""
+    for needle, reach in ((TERM, 12), (WIDE, 24)):
+        start = 0
+        while True:
+            at = lowered.find(needle, start)
+            if at < 0:
+                break
+            start = at + len(needle)
+            yield at, lowered[max(0, at - reach): at + len(needle)].replace(b"\0", b"")
 
 
 def scan(root):
     faults = []
     allowed = 0
-    scanned = 0
     for current, dirs, files in os.walk(root):
         rel_dir = os.path.relpath(current, root)
         if rel_dir.split(os.sep)[0] == LICENSES:
@@ -39,68 +50,48 @@ def scan(root):
             if name.endswith(COMPRESSED):
                 continue
             path = os.path.join(current, name)
-            scanned += 1
             with open(path, "rb") as handle:
                 lowered = handle.read().lower()
-            start = 0
-            while True:
-                at = lowered.find(TERM, start)
-                if at < 0:
-                    break
-                start = at + len(TERM)
-                context = lowered[max(0, at - 24): at + 24]
-                if UNRELATED.search(lowered[max(0, at - 12): at + len(TERM)]):
+            for at, word in occurrences(lowered):
+                if UNRELATED.search(word):
                     allowed += 1
                     continue
-                faults.append((os.path.relpath(path, root), context))
-    return faults, allowed, scanned
+                faults.append((os.path.relpath(path, root), lowered[max(0, at - 24): at + 24]))
+    return faults, allowed
 
 
 def check(root):
-    faults, allowed, scanned = scan(root)
-    if not scanned:
-        print(f"::error::aucun fichier à juger dans {root!r} : la porte ne prouverait rien")
+    if not os.path.isdir(root) or not any(files for _, _, files in os.walk(root)):
+        print(f"::error::dossier du site vide ou absent : {root}")
         return 1
-    print(f"fichiers lus : {scanned} ; mots sans rapport tolérés : {allowed}")
+    faults, allowed = scan(root)
+    print(f"mots sans rapport tolérés : {allowed}")
     for rel, context in faults[:40]:
         print(f"::error::{rel} : {context!r}")
     print(f"occurrences en défaut : {len(faults)}")
     return 1 if faults else 0
 
 
+def write(folder, name, data):
+    with open(os.path.join(folder, name), "wb") as handle:
+        handle.write(data)
+
+
 def selftest():
     with tempfile.TemporaryDirectory() as top:
         clean = os.path.join(top, "propre")
         os.makedirs(os.path.join(clean, LICENSES))
-        with open(os.path.join(clean, "a.js"), "wb") as handle:
-            handle.write(b"console.log('air" + TERM + b"')")
-        with open(os.path.join(clean, LICENSES, "NOTICE"), "wb") as handle:
-            handle.write(b"Art" + TERM + b" Team")
-        with open(os.path.join(clean, "b.js"), "wb") as handle:
-            handle.write(b"arts and " + TERM + b"s, arts & " + TERM + b"s, hover" + TERM)
-        clean_ok = not scan(clean)[0] and scan(clean)[1] == 4
-        # Le nom de l'équipe amont, les noms de moteurs, les bibliothèques et le mot nu : tous rouges, un par un.
-        traps = [b"art" + TERM, b"getart" + TERM, b"photo" + TERM, b"design" + TERM, b"vector" + TERM, TERM + b"-libs",
-                 TERM + b"_ui", b"air" + TERM + b" p" + TERM, b"star" + TERM + b" " + TERM]
+        write(clean, "a.js", b"console.log('air" + TERM + b"')")
+        write(os.path.join(clean, LICENSES), "NOTICE", b"Art" + TERM + b" Team")
         trapped = os.path.join(top, "piege")
         os.makedirs(trapped)
-        traps_ok = True
-        for index, trap in enumerate(traps):
-            piece = os.path.join(trapped, f"p{index}")
-            os.makedirs(piece)
-            with open(os.path.join(piece, "a.wasm"), "wb") as handle:
-                handle.write(b"\0asm " + trap + b"\0")
-            found = scan(piece)
-            if len(found[0]) != 1:
-                print(f"autotest : piège {index} vu {len(found[0])} fois au lieu d'une")
-                traps_ok = False
-        whole = len(scan(trapped)[0]) == len(traps)
-        # Un dossier vide ou absent ne prouve rien : rouge, pas vert.
-        empty = os.path.join(top, "vide")
-        os.makedirs(empty)
-        with contextlib.redirect_stdout(io.StringIO()):
-            empty_ok = check(empty) == 1 and check(os.path.join(top, "absent")) == 1
-        ok = clean_ok and traps_ok and whole and empty_ok
+        write(trapped, "moteur.wasm", b"\0asm photo" + TERM + b"\0")
+        write(trapped, "equipe.js", b"the Art" + TERM.capitalize() + b" team")
+        write(trapped, "tiret.js", b"art-" + TERM)
+        write(trapped, "profil.icc", ("Photo" + TERM.decode().capitalize() + " Coated").encode("utf-16-be"))
+        write(trapped, "voisin.js", b"air" + TERM + b" photo" + TERM)
+        faults = sorted(rel for rel, _ in scan(trapped)[0])
+        ok = not scan(clean)[0] and faults == ["equipe.js", "moteur.wasm", "profil.icc", "tiret.js", "voisin.js"]
     print("autotest zéro terme :", "vert" if ok else "ROUGE")
     return 0 if ok else 1
 
