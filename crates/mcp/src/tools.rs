@@ -192,7 +192,7 @@ pub fn tool_definitions() -> Vec<Value> {
         tool(
             "open_document",
             "Open document",
-            "Open a .evodesign file as a new, active document.",
+            "Open an .evodesign file as a new, active document.",
             obj(json!({"path": string("File path")}), &["path"]),
             false,
         ),

@@ -104,7 +104,7 @@ config works across the suite) keep the agent to the folders you give it:
   `file.openIdml`, `place_image` and `file.place` / `place.load` / `media.options` with a `path`,
   `links.relink`, `links.relinkFolder`, `color.loadProfile`, `swatch.load`, `library.open`,
   `book.open`, `data.source.select`, `data.merge` and `file.importXml` / `xml.loadDtd` with a `path`,
-  and `file.recovery.list` / `file.recovery.open` with a `dir`. A EvoDesign document names more
+  and `file.recovery.list` / `file.recovery.open` with a `dir`. An EvoDesign document names more
   files than the agent does: linked images, data sources, book chapters, the `Document Fonts` folder
   beside a document, an IDML package's linked images and the files an image cell of a merge names.
   Those are read through the same checks, so a path in a document that leads outside the read roots

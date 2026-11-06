@@ -1,6 +1,6 @@
 //! Paste vector art copied in another app (Illustrator, EvoVector, Figma, Inkscape) as editable
 //! paths, as InDesign pastes Illustrator art. Those apps put the copied objects on the system
-//! clipboard as SVG markup; each path becomes a EvoDesign path with its fill and stroke, groups
+//! clipboard as SVG markup; each path becomes an EvoDesign path with its fill and stroke, groups
 //! stay groups, and text comes in as outlines.
 
 use evodesign_doc::{Content, Fill, Item, ItemId, Selection, Shape, Stroke, StrokeType};

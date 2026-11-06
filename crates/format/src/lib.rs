@@ -127,16 +127,16 @@ fn save_with_large_entries_from(doc: &Document, preview: Option<&[u8]>, large_en
     Ok(buf.into_inner())
 }
 
-/// The file name extension of a EvoDesign document.
+/// The file name extension of an EvoDesign document.
 pub const EXTENSION: &str = "evodesign";
 
-/// Whether `bytes` are a EvoDesign document package: a zip holding `document.json`. Files
+/// Whether `bytes` are an EvoDesign document package: a zip holding `document.json`. Files
 /// without an extension are recognised by this (the legacy JSON form is too generic to sniff).
 pub fn is_evodesign(bytes: &[u8]) -> bool {
     bytes.starts_with(b"PK") && zip::ZipArchive::new(Cursor::new(bytes)).is_ok_and(|z| z.index_for_name("document.json").is_some())
 }
 
-/// Whether `prefix`, the start of a file, opens a EvoDesign package: a zip whose first, stored
+/// Whether `prefix`, the start of a file, opens an EvoDesign package: a zip whose first, stored
 /// entry is the `mimetype` naming this format. Packages saved before they had one are recognised
 /// only whole ([`is_evodesign`]).
 pub fn starts_evodesign(prefix: &[u8]) -> bool {

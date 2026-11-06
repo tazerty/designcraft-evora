@@ -1,6 +1,6 @@
 ---
-title: Open a EvoDesign or InDesign (IDML) file
-description: Open a .evodesign document or an InDesign Markup (.idml) file, and what to do about missing fonts and incomplete IDML packages.
+title: Open an EvoDesign or InDesign (IDML) file
+description: Open an .evodesign document or an InDesign Markup (.idml) file, and what to do about missing fonts and incomplete IDML packages.
 order: 20
 verified: 0.7.1
 ---

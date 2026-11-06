@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Repackage a EvoDesign Linux tarball as a single-file Flatpak bundle:
+# Repackage an EvoDesign Linux tarball as a single-file Flatpak bundle:
 #
 #   $DIST/evodesign-<version>-linux-<arch>.flatpak
 #

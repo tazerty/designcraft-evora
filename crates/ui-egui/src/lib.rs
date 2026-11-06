@@ -1413,7 +1413,7 @@ impl DesignApp {
 
     /// A file dropped on the window: documents open, the swatches in a swatch exchange (.ase) file
     /// are loaded, and anything else is placed on the spread in view (a parent spread while parents
-    /// are being edited). A file without an extension opens when its content is a EvoDesign or
+    /// are being edited). A file without an extension opens when its content is an EvoDesign or
     /// IDML document.
     pub fn open_dropped(&mut self, path: &str) -> Result<Value, String> {
         self.open_dropped_at(path, None)

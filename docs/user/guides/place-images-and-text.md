@@ -1,6 +1,6 @@
 ---
 title: Place images, PDFs and text
-description: Bring images, PDF pages, Word and plain text files into a EvoDesign document with File, Place.
+description: Bring images, PDF pages, Word and plain text files into an EvoDesign document with File, Place.
 order: 30
 verified: 0.7.1
 ---

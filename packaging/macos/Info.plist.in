@@ -64,7 +64,7 @@
     <dict>
       <key>CFBundleTypeName</key>
       <string>IDML Document</string>
-      <!-- Opens as a new, unsaved document; saving writes a .evodesign file. -->
+      <!-- Opens as a new, unsaved document; saving writes an .evodesign file. -->
       <key>CFBundleTypeRole</key>
       <string>Viewer</string>
       <key>LSHandlerRank</key>

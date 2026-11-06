@@ -3,7 +3,7 @@
 > **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-10 · **Change:** trivial (status line and revision history added; content unchanged in the 2026-10-10 review) · **Target:** Adobe InDesign 2026
 
 Goal: the Chinese, Japanese and Korean typesetting that InDesign offers with its East Asian
-feature set (the "Japanese/CJK" feature set, `Feature Set Locale Setting` 257), so that a
+feature set (the "Japanese/CJK" feature set, `Feature Set Locale Setting` 257), so that an
 EvoDesign document can be set to the standard of a Japanese, Chinese or Korean publisher,
 round-trip through IDML, and export correct PDF and EPUB.
 

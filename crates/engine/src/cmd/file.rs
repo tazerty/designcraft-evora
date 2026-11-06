@@ -95,7 +95,7 @@ pub fn specs() -> Vec<CommandSpec> {
             ok()
         }),
         cmd!(query "snippet.export", "Export Selection as Snippet", ["File", "Export"], None,
-            "{path?} — the selected items (with their stories, styles and images) as a .evodesign snippet; no path: {base64}", super::has_selection, snippet_export),
+            "{path?} — the selected items (with their stories, styles and images) as an .evodesign snippet; no path: {base64}", super::has_selection, snippet_export),
         cmd!(query "place.styles", "Import Options: Styles", [], None,
         "{path | base64, name} → {paragraph: [name], character: [name], conflicts: [name]} — the styles a Word/RTF file brings (for styleMap / styleConflicts)",
         has_doc, |s, p| {
@@ -173,7 +173,7 @@ pub fn with_document_extension(path: &str) -> String {
     format!("{path}.{}", evodesign_format::EXTENSION)
 }
 
-/// Whether `bytes` are a document `file.open` reads: a EvoDesign package or an IDML package.
+/// Whether `bytes` are a document `file.open` reads: an EvoDesign package or an IDML package.
 /// The first [`DOCUMENT_SNIFF_BYTES`] of a file are enough for packages that start with their
 /// `mimetype` entry, as both formats write them.
 pub fn is_document(bytes: &[u8]) -> bool {
@@ -1810,7 +1810,7 @@ mod document_fonts_tests {
         // The extension decides (any case), not the bytes: no InDesign-made file is needed.
         let dir = temp_dir("indd");
         let path = dir.join("Brochure.INDD");
-        std::fs::write(&path, b"not a EvoDesign document").unwrap();
+        std::fs::write(&path, b"not an EvoDesign document").unwrap();
         let mut s = Session::new();
         let e = s.execute("file.open", &json!({"path": path.to_string_lossy()})).unwrap_err().to_string();
         assert!(e.contains("InDesign Markup (IDML)") && !e.contains("expected value"), "{e}");
