@@ -87,7 +87,8 @@ pub fn start() {
         }
         let graphics = GraphicsState::default();
         let Some(canvas) = document.get_element_by_id(CANVAS_ID).and_then(|e| e.dyn_into::<web_sys::HtmlCanvasElement>().ok()) else {
-            graphics_failed(&graphics, "Cicero failed to start", "Reload this page to try again.", &format!("Missing canvas {CANVAS_ID}."));
+            // Evora (EVORA-CIC-32): the panel shows this detail, so no identifier carrying the engine's name.
+            graphics_failed(&graphics, "Cicero failed to start", "Reload this page to try again.", "Missing canvas.");
             return;
         };
         let mut options = eframe::WebOptions::default();
@@ -391,8 +392,9 @@ fn add_document_recovery_controls(snapshots: Vec<RecoveryDocument>) -> Result<bo
             let result = snapshot.save_copy().and_then(|(name, bytes)| {
                 // Evora (CIC-14): under the host, the copy becomes a new document of the host.
                 if let Some(bridge) = HOST_BRIDGE.with(|h| h.borrow().clone()) {
-                    bridge.save_as(&name, &bytes).map_err(|code| format!("Couldn't hand {name} to Evora ({code})."))?;
-                    return Ok(format!("{name} was handed to Evora. Wait for it to appear in Drive before reloading."));
+                    // Evora (EVORA-CIC-32): the panel names the document, not its file's extension.
+                    bridge.save_as(&name, &bytes).map_err(|code| format!("Couldn't hand {} to Evora ({code}).", snapshot.title()))?;
+                    return Ok(format!("{} was handed to Evora. Wait for it to appear in Drive before reloading.", snapshot.title()));
                 }
                 download(&name, &bytes)?;
                 Ok(format!("Requested download of {name}. Check your browser downloads before reloading."))

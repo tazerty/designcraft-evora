@@ -2570,10 +2570,12 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
                             for (key, label, kind) in [("rgb", "RGB:", "rgb"), ("cmyk", "CMYK:", "cmyk")] {
                                 crate::rtl::label(ui, crate::i18n::tr(&app.ui.language, label));
                                 let cur = d.s(key);
-                                egui::ComboBox::from_id_salt(("ws", key)).selected_text(&cur).width(260.0).show_ui(ui, |ui| {
+                                // Evora (EVORA-CIC-32): a profile keeps its real name in the field; only what is drawn is renamed.
+                                let shown = crate::i18n::rename(&app.ui.language, &cur);
+                                egui::ComboBox::from_id_salt(("ws", key)).selected_text(shown).width(260.0).show_ui(ui, |ui| {
                                     for pr in profiles.iter().filter(|p| p["kind"] == kind) {
                                         let name = pr["name"].as_str().unwrap_or("");
-                                        if ui.selectable_label(name == cur, name).clicked() {
+                                        if ui.selectable_label(name == cur, crate::i18n::rename(&app.ui.language, name)).clicked() {
                                             d.fields.insert(key.into(), json!(name));
                                         }
                                     }
@@ -2964,7 +2966,9 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
                             crate::rtl::label(ui, egui::RichText::new(crate::rtl::isolate(&file)).font(semibold(13.0)));
                             ui.add_space(4.0);
                         }
-                        crate::rtl::label(ui, d.s("message"));
+                        // Evora (EVORA-CIC-32): the engine's messages do not pass through the tables.
+                        let message = d.s("message");
+                        crate::rtl::label(ui, crate::i18n::rename(&app.ui.language, &message));
                     }
                     _ => {}
                 }
@@ -6581,7 +6585,8 @@ fn command_form(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
                 combo(ui, d, &f.key, &opts);
             } else {
                 let mut s = d.s(&f.key);
-                let hint = if f.hint.is_empty() { String::new() } else { f.hint.clone() };
+                // Evora (EVORA-CIC-32): the hint is the command's documentation, drawn as it comes.
+                let hint = crate::i18n::rename(&app.ui.language, &f.hint).to_string();
                 if ui.add(egui::TextEdit::singleline(&mut s).hint_text(egui::RichText::new(hint).color(dim)).desired_width(240.0)).changed() {
                     d.fields.insert(f.key.clone(), Value::String(s));
                 }
@@ -6590,7 +6595,7 @@ fn command_form(app: &crate::DesignApp, ui: &mut egui::Ui, d: &mut Dialog) {
         }
     });
     if let Some(st) = d.fields.get("status").and_then(Value::as_str) {
-        ui.label(egui::RichText::new(st).color(crate::theme::Tokens::get(ui.ctx()).text_dim));
+        ui.label(egui::RichText::new(crate::i18n::rename(&app.ui.language, st)).color(crate::theme::Tokens::get(ui.ctx()).text_dim));
     }
 }
 

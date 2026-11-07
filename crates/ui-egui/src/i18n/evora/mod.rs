@@ -8,7 +8,9 @@
 //!   an untranslated key falls back to the English override, never to the key;
 //! - `strings`: the strings the Evora build adds (workspaces, brightness levels) and the French
 //!   complement of the keys the upstream French table lacks (E8, CIC-19), in the languages Evora serves
-//!   to the engine (fr, de, es, it, ja, zh, ar, pt-br, ru), written by Evora from the English source.
+//!   to the engine (fr, de, es, it, ja, zh, ar, pt-br, ru), written by Evora from the English source;
+//! - `shown_name`: the application's name instead of the engine's, on whatever `i18n::tr` returns and
+//!   on the texts the tables do not hold (EVORA-CIC-32).
 //!
 //! Both tables are `(key, language, text)` rows: the CI gate « termes » reads the first column as the
 //! source key, never shown as such.
@@ -16,7 +18,10 @@
 use std::{collections::HashMap, sync::OnceLock};
 
 mod overrides;
+mod shown_name;
 mod strings;
+
+pub(super) use shown_name::rename;
 
 type Rows = &'static [(&'static str, &'static str, &'static str)];
 type ByLanguage = HashMap<&'static str, HashMap<&'static str, &'static str>>;

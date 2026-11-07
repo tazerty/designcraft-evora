@@ -1112,7 +1112,7 @@ pub fn status_bar(app: &mut DesignApp, ui: &mut egui::Ui) {
             ui.horizontal_centered(|ui| {
                 let small = egui::FontId::proportional(10.5);
                 if app.session.active().is_none() {
-                    ui.label(egui::RichText::new(&app.ui.status).font(small).color(t.text_dim));
+                    ui.label(egui::RichText::new(crate::i18n::rename(&app.ui.language, &app.ui.status)).font(small).color(t.text_dim));
                     return;
                 }
                 let z = app.view().map(|v| v.zoom).unwrap_or(1.0);
@@ -1191,7 +1191,8 @@ pub fn status_bar(app: &mut DesignApp, ui: &mut egui::Ui) {
                     show_preflight(app);
                 }
                 ui.add_space(12.0);
-                ui.label(egui::RichText::new(&app.ui.status).font(small).color(t.text_dim));
+                // Evora (EVORA-CIC-32): messages do not pass through the tables.
+                ui.label(egui::RichText::new(crate::i18n::rename(&app.ui.language, &app.ui.status)).font(small).color(t.text_dim));
             });
         });
     let r = resp.response.rect;

@@ -311,7 +311,7 @@ pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
     ("help.github", "Cicero on GitHub…", None, "{} — opens "),
     ("help.issues", "Report an Issue…", None, "{} — opens the GitHub issue tracker"),
     ("help.website", "Evora Website…", None, "{} — opens "),
-    ("help.app", "Evora App Page…", None, "{app} — opens {app} (e.g. evophoto)"),
+    ("help.app", "Evora App Page…", None, "{app} — opens {app} (the slug of a sibling app)"),
     (
         "help.about",
         "About Cicero",
@@ -1895,7 +1895,7 @@ fn run_ui_inner(app: &mut DesignApp, id: &str, p: &Value) -> Option<Result<Value
                 app.ui.pending_urls.push(url.clone());
                 Ok(json!({"url": url}))
             }
-            _ => Err("help.app: give `app` (e.g. \"evophoto\")".into()),
+            _ => Err("help.app: give `app` (the slug of a sibling app)".into()),
         },
         h if h.starts_with("help.") && evodesign_engine::links::get(&h[5..]).is_some() => {
             let url = evodesign_engine::links::get(&h[5..]).unwrap_or_default().to_string();
@@ -2065,7 +2065,8 @@ fn download_document(app: &mut DesignApp) -> Result<Value, String> {
     let ser = app.run("file.serialize", json!({}))?;
     let bytes = evodesign_engine::cmd::base64_decode(ser["base64"].as_str().unwrap_or_default());
     let download = app.services.download.as_mut().ok_or("no download service")?;
-    download(&name, &bytes).map_err(|e| format!("could not download {name}: {e}"))?;
+    // Evora (EVORA-CIC-32): the status line names the document, not its file's extension.
+    download(&name, &bytes).map_err(|e| format!("could not download {}: {e}", name.trim_end_matches(".evodesign")))?;
     // Marks the document saved; on the web the engine doesn't touch a file system.
     app.run("file.saveAs", json!({"path": name}))
 }

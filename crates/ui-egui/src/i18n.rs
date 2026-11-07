@@ -4639,6 +4639,17 @@ fn column(lang: &str) -> Option<usize> {
 
 /// `s` in `lang` (English, or the string itself, when there's no translation).
 pub fn tr<'a>(lang: &str, s: &'a str) -> &'a str {
+    // Evora (EVORA-CIC-32): whatever the tables say, the application's name, never the engine's.
+    evora::rename(lang, tr_tables(lang, s))
+}
+
+/// Evora (EVORA-CIC-32): a text the tables do not hold (a colour profile's name, the status line, an
+/// engine's message) as the interface shows it: with the application's name, never the engine's.
+pub fn rename<'a>(lang: &str, text: &'a str) -> &'a str {
+    evora::rename(lang, text)
+}
+
+fn tr_tables<'a>(lang: &str, s: &'a str) -> &'a str {
     // Evora (EVORA-CIC-11, CIC-19): the display override catalogue, then Evora's own strings, before the
     // upstream tables; a key the catalogue renames never shows untranslated.
     if let Some(text) = evora::display(lang, s).or_else(|| evora::string(lang, s)) {
@@ -4733,13 +4744,13 @@ pub fn tr_context<'a>(lang: &str, s: &'a str, context: &str) -> &'a str {
     };
     let written = |text: &&str| !text.trim().is_empty();
     if let Some(text) = contexts.iter().find(|(key, scope, _)| *key == s && *scope == context).map(|(_, _, text)| *text).filter(written) {
-        return text;
+        return evora::rename(lang, text);
     }
     if let Some(c) = column(lang)
         && let Some(text) =
             CONTEXT.iter().find(|(key, scope, _)| *key == s && *scope == context).and_then(|(_, _, row)| row.get(c)).copied().filter(written)
     {
-        return text;
+        return evora::rename(lang, text);
     }
     tr(lang, s)
 }
