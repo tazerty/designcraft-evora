@@ -2157,7 +2157,7 @@ fn export_bytes(app: &mut DesignApp, p: &Value, ext: &str, cmd: &str) -> Result<
         None => evodesign_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default()),
     };
     match app.services.write.as_mut() {
-        Some(w) => w(&path, &bytes).map(|_| json!({"path": path, "bytes": bytes.len()})),
+        Some(w) => w(&path, &bytes).map(|_| json!({"path": path, "bytes": bytes.len(), "warnings": r["warnings"]})),
         None => Err("no writer".into()),
     }
 }
@@ -2696,19 +2696,35 @@ fn activate_inner(app: &mut DesignApp, id: &str, params: &Value) {
         return;
     }
     let r = app.run(id, p);
-    // Evora build (couture CL6-03, patch EVORA-CIC-31): an export the user chose says it failed.
-    if params.is_null()
-        && id.starts_with("app.export")
-        && let Err(error) = r
-    {
-        export_failed(app, &error);
+    // Evora build (couture CL6-03, patches EVORA-CIC-31 and 34): an export the user chose says how it went.
+    if params.is_null() && id.starts_with("app.export") {
+        report_export(app, r);
     }
 }
 
-/// Evora build (couture CL6-03, patch EVORA-CIC-31): the export the user asked for failed and no file
-/// left. The engine's message alone only reached the status line, the writer's nowhere.
-pub(crate) fn export_failed(app: &mut DesignApp, error: &str) {
-    app.ui.dialog = Some(crate::dialogs::Dialog::new("alert", json!({"title": "Can't Export the File", "message": error})));
+/// Evora build (couture CL6-03, patches EVORA-CIC-31 and 34): what the export the user asked for has to
+/// say. It failed and no file left, or the file left with warnings and may differ from the document:
+/// an alert either way. The status line alone is easily missed, and it never had the warnings.
+pub(crate) fn report_export(app: &mut DesignApp, result: Result<Value, String>) {
+    let (title, message) = match result {
+        Err(error) => ("Can't Export the File", error),
+        Ok(value) => {
+            let warnings: Vec<&str> = value["warnings"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .filter(|warning| !warning.is_empty())
+                .map(|warning| crate::i18n::tr(&app.ui.language, warning))
+                .collect();
+            if warnings.is_empty() {
+                return;
+            }
+            app.status(warnings.join("; "));
+            ("Export Warnings", warnings.join("\n"))
+        }
+    };
+    app.ui.dialog = Some(crate::dialogs::Dialog::new("alert", json!({"title": title, "message": message})));
 }
 
 /// The spread the guide commands of the menus act on: the one in view (a parent spread while

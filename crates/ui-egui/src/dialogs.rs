@@ -3040,14 +3040,13 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
     }
 }
 
-/// OK chosen by the user, on the button or with Enter (Evora build, couture CL6-03, patch EVORA-CIC-31):
-/// an export that fails says so; the other dialogs keep their errors where they put them.
+/// OK chosen by the user, on the button or with Enter (Evora build, couture CL6-03, patches EVORA-CIC-31
+/// and 34): an export says how it went; the other dialogs keep their errors where they put them.
 pub fn confirm_by_user(app: &mut DesignApp) {
     let export = app.ui.dialog.as_ref().is_some_and(|d| matches!(d.id.as_str(), "pdfExport" | "epubExport"));
-    if let Err(error) = confirm(app)
-        && export
-    {
-        crate::menus::export_failed(app, &error);
+    let result = confirm(app);
+    if export {
+        crate::menus::report_export(app, result);
     }
 }
 

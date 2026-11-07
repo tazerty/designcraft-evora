@@ -40,6 +40,8 @@ juge chaque étiquette :
   EXPORT-A2B       la boîte Exporter en PDF, préréglage PDF/A-2b (diag.exportPdfA) : un evora:export dont les octets
                    portent pdfaid part 2 et conformance B, xmp:CreateDate à l'heure du navigateur, /CreationDate au même
                    instant, Producer Evora Cicero (EVORA-CIC-18-s)
+  EXPORT-WARNINGS  le PDF/A-2b part avec un avertissement : alerte « Export Warnings », texte en français (CMJN), Échap la
+                   ferme ; les exports sans avertissement (EXPORT-PDF, EXPORT-PNG) n'en ouvrent aucune (EVORA-CIC-18-t)
   EXPORT-FAILED    la même boîte, plage de pages refusée (diag.exportBadPages) : une alerte « Can't Export the File »
                    porte le message du moteur, aucun evora:export, Échap la ferme (EVORA-CIC-18-s)
   PICK             Placer : evora:pick {purpose: import, accept, multiple: false}, puis evora:file et
@@ -123,7 +125,7 @@ ADMITTED = {"app.exportPdf", "app.exportInteractivePdf", "app.exportPng", "app.e
             "app.placeDialog", "app.loadSwatches"}
 LABELS = ["READY", "INIT-V2", "INIT-EXTRA", "INIT-ACK", "STARTED", "CATALOG", "NEW-DOC", "NEW-A4", "NEW-SPEC",
           "NEW-SPEC-REFUSED", "MODIFY", "SAVE-REQ",
-          "S-ACK-1", "S-ACK-2", "S-ACK-3", "S-ACK-4", "S-ACK-5", "OPEN-BYTES", "EXPORT-PDF", "EXPORT-PNG", "EXPORT-A2B", "EXPORT-FAILED", "PICK",
+          "S-ACK-1", "S-ACK-2", "S-ACK-3", "S-ACK-4", "S-ACK-5", "OPEN-BYTES", "EXPORT-PDF", "EXPORT-PNG", "EXPORT-A2B", "EXPORT-WARNINGS", "EXPORT-FAILED", "PICK",
           "SHELL-REFUSED", "PARAMS-REFUSED", "DESTRUCTIVE", "DESTRUCTIVE-MARKERS", "DESTRUCTIVE-SET", "SOURCE-REFUSED",
           "FILTER-NEW", "FOCUS-OUT", "LANG", "THEME", "THEME-LIGHT", "THEME-DARK", "ACCENT-MEMBRE", "WORKSPACES", "MENUS", "ICONS", "KEYMAP",
           "TOOL-KEYS", "TERMS", "FR-COVERAGE",
@@ -615,6 +617,7 @@ class Banc:
     def export_standards(self):
         """EXPORT-A2B puis EXPORT-FAILED : la boîte Exporter en PDF telle que l'utilisateur la valide (EVORA-CIC-18-s)."""
         self.click_canvas()  # le focus au moteur, pour Échap : aucun clic une fois l'alerte ouverte
+        calm = self.diag().get("dialog")  # après EXPORT-PDF et EXPORT-PNG, sans avertissement
         n = self.count()
         a = self.answer(self.command("diag.exportPdfA"))
         ex = self.wait(lambda m: m.get("type") == "evora:export", start=n)
@@ -629,10 +632,15 @@ class Banc:
                  and f.get("head") == "%PDF-" and f.get("part") == "2" and f.get("conformance") in ("B", "b")
                  and f.get("driftSeconds") is not None and f["driftSeconds"] <= 600
                  and f.get("infoDigits") is not None and f.get("infoDigits") == f.get("createdDigits")
-                 and f.get("producer") == "Evora Cicero" and stats.get("dialog") is None, note)
+                 and f.get("producer") == "Evora Cicero", note)
         if stats.get("dialog"):
             self.key("Escape", "Escape", 27)
             self.quiet(lambda m: False, 1.0)
+        closed = self.diag().get("dialog")
+        alert = stats.get("alert") or {}
+        self.set("EXPORT-WARNINGS", calm is None and stats.get("dialog") == "alert" and alert.get("title") == "Export Warnings"
+                 and "CMJN" in str(alert.get("message")) and closed is None,
+                 {"avant": calm, "dialog": stats.get("dialog"), "alert": alert, "apres echap": closed})
 
         n = self.count()
         a = self.answer(self.command("diag.exportBadPages"))
