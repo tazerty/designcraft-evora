@@ -318,7 +318,8 @@ fn wasm_memory_bytes() -> f64 {
 /// shortcuts in effect, the current tool, and the names Evora supplies a drawing for (`evora::icons`).
 pub fn diag_ui(app: &DesignApp) -> Value {
     use evodesign_ui_egui::theme::{Brightness, Tokens};
-    let t = Tokens::for_brightness(app.ui.brightness);
+    // EVORA-CIC-35: the tokens the interface really wears, not those the brightness would give.
+    let t = app.applied_tokens().unwrap_or_else(|| Tokens::for_brightness(app.ui.brightness));
     let hex = |c: egui::Color32| format!("#{:02x}{:02x}{:02x}", c.r(), c.g(), c.b());
     let tree = menus::menu_tree();
     let dropped: usize = tree.iter().map(|(_, entries)| count_dropped(entries)).sum();

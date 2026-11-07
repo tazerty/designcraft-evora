@@ -561,17 +561,17 @@ class Banc:
         seen = {}
         for theme in ("dark", "light"):
             a = self.answer(self.send("evora:theme", f"{{theme: '{theme}', accent: '{MEMBER_ACCENT}'}}"))
-            self.quiet(lambda m: False, 1.0)
+            self.quiet(lambda m: False, 2.0)
             tokens = self.ui().get("tokens") or {}
             seen[theme] = {"accuse": bool(a and a["payload"].get("ok")), "jetons": tokens}
         carried = all(v["accuse"] and v["jetons"].get("accentStrong") == MEMBER_ACCENT
                       and not set(v["jetons"].values()) & set(INDIGO_TOKENS) for v in seen.values())
         a = self.answer(self.send("evora:theme", "{theme: 'light', accent: '#4F46E5'}"))
-        self.quiet(lambda m: False, 1.0)
+        self.quiet(lambda m: False, 2.0)
         tokens = self.ui().get("tokens") or {}
         restored = bool(a and a["payload"].get("ok")) and all(tokens.get(k) == v for k, v in THEME_EXPECTED["light"].items())
         a = self.answer(self.send("evora:theme", "{theme: 'dark', accent: '#4F46E5'}"))
-        self.quiet(lambda m: False, 1.0)
+        self.quiet(lambda m: False, 2.0)
         self.set("ACCENT-MEMBRE", carried and restored and bool(a and a["payload"].get("ok")), {"couleur": seen, "indigo": tokens})
 
     def set(self, label, ok, note=None):

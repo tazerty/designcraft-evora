@@ -177,26 +177,28 @@ impl Tokens {
         if b == Brightness::HighContrast {
             return Tokens { accent_strong: accent, row_selected: mix(accent, Color32::BLACK, TINT_HIGH_CONTRAST_ROW), ..self };
         }
-        let on = [self.panel, self.app_bar, self.panel_darker];
         if self.dark {
             let tint = |share: f32| mix(self.panel, accent, share);
+            let well = tint(TINT_DARK_ROW);
             Tokens {
-                accent: readable(accent, Color32::WHITE, &on),
+                // A segmented control writes its active label in the accent, on the well.
+                accent: readable(accent, Color32::WHITE, &[self.panel, self.app_bar, self.panel_darker, well]),
                 accent_strong: accent,
                 tool_active: tint(TINT_DARK_TOOL),
                 row_selected: tint(TINT_DARK_ROW),
-                well: tint(TINT_DARK_ROW),
+                well,
                 well_rim: tint(TINT_DARK_RIM),
                 ..self
             }
         } else {
             let tint = |share: f32| mix(Color32::WHITE, accent, share);
+            let well = tint(TINT_LIGHT_TOOL);
             Tokens {
-                accent: readable(accent, Color32::BLACK, &on),
+                accent: readable(accent, Color32::BLACK, &[self.panel, self.app_bar, self.panel_darker, well]),
                 accent_strong: accent,
                 tool_active: tint(TINT_LIGHT_TOOL),
                 row_selected: tint(TINT_LIGHT_ROW),
-                well: tint(TINT_LIGHT_TOOL),
+                well,
                 well_rim: tint(TINT_LIGHT_RIM),
                 ..self
             }

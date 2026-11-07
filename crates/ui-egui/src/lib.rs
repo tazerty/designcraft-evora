@@ -843,6 +843,11 @@ impl DesignApp {
         self.ui.status = format!("{}: {error}", crate::i18n::tr(&self.ui.language, feature));
     }
 
+    /// EVORA-CIC-35: the tokens last applied to the interface, once it has drawn a frame.
+    pub fn applied_tokens(&self) -> Option<theme::Tokens> {
+        self.egui_ctx.as_ref().map(theme::Tokens::get)
+    }
+
     /// THE entry point for every action (menus, shortcuts, palette, panels, control channel).
     pub fn run(&mut self, id: &str, params: Value) -> Result<Value, String> {
         // Evora build (couture CL6-01): an action the embedding host keeps for itself.
