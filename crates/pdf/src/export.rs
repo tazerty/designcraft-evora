@@ -203,15 +203,13 @@ fn export_pdf_with_report_inner(doc: &Document, cache: &Cache, opts: &PdfOptions
         fonts: HashMap::new(),
         reverse_cmaps: HashMap::new(),
         rgb_only: archival.is_some(),
+        cmyk_converted: Default::default(),
         tags: Vec::new(),
         story_tags: HashMap::new(),
         tag_story: None,
         text_area: None,
         para_tags: HashMap::new(),
     };
-    if ex.rgb_only {
-        ex.warn("PDF/A: CMYK colours were converted to RGB (no CMYK output intent profile is available yet)");
-    }
     if let Some(o) = crate::links::outline(doc, &sheets) {
         pdf.set_outline(o);
     }
@@ -261,6 +259,9 @@ fn export_pdf_with_report_inner(doc: &Document, cache: &Cache, opts: &PdfOptions
     let mut bytes = writer.finish().map_err(PdfError::from)?;
     // Transparency blends in the document's blend space: CMYK for print (and always in PDF/X).
     let mut warnings = ex.warnings;
+    if ex.cmyk_converted.get() {
+        warnings.insert(0, PDFA_RGB_WARNING.into());
+    }
     if !ex.rgb_only && (doc.settings.blend_space == evodesign_doc::BlendSpace::Cmyk || opts.standard == Standard::PdfX4) {
         // The rewrite matches krilla's exact output; in PDF/X-4, `check_pdfx4` reports any
         // group that got past it, with its page.
@@ -391,6 +392,7 @@ fn export_booklet_inner(doc: &Document, cache: &Cache, opts: &BookletOptions) ->
         fonts: HashMap::new(),
         reverse_cmaps: HashMap::new(),
         rgb_only: false,
+        cmyk_converted: Default::default(),
         tags: Vec::new(),
         story_tags: HashMap::new(),
         tag_story: None,
@@ -487,6 +489,21 @@ struct ConvertedImage {
     warning: Option<&'static str>,
 }
 
+/// Evora build (exception X-PDF-02): the CMYK sources PDF/A decodes to RGB: a TIFF (an EPS's preview too), a PSD
+/// in CMYK mode (its colour mode, big-endian, at byte 24), the solid CMYK rectangles of an EPS without a preview.
+/// `asset` is the placed file, `data` what is decoded.
+fn holds_cmyk(asset: &[u8], data: &[u8], fmt: Option<image::ImageFormat>) -> bool {
+    if fmt == Some(image::ImageFormat::Tiff) {
+        return evodesign_images::is_cmyk_tiff(data);
+    }
+    if evodesign_images::is_psd(data) {
+        return matches!(data.get(24..26), Some([0, 4]));
+    }
+    evodesign_images::is_eps(asset) && asset.windows(12).any(|w| w == b"setcmykcolor")
+}
+
+/// Evora build (exception X-PDF-02, patch EVORA-CIC-36): written only when a CMYK value did go through RGB.
+const PDFA_RGB_WARNING: &str = "PDF/A: CMYK colours were converted to RGB (no CMYK output intent profile is available yet)";
 const CMYK_FALLBACK_WARNING: &str = "converted to RGB (a CMYK TIFF that is planar, has premultiplied alpha, uses other inks or is over 256 MiB)";
 
 #[cfg(not(test))]
@@ -537,6 +554,8 @@ pub(crate) struct Exporter<'a> {
     pub reverse_cmaps: HashMap<u32, Arc<HashMap<u32, char>>>,
     /// Convert CMYK to RGB (PDF/A: krilla needs a CMYK output profile we don't ship yet).
     pub rgb_only: bool,
+    /// Evora build (exception X-PDF-02): a CMYK value of the document left as RGB during this export.
+    cmyk_converted: std::cell::Cell<bool>,
     /// Tagged PDF: the structure in reading order (stories gather their frames' content).
     tags: Vec<TagEntry>,
     story_tags: HashMap<evodesign_doc::StoryId, Vec<Identifier>>,
@@ -649,6 +668,13 @@ impl Exporter<'_> {
         self.doc.settings.intent == evodesign_doc::Intent::Print || self.opts.standard == Standard::PdfX4
     }
 
+    /// Evora build (exception X-PDF-02, patch EVORA-CIC-36): `c`, a colour of the document, is being written.
+    fn note_cmyk(&self, c: &Color) {
+        if self.rgb_only && matches!(c, Color::Cmyk { .. }) {
+            self.cmyk_converted.set(true);
+        }
+    }
+
     pub(crate) fn warn(&mut self, w: impl Into<String>) {
         let w = w.into();
         if !self.warnings.contains(&w) {
@@ -674,7 +700,10 @@ impl Exporter<'_> {
                     t *= bt;
                     n = base;
                 }
-                SwatchValue::Registration => return Some(registration(t, self.rgb_only)),
+                SwatchValue::Registration => {
+                    self.note_cmyk(&Color::cmyk(1.0, 1.0, 1.0, 1.0));
+                    return Some(registration(t, self.rgb_only));
+                }
                 SwatchValue::Color { color: _, color_type: ColorType::Spot } => {
                     // Ink Manager: an alias prints on another ink; converted inks go to process.
                     let (ink, process) = self.doc.inks.resolve(&sw.name);
@@ -682,15 +711,21 @@ impl Exporter<'_> {
                         self.doc.swatch(ink).filter(|w| matches!(w.value, SwatchValue::Color { color_type: ColorType::Spot, .. })).unwrap_or(sw);
                     let SwatchValue::Color { color, .. } = &target.value else { break };
                     if process {
-                        return Some(device(&evodesign_color::swatch::apply_tint(*color, t), self.rgb_only));
+                        let tinted = evodesign_color::swatch::apply_tint(*color, t);
+                        self.note_cmyk(&tinted);
+                        return Some(device(&tinted, self.rgb_only));
                     }
+                    self.note_cmyk(color);
                     let space = SeparationSpace::new(SeparationColorant::Custom(target.name.clone()), regular(color, self.rgb_only));
                     return Some(SepColor::new(q(t), space).into());
                 }
                 _ => break,
             }
         }
-        self.doc.resolve_color(name, tint).map(|c| device(&c, self.rgb_only))
+        self.doc.resolve_color(name, tint).map(|c| {
+            self.note_cmyk(&c);
+            device(&c, self.rgb_only)
+        })
     }
 
     /// The parent pages' items on `layer` shown on page `pi` of spread `si`: the parent's bases
@@ -1103,6 +1138,7 @@ impl Exporter<'_> {
         if let Some(g) = evodesign_color::swatch::resolve_gradient(&self.doc.swatches, swatch) {
             let kind = g.kind;
             let mut expanded = g.expanded_stops();
+            expanded.iter().for_each(|(_, c, _)| self.note_cmyk(c));
             // Grey and CMYK stops blend as inks, so a grey stop beside a CMYK one is the K ink.
             if !self.rgb_only && expanded.iter().any(|(_, c, _)| matches!(c, Color::Cmyk { .. })) {
                 for (_, c, _) in &mut expanded {
@@ -1383,6 +1419,7 @@ impl Exporter<'_> {
         {
             self.image_conversions += 1;
         }
+        let cmyk_source = self.rgb_only && holds_cmyk(&asset.data, &data, fmt);
         let mut warning = None;
         let mode = RasterMode::for_standard(self.opts.standard);
         let img = match fmt {
@@ -1400,6 +1437,9 @@ impl Exporter<'_> {
             _ if self.opts.compress_images => recompress(&data, mode).or_else(|| lossless(&data, fmt, mode)),
             _ => lossless(&data, fmt, mode),
         };
+        if cmyk_source && img.is_some() {
+            self.cmyk_converted.set(true);
+        }
         if img.is_none() {
             if data.is_empty() {
                 // A linked file that wasn't found when the document was opened: nothing to decode.
@@ -1574,10 +1614,11 @@ impl Exporter<'_> {
         }
         let Some(asset) = self.doc.assets.get(&g.asset) else { return false };
         let Some(tone) = evodesign_images::tone(&asset.data) else { return false };
-        let Some(paint) = self.swatch_color(&g.fill.swatch, g.fill.tint) else { return false };
         let Some(coverage) = evodesign_images::decode_rgba(&asset.data).and_then(|img| CoverageImage::new(&img)) else { return false };
         let interpolate = RasterMode::for_standard(self.opts.standard).interpolate;
         let Ok(mask) = Image::from_custom(coverage, interpolate) else { return false };
+        // Evora build (exception X-PDF-02): after the decoding, so a damaged image notes no colour it doesn't write.
+        let Some(paint) = self.swatch_color(&g.fill.swatch, g.fill.tint) else { return false };
         let size = Size::from_wh(g.size.0.max(1e-3) as f32, g.size.1.max(1e-3) as f32);
         let (Some(size), Some(rect)) = (size, to_path(&Rect::new(0.0, 0.0, g.size.0, g.size.1).to_path(0.1))) else { return false };
         s.push_transform(&tf(g.xf));
@@ -1975,6 +2016,7 @@ mod image_content_cache_tests {
             fonts: HashMap::new(),
             reverse_cmaps: HashMap::new(),
             rgb_only: false,
+            cmyk_converted: Default::default(),
             tags: Vec::new(),
             story_tags: HashMap::new(),
             tag_story: None,

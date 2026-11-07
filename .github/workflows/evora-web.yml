@@ -15,9 +15,10 @@
 #   - cargo-about : bâti par cargo install --locked au commit épinglé CARGO_ABOUT_REV (EVORA-CIC-00-b) ;
 #     la release 0.9.2 panique sur ce graphe (manifeste à texte non ASCII sans licence littérale) et ne
 #     sert plus que de témoin rouge ; retour au binaire de release dès qu'une release porte le correctif ;
-#   - runner ubuntu-24.04 sur les deux jobs (le libellé ubuntu-latest change le 2026-10-19) ;
+#   - runner ubuntu-24.04 sur tous les jobs (le libellé ubuntu-latest change le 2026-10-19) ;
 #   - portes écrites par Evora (.github/evora/, Python de la bibliothèque standard).
 #
+# Job en mode RAPPORT : tests de la crate PDF (pdf-tests, EVORA-CIC-36), un rouge n'échoue pas le run.
 # Portes BLOQUANTES : sources git de Cargo.lock (liste exacte des révisions) ; cargo-deny (avis RustSec,
 # interdits, licences, sources) et son témoin ; cargo-about (LICENSES/) ; fichiers d'hébergement (aucun
 # .htaccess, _headers, *.conf… dans l'artefact) ; témoins des détecteurs ; fumée Chrome depuis une autre
@@ -658,3 +659,46 @@ jobs:
           name: evora-smoke-${{ steps.meta.outputs.tag }}
           path: evora-ci/smoke/
           if-no-files-found: ignore
+
+  pdf-tests:
+    name: Tests du moteur PDF (rapport)
+    # Exception L3 X-PDF-02 (EVORA-CIC-36) : le poste n'a pas de chaîne Rust, et le job web ne lance aucun test.
+    # Mode rapport : un rouge se lit ici et ne fait pas échouer le run.
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout de la branche Evora
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout de evo-fonts (commit épinglé)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tazerty/evo-fonts
+          ref: ${{ env.EVO_FONTS_REF }}
+          path: evora-ci/evo-fonts
+          persist-credentials: false
+
+      - name: Rust (rustup, version épinglée)
+        run: |
+          set -euo pipefail
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+
+      - name: Cache cargo (registre, dépôts git, target)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: evora-pdf-tests-${{ runner.os }}-rust${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: cargo test de la crate PDF
+        env:
+          EVO_FONTS_DIR: ${{ github.workspace }}/evora-ci/evo-fonts
+          EVO_FONTS_REQUIRED: "1"
+        run: cargo test -p evodesign-pdf --locked --no-fail-fast

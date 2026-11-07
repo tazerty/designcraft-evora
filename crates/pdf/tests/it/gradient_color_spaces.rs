@@ -69,9 +69,12 @@ fn mixed_gradient_export_survives_in_subprocess() {
                     );
                 }
                 if standard == Standard::PdfA2b {
-                    assert!(
+                    // Evora build (exception X-PDF-02): said only when a CMYK stop went through RGB.
+                    let cmyk_stop = colors.iter().any(|c| matches!(c, Color::Cmyk { .. }));
+                    assert_eq!(
                         report.warnings.iter().any(|w| w.contains("PDF/A") && w.contains("RGB")),
-                        "archival policy warning must survive: {:?}",
+                        cmyk_stop,
+                        "archival policy warning: {:?}",
                         report.warnings
                     );
                 }

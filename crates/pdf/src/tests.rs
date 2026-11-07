@@ -111,6 +111,49 @@ fn colours_keep_their_space() {
     assert!(s.contains("/Separation") && s.contains("/PANTONE#20Test"), "spot as Separation");
 }
 
+/// Evora build (exception X-PDF-02, patch EVORA-CIC-36): PDF/A says CMYK went through RGB only when it did.
+#[test]
+fn pdfa_says_cmyk_went_through_rgb_only_when_it_did() {
+    let said = |d: &Document| {
+        let opts = PdfOptions { standard: Standard::PdfA2b, created: Some(1_700_000_000), ..Default::default() };
+        export_pdf_with_report(d, &Cache::new(), &opts).unwrap().warnings.iter().any(|w| w.starts_with("PDF/A: CMYK colours"))
+    };
+    let blank = || Document::new(&NewDocument { pages: 1, ..NewDocument::default() });
+    // Nothing painted: the CMYK swatches of the panel stay unused.
+    assert!(!said(&blank()));
+    let mut rgb = blank();
+    rgb.swatches.push(Swatch::color("Brand Red", Color::rgb(0.9, 0.1, 0.1)));
+    add_box(&mut rgb, Rect::new(36.0, 36.0, 136.0, 136.0), "Brand Red");
+    assert!(!said(&rgb), "an RGB box");
+    assert!(said(&doc_with_text("Archive me")), "text in the default [Black], which is CMYK");
+    let mut process = blank();
+    add_box(&mut process, Rect::new(36.0, 36.0, 136.0, 136.0), "C=100 M=0 Y=0 K=0");
+    assert!(said(&process), "a CMYK box");
+    let mut spot = blank();
+    spot.swatches.push(Swatch {
+        name: "PANTONE Test".into(),
+        value: SwatchValue::Color { color: Color::cmyk(0.0, 0.5, 1.0, 0.0), color_type: ColorType::Spot },
+        locked: false,
+        named: true,
+        hidden: false,
+    });
+    add_box(&mut spot, Rect::new(36.0, 36.0, 136.0, 136.0), "PANTONE Test");
+    assert!(said(&spot), "the CMYK alternate of a spot ink");
+    let mut registration = blank();
+    add_box(&mut registration, Rect::new(36.0, 36.0, 136.0, 136.0), evodesign_color::swatch::REGISTRATION);
+    assert!(said(&registration), "the CMYK alternate of [Registration] on an object");
+    let mut scan = blank();
+    place(&mut scan, cmyk_tiff().0, (4, 2));
+    assert!(said(&scan), "a CMYK TIFF");
+    let mut photo = blank();
+    place(&mut photo, raster(image::ImageFormat::Png, false), (8, 8));
+    assert!(!said(&photo), "an RGB image");
+    // Another standard never mentions it.
+    let d = doc_with_text("Keep me");
+    let r = export_pdf_with_report(&d, &Cache::new(), &PdfOptions::default()).unwrap();
+    assert!(!r.warnings.iter().any(|w| w.starts_with("PDF/A")), "{:?}", r.warnings);
+}
+
 /// [Paper] went into print PDFs as `1 1 1 rg`, DeviceRGB white.
 #[test]
 fn paper_prints_as_no_ink() {

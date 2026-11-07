@@ -238,6 +238,7 @@ impl HostDocs {
             "diag.labels" => self.bridge.ack_result(id, &crate::evora::commands::diag_labels(app)),
             "diag.exportPdfA" => self.bridge.ack_result(id, &crate::evora::commands::diag_export_pdfa(app)),
             "diag.exportBadPages" => self.bridge.ack_result(id, &crate::evora::commands::diag_export_bad_pages(app)),
+            "diag.textFrame" => self.bridge.ack_result(id, &crate::evora::commands::diag_text_frame(app)),
             _ => match crate::evora::commands::run(app, command, confirmed, self.bridge.has("command.catalog")) {
                 Ok(()) => self.bridge.ack(id, true, None),
                 Err(code) => self.bridge.ack(id, false, Some(code)),

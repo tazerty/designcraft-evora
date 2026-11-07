@@ -40,8 +40,8 @@ juge chaque étiquette :
   EXPORT-A2B       la boîte Exporter en PDF, préréglage PDF/A-2b (diag.exportPdfA) : un evora:export dont les octets
                    portent pdfaid part 2 et conformance B, xmp:CreateDate à l'heure du navigateur, /CreationDate au même
                    instant, Producer Evora Cicero (EVORA-CIC-18-s)
-  EXPORT-WARNINGS  le PDF/A-2b part avec un avertissement : alerte « Export Warnings », texte en français (CMJN), Échap la
-                   ferme ; les exports sans avertissement (EXPORT-PDF, EXPORT-PNG) n'en ouvrent aucune (EVORA-CIC-18-t)
+  EXPORT-WARNINGS  document sans CMJN : le PDF/A-2b n'ouvre aucune alerte, comme EXPORT-PDF et EXPORT-PNG (EVORA-CIC-36). Avec
+                   un texte au noir du nuancier (diag.textFrame) : alerte « Export Warnings », en français (CMJN), Échap la ferme
   EXPORT-FAILED    la même boîte, plage de pages refusée (diag.exportBadPages) : une alerte « Can't Export the File »
                    porte le message du moteur, aucun evora:export, Échap la ferme (EVORA-CIC-18-s)
   PICK             Placer : evora:pick {purpose: import, accept, multiple: false}, puis evora:file et
@@ -636,11 +636,25 @@ class Banc:
         if stats.get("dialog"):
             self.key("Escape", "Escape", 27)
             self.quiet(lambda m: False, 1.0)
-        closed = self.diag().get("dialog")
+        blank = stats.get("dialog")
+        framed = self.answer(self.command("diag.textFrame"))
+        n = self.count()
+        a = self.answer(self.command("diag.exportPdfA"))
+        ex = self.wait(lambda m: m.get("type") == "evora:export", start=n)
+        if ex:
+            self.send("evora:ack", "{ok: true}", ex["id"])
+        stats = self.diag()
         alert = stats.get("alert") or {}
-        self.set("EXPORT-WARNINGS", calm is None and stats.get("dialog") == "alert" and alert.get("title") == "Export Warnings"
+        self.key("Escape", "Escape", 27)
+        self.quiet(lambda m: False, 1.0)
+        closed = self.diag().get("dialog")
+        undone = self.answer(self.command("edit.undo"))
+        self.set("EXPORT-WARNINGS", calm is None and blank is None and bool(framed and framed["payload"].get("result", {}).get("created"))
+                 and bool(undone and undone["payload"].get("ok"))
+                 and ex is not None and stats.get("dialog") == "alert" and alert.get("title") == "Export Warnings"
                  and "CMJN" in str(alert.get("message")) and closed is None,
-                 {"avant": calm, "dialog": stats.get("dialog"), "alert": alert, "apres echap": closed})
+                 {"avant": calm, "sans cmjn": blank, "cadre": framed and framed["payload"], "export": ex is not None,
+                  "dialog": stats.get("dialog"), "alert": alert, "apres echap": closed})
 
         n = self.count()
         a = self.answer(self.command("diag.exportBadPages"))

@@ -53,8 +53,8 @@ const ENGINE_COMMANDS: [&str; 3] = ["app.exportInteractivePdf", "app.exportPng",
 /// designed (`diag.ui`: theme, workspaces, menus, shortcuts, tool) and the strings the tables show in the
 /// current language (`diag.labels`), EVORA-CIC-02, 11, 12, 13, 19 and 22; the Export PDF dialog as the user
 /// runs it, with the PDF/A-2b preset (`diag.exportPdfA`) or a page range the engine refuses
-/// (`diag.exportBadPages`), EVORA-CIC-18-s.
-const DIAGNOSTICS: [&str; 6] = ["diag.stats", "diag.menus", "diag.ui", "diag.labels", "diag.exportPdfA", "diag.exportBadPages"];
+/// (`diag.exportBadPages`), EVORA-CIC-18-s; a text frame at the default [Black], in CMYK (`diag.textFrame`), EVORA-CIC-36.
+const DIAGNOSTICS: [&str; 7] = ["diag.stats", "diag.menus", "diag.ui", "diag.labels", "diag.exportPdfA", "diag.exportBadPages", "diag.textFrame"];
 
 /// FNV-1a 64 (offset basis and prime): the catalogue's fingerprint, an identity of the build's
 /// commands, not a secret.
@@ -275,6 +275,12 @@ pub fn diag_export_pdfa(app: &mut DesignApp) -> Value {
 /// `diag.exportBadPages` (EVORA-CIC-18-s): the Export PDF dialog with a page range the engine refuses, then OK.
 pub fn diag_export_bad_pages(app: &mut DesignApp) -> Value {
     diag_export_dialog(app, &[("pages", json!("abc"))])
+}
+
+/// `diag.textFrame` (EVORA-CIC-36): a text frame at the default [Black], a CMYK colour of the swatches.
+pub fn diag_text_frame(app: &mut DesignApp) -> Value {
+    let created = app.run("frame.create", json!({"rect": [72, 72, 300, 200], "content": "text", "text": "CMJN", "caret": false}));
+    json!({"created": created.is_ok()})
 }
 
 /// The dialog opens as its menu item opens it, and closes as its OK closes it.
