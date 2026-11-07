@@ -604,6 +604,10 @@ impl Bridge {
         if !(lang_ok && accent_ok && storage_ok && display_ok && caps_ok && prefs_ok && limits_ok && snapshot_ok) {
             return;
         }
+        // EVORA-CIC-33: the member's colour, before the app's first style.
+        if let Some(accent) = get(p, "accent").as_string() {
+            evodesign_ui_egui::theme::set_host_accent(&accent);
+        }
         let wake = {
             let mut st = self.0.borrow_mut();
             st.caps = caps.into_iter().filter(|c| CAPABILITIES.contains(&c.as_str())).collect();
@@ -790,6 +794,10 @@ impl Bridge {
             Some("light") => false,
             _ => return,
         };
+        // EVORA-CIC-33: the member's colour; the event restyles the interface with it.
+        if let Some(accent) = get(p, "accent").as_string() {
+            evodesign_ui_egui::theme::set_host_accent(&accent);
+        }
         self.push(HostEvent::Theme { id: id.to_owned(), dark });
     }
 

@@ -1,6 +1,7 @@
 //! Design tokens (Evora's three interface brightness levels: light, dark and high contrast; patch
 //! EVORA-CIC-02 of `apps/cicero/UPSTREAM.md` in Evora), fonts (Inter) and egui style.
 
+use std::cell::Cell;
 use std::sync::Arc;
 
 use egui::{Color32, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Stroke, TextStyle, Visuals};
@@ -105,11 +106,107 @@ fn hex(s: u32) -> Color32 {
     Color32::from_rgb((s >> 16) as u8, (s >> 8) as u8, s as u8)
 }
 
+/// Evora's indigo, the colour the tokens below are written in.
+const INDIGO: Color32 = Color32::from_rgb(0x4f, 0x46, 0xe5);
+/// WCAG contrast the member's colour keeps as text and marks on the panels, with a little room so it
+/// still passes once rounded to 8 bits.
+const TEXT_CONTRAST: f32 = 4.55;
+/// Share of the member's colour in the tints that stand for the indigo scale, measured on that scale
+/// against the panels: light 50, 100 and 200; dark, a selected tool, a selected row and a rim.
+const TINT_LIGHT_TOOL: f32 = 0.08;
+const TINT_LIGHT_ROW: f32 = 0.15;
+const TINT_LIGHT_RIM: f32 = 0.28;
+const TINT_DARK_TOOL: f32 = 0.12;
+const TINT_DARK_ROW: f32 = 0.20;
+const TINT_DARK_RIM: f32 = 0.62;
+/// High contrast: the member's colour darkened enough for the white text of a selected row.
+const TINT_HIGH_CONTRAST_ROW: f32 = 0.60;
+/// The steps (twentieths) in which a shade moves until it reaches its contrast floor.
+const SHADE_STEPS: u32 = 20;
+
+thread_local! {
+    /// Evora (EVORA-CIC-33): the member's colour the host sent, `None` for the indigo.
+    static HOST_ACCENT: Cell<Option<Color32>> = const { Cell::new(None) };
+}
+
+/// Evora (EVORA-CIC-33): the host's accent (`#rrggbb`, checked by the bridge) for every later
+/// [`Tokens::for_brightness`]. The indigo keeps the written tokens to the byte.
+pub fn set_host_accent(value: &str) {
+    let accent = u32::from_str_radix(value.trim_start_matches('#'), 16).ok().map(hex).filter(|c| *c != INDIGO);
+    HOST_ACCENT.with(|a| a.set(accent));
+}
+
+fn mix(from: Color32, to: Color32, amount: f32) -> Color32 {
+    let channel = |a: u8, b: u8| (f32::from(a) + (f32::from(b) - f32::from(a)) * amount).round() as u8;
+    Color32::from_rgb(channel(from.r(), to.r()), channel(from.g(), to.g()), channel(from.b(), to.b()))
+}
+
+/// WCAG contrast ratio of two opaque colours (1 to 21).
+fn contrast(a: Color32, b: Color32) -> f32 {
+    let linear = |v: u8| {
+        let s = f32::from(v) / 255.0;
+        if s <= 0.04045 { s / 12.92 } else { ((s + 0.055) / 1.055).powf(2.4) }
+    };
+    let luminance = |c: Color32| 0.2126 * linear(c.r()) + 0.7152 * linear(c.g()) + 0.0722 * linear(c.b());
+    let (x, y) = (luminance(a), luminance(b));
+    (x.max(y) + 0.05) / (x.min(y) + 0.05)
+}
+
+/// `from` moved toward `to` until it reaches [`TEXT_CONTRAST`] on every colour of `on`.
+fn readable(from: Color32, to: Color32, on: &[Color32]) -> Color32 {
+    (0..=SHADE_STEPS)
+        .map(|i| mix(from, to, i as f32 / SHADE_STEPS as f32))
+        .find(|c| on.iter().all(|b| contrast(*c, *b) >= TEXT_CONTRAST))
+        .unwrap_or(to)
+}
+
 impl Tokens {
+    /// The tokens of a brightness level, with the member's colour when the host sent one.
+    pub fn for_brightness(b: Brightness) -> Self {
+        let written = Self::written(b);
+        match HOST_ACCENT.with(Cell::get) {
+            Some(accent) => written.with_host_accent(accent, b),
+            None => written,
+        }
+    }
+
+    /// Evora (EVORA-CIC-33): the member's colour in place of the whole indigo family. Filled controls
+    /// keep the colour itself; text and marks hold their contrast on the panels; tints take the same
+    /// share of it as the indigo scale took of the indigo. High contrast keeps its amber focus.
+    fn with_host_accent(self, accent: Color32, b: Brightness) -> Tokens {
+        if b == Brightness::HighContrast {
+            return Tokens { accent_strong: accent, row_selected: mix(accent, Color32::BLACK, TINT_HIGH_CONTRAST_ROW), ..self };
+        }
+        let on = [self.panel, self.app_bar, self.panel_darker];
+        if self.dark {
+            let tint = |share: f32| mix(self.panel, accent, share);
+            Tokens {
+                accent: readable(accent, Color32::WHITE, &on),
+                accent_strong: accent,
+                tool_active: tint(TINT_DARK_TOOL),
+                row_selected: tint(TINT_DARK_ROW),
+                well: tint(TINT_DARK_ROW),
+                well_rim: tint(TINT_DARK_RIM),
+                ..self
+            }
+        } else {
+            let tint = |share: f32| mix(Color32::WHITE, accent, share);
+            Tokens {
+                accent: readable(accent, Color32::BLACK, &on),
+                accent_strong: accent,
+                tool_active: tint(TINT_LIGHT_TOOL),
+                row_selected: tint(TINT_LIGHT_ROW),
+                well: tint(TINT_LIGHT_TOOL),
+                well_rim: tint(TINT_LIGHT_RIM),
+                ..self
+            }
+        }
+    }
+
     /// Evora's tokens (EVORA-CIC-02): the zinc neutrals and the indigo accent of Evora's design system
     /// (`apps/cicero/CONCEPTION-PRO.md` §7.6 in Evora), in three brightness levels. No value of the
     /// upstream build is kept; its two intermediate levels read as dark and light.
-    pub fn for_brightness(b: Brightness) -> Self {
+    fn written(b: Brightness) -> Self {
         let light = Tokens {
             dark: false,
             app_bar: hex(0xffffff),

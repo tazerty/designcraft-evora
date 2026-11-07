@@ -63,6 +63,8 @@ juge chaque étiquette :
   THEME-LIGHT      thème clair d'Evora (EVORA-CIC-02) : jetons de référence (CONCEPTION-PRO.md §7.6 d'Evora) et, au
                    pixel, panneau et table de montage sur l'écran du moteur (capture-theme-clair.png)
   THEME-DARK       idem en sombre (capture-theme-sombre.png)
+  ACCENT-MEMBRE    evora:theme avec une autre couleur (EVORA-CIC-33) : les jetons la portent, en sombre et en clair, et
+                   aucun ne garde l'indigo ; revenu à l'indigo, chaque jeton retrouve sa valeur de référence
   WORKSPACES       les cinq espaces de travail d'Evora, dans l'ordre du travail, le premier actif (EVORA-CIC-12)
   MENUS            l'ordre des menus d'Evora ; aucun article retiré n'y reste (aide, exemple, import d'un jeu de
                    raccourcis d'un autre logiciel) (EVORA-CIC-22)
@@ -123,7 +125,7 @@ LABELS = ["READY", "INIT-V2", "INIT-EXTRA", "INIT-ACK", "STARTED", "CATALOG", "N
           "NEW-SPEC-REFUSED", "MODIFY", "SAVE-REQ",
           "S-ACK-1", "S-ACK-2", "S-ACK-3", "S-ACK-4", "S-ACK-5", "OPEN-BYTES", "EXPORT-PDF", "EXPORT-PNG", "EXPORT-A2B", "EXPORT-FAILED", "PICK",
           "SHELL-REFUSED", "PARAMS-REFUSED", "DESTRUCTIVE", "DESTRUCTIVE-MARKERS", "DESTRUCTIVE-SET", "SOURCE-REFUSED",
-          "FILTER-NEW", "FOCUS-OUT", "LANG", "THEME", "THEME-LIGHT", "THEME-DARK", "WORKSPACES", "MENUS", "ICONS", "KEYMAP",
+          "FILTER-NEW", "FOCUS-OUT", "LANG", "THEME", "THEME-LIGHT", "THEME-DARK", "ACCENT-MEMBRE", "WORKSPACES", "MENUS", "ICONS", "KEYMAP",
           "TOOL-KEYS", "TERMS", "FR-COVERAGE",
           "FONT", "FONT-INVALID", "PURGE", "NO-DOWNLOAD", "NO-EXCEPTION"]
 PNG_1PX = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=="
@@ -151,6 +153,9 @@ THEME_EXPECTED = {
     "light": {"appBar": "#ffffff", "panel": "#fafafa", "pasteboard": "#e4e4e7", "accent": "#4f46e5"},
     "dark": {"appBar": "#18181b", "panel": "#18181b", "pasteboard": "#0c0c0e", "accent": "#818cf8"},
 }
+# Couleur du membre essayée par ACCENT-MEMBRE (vert de la palette d'Evora, rang 600) et jetons qu'elle doit quitter.
+MEMBER_ACCENT = "#016f31"
+INDIGO_TOKENS = ("#4f46e5", "#818cf8", "#e0e7ff", "#1e1b4b")
 # Couleurs jugées au pixel sur l'écran du moteur ; part minimale et tolérance : bornes d'instrument.
 THEME_PIXELS = ("panel", "pasteboard")
 PIXEL_SHARE = 0.005
@@ -549,6 +554,24 @@ class Banc:
                  and all(s >= PIXEL_SHARE for s in shares.values()),
                  {"brightness": ui.get("brightness"), "jetons": {k: tokens.get(k) for k in want}, "parts": shares, "capture": name})
 
+    def accent_probe(self):
+        """Une autre couleur : portée par les jetons, sombre puis clair. L'indigo : les jetons de référence, puis sombre."""
+        seen = {}
+        for theme in ("dark", "light"):
+            a = self.answer(self.send("evora:theme", f"{{theme: '{theme}', accent: '{MEMBER_ACCENT}'}}"))
+            self.quiet(lambda m: False, 1.0)
+            tokens = self.ui().get("tokens") or {}
+            seen[theme] = {"accuse": bool(a and a["payload"].get("ok")), "jetons": tokens}
+        carried = all(v["accuse"] and v["jetons"].get("accentStrong") == MEMBER_ACCENT
+                      and not set(v["jetons"].values()) & set(INDIGO_TOKENS) for v in seen.values())
+        a = self.answer(self.send("evora:theme", "{theme: 'light', accent: '#4F46E5'}"))
+        self.quiet(lambda m: False, 1.0)
+        tokens = self.ui().get("tokens") or {}
+        restored = bool(a and a["payload"].get("ok")) and all(tokens.get(k) == v for k, v in THEME_EXPECTED["light"].items())
+        a = self.answer(self.send("evora:theme", "{theme: 'dark', accent: '#4F46E5'}"))
+        self.quiet(lambda m: False, 1.0)
+        self.set("ACCENT-MEMBRE", carried and restored and bool(a and a["payload"].get("ok")), {"couleur": seen, "indigo": tokens})
+
     def set(self, label, ok, note=None):
         if self.res.get(label) is None or not ok:
             self.res[label] = bool(ok)
@@ -901,6 +924,7 @@ class Banc:
         self.theme_probe("THEME-LIGHT", "light", bool(a and a["payload"].get("ok")))
         a = self.answer(self.send("evora:theme", "{theme: 'dark', accent: '#4F46E5'}"))
         self.theme_probe("THEME-DARK", "dark", bool(a and a["payload"].get("ok")))
+        self.accent_probe()
         ui = self.ui()
         self.set("WORKSPACES", ui.get("workspaces") == EXPECTED_WORKSPACES and ui.get("workspace") == EXPECTED_WORKSPACES[0],
                  {"espaces": ui.get("workspaces"), "actif": ui.get("workspace")})
