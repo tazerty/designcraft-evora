@@ -69,6 +69,9 @@ pub type ClipboardFn = Box<dyn FnMut() -> Option<String>>;
 /// Evora build (couture CL6-01, patch EVORA-CIC-09): the host's filter, called with an action's id
 /// before the app acts on it; `Some(reason)` refuses the action.
 pub type HostFilterFn = Box<dyn FnMut(&str) -> Option<String>>;
+/// Evora build (couture CL6-03, patch EVORA-CIC-31): the clock, in Unix seconds, of a platform whose
+/// engine crates cannot read it (wasm32).
+pub type ClockFn = Box<dyn Fn() -> i64>;
 /// Files delivered asynchronously with their original operation and document identity.
 pub type Inbox = std::sync::Arc<std::sync::Mutex<Vec<ImportedFile>>>;
 
@@ -96,6 +99,8 @@ pub struct Services {
     /// Evora build (couture CL6-01): the embedding host refuses the actions that are its own (new,
     /// open, close, print…), whichever way they are chosen ([`DesignApp::run`], [`menus::activate`]).
     pub host_filter: Option<HostFilterFn>,
+    /// Evora build (couture CL6-03): the date of an exported PDF, where the engine has no clock.
+    pub now_unix: Option<ClockFn>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

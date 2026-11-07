@@ -2182,6 +2182,11 @@ pub(crate) fn export_pdf(app: &mut DesignApp, p: &Value) -> Result<Value, String
         if !app.ui.flattener.is_empty() {
             o.entry("flatten").or_insert(json!(app.ui.flattener));
         }
+        // Evora build (couture CL6-03, patch EVORA-CIC-31): under wasm32 the engine has no clock; PDF/A
+        // refuses a document without a date, and PDF/X-4 would be dated 1970.
+        if let Some(now) = &app.services.now_unix {
+            o.entry("created").or_insert(json!(now()));
+        }
     }
     let r = app.run("file.exportPdf", params)?;
     let bytes = evodesign_engine::cmd::base64_decode(r["base64"].as_str().unwrap_or_default());
@@ -2690,7 +2695,20 @@ fn activate_inner(app: &mut DesignApp, id: &str, params: &Value) {
         crate::panels::properties::update_links(app, p);
         return;
     }
-    let _ = app.run(id, p);
+    let r = app.run(id, p);
+    // Evora build (couture CL6-03, patch EVORA-CIC-31): an export the user chose says it failed.
+    if params.is_null()
+        && id.starts_with("app.export")
+        && let Err(error) = r
+    {
+        export_failed(app, &error);
+    }
+}
+
+/// Evora build (couture CL6-03, patch EVORA-CIC-31): the export the user asked for failed and no file
+/// left. The engine's message alone only reached the status line, the writer's nowhere.
+pub(crate) fn export_failed(app: &mut DesignApp, error: &str) {
+    app.ui.dialog = Some(crate::dialogs::Dialog::new("alert", json!({"title": "Can't Export the File", "message": error})));
 }
 
 /// The spread the guide commands of the menus act on: the one in view (a parent spread while

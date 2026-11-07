@@ -480,6 +480,11 @@ impl eframe::App for WebShell {
     }
 }
 
+/// The browser's clock, in Unix seconds: under wasm32 the engine has none (EVORA-CIC-31).
+fn now_unix() -> i64 {
+    (js_sys::Date::now() / 1000.0) as i64
+}
+
 /// Evora (CIC-07, CIC-08): under the host, Save leaves as `evora:save`, every other file as
 /// `evora:export`, every picker is the host's, and the host filter refuses the shell's actions.
 fn host_services(inbox: Inbox, bridge: Bridge, host_call: HostCall) -> Services {
@@ -493,6 +498,7 @@ fn host_services(inbox: Inbox, bridge: Bridge, host_call: HostCall) -> Services 
         download: Some(Box::new(move |name: &str, bytes: &[u8]| bridge.save(&file_name(name), bytes).map_err(|code| format!("Evora: {code}")))),
         inbox: Some(inbox),
         host_filter: Some(crate::evora::masks::filter(host_call)),
+        now_unix: Some(Box::new(now_unix)),
         ..Default::default()
     }
 }
@@ -529,6 +535,7 @@ fn services(inbox: Inbox, ctx: egui::Context, bridge: Option<Bridge>, host_call:
         write: Some(Box::new(|name: &str, bytes: &[u8]| download(name, bytes))),
         download: Some(Box::new(|name: &str, bytes: &[u8]| download(name, bytes))),
         inbox: Some(inbox),
+        now_unix: Some(Box::new(now_unix)),
         ..Default::default()
     }
 }

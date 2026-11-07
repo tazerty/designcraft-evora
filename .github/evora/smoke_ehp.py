@@ -297,10 +297,10 @@ PARENT = """<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Ev
     const g = re => { const m = s.match(re); return m ? m[1] : null; };
     const created = g(/<xmp:CreateDate>([^<]+)</);
     const at = created ? Date.parse(created) : NaN;
-    return { head: s.slice(0, 5), bytes: b.byteLength, part: g(/pdfaid:part(?:="|>)(\d)/), conformance: g(/pdfaid:conformance(?:="|>)([A-Za-z])/),
+    return { head: s.slice(0, 5), bytes: b.byteLength, part: g(/pdfaid:part(?:="|>)(\\d)/), conformance: g(/pdfaid:conformance(?:="|>)([A-Za-z])/),
       created: created, driftSeconds: Number.isNaN(at) ? null : Math.round(Math.abs(Date.now() - at) / 1000),
       createdDigits: Number.isNaN(at) ? null : new Date(at).toISOString().replace(/[-:T]/g, '').slice(0, 14),
-      infoDigits: g(/\/CreationDate\s*\(D:(\d{14})/), producer: g(/<pdf:Producer>([^<]+)</) };
+      infoDigits: g(/\\/CreationDate\\s*\\(D:(\\d{14})/), producer: g(/<pdf:Producer>([^<]+)</) };
   };
 })();
 </script></body></html>"""

@@ -63,6 +63,16 @@ pub(super) const TABLE: &[(&str, &str, &str)] = &[
     ("High Contrast", "it", "Contrasto elevato"),
     ("High Contrast", "zh", "高对比度"),
     ("High Contrast", "pt-br", "Alto contraste"),
+    // The alert of a failed export (CIC-31).
+    ("Can't Export the File", "fr", "Impossible d'exporter le fichier"),
+    ("Can't Export the File", "de", "Datei kann nicht exportiert werden"),
+    ("Can't Export the File", "es", "No se puede exportar el archivo"),
+    ("Can't Export the File", "it", "Impossibile esportare il file"),
+    ("Can't Export the File", "ja", "ファイルを書き出せません"),
+    ("Can't Export the File", "zh", "无法导出文件"),
+    ("Can't Export the File", "ar", "تعذّر تصدير الملف"),
+    ("Can't Export the File", "pt-br", "Não foi possível exportar o arquivo"),
+    ("Can't Export the File", "ru", "Не удалось экспортировать файл"),
     // French complement (CIC-19): keys of the tables without a French row.
     ("A, B, C, D...", "fr", "A, B, C, D…"),
     ("a, b, c, d...", "fr", "a, b, c, d…"),
