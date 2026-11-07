@@ -24,8 +24,8 @@
 //! diagnostics the smoke test reads. The host command `host.newDocumentSetup` (patch CIC-26, `setup`)
 //! is answered by the bridge before this module: never a menu item, never in the catalogue.
 
-use evodesign_ui_egui::DesignApp;
 use evodesign_ui_egui::menus::{self, Item};
+use evodesign_ui_egui::{DesignApp, dialogs};
 use serde_json::{Value, json};
 
 /// The shell's namespace, refused by construction (rule of 2026-10-27).
@@ -51,8 +51,10 @@ const ENGINE_COMMANDS: [&str; 3] = ["app.exportInteractivePdf", "app.exportPng",
 /// Diagnostics answered by the bridge (smoke): what the engine holds (`diag.stats`), the catalogue,
 /// the items the rule refuses, the masked and the destructive ones (`diag.menus`); the interface Evora
 /// designed (`diag.ui`: theme, workspaces, menus, shortcuts, tool) and the strings the tables show in the
-/// current language (`diag.labels`), EVORA-CIC-02, 11, 12, 13, 19 and 22.
-const DIAGNOSTICS: [&str; 4] = ["diag.stats", "diag.menus", "diag.ui", "diag.labels"];
+/// current language (`diag.labels`), EVORA-CIC-02, 11, 12, 13, 19 and 22; the Export PDF dialog as the user
+/// runs it, with the PDF/A-2b preset (`diag.exportPdfA`) or a page range the engine refuses
+/// (`diag.exportBadPages`), EVORA-CIC-18-s.
+const DIAGNOSTICS: [&str; 6] = ["diag.stats", "diag.menus", "diag.ui", "diag.labels", "diag.exportPdfA", "diag.exportBadPages"];
 
 /// FNV-1a 64 (offset basis and prime): the catalogue's fingerprint, an identity of the build's
 /// commands, not a secret.
@@ -244,11 +246,48 @@ pub fn stats(app: &DesignApp, doc_ref: Option<&str>, uid: Option<u64>, counters:
         "setup": host.map(|d| setup_view(&d.doc)),
         "language": app.ui.language,
         "dialog": app.ui.dialog.as_ref().map(|d| d.id.clone()),
+        // Evora (EVORA-CIC-18-s): what an open alert says.
+        "alert": app.ui.dialog.as_ref().filter(|d| d.id == "alert").map(|d| {
+            json!({"title": d.fields.get("title"), "message": d.fields.get("message")})
+        }),
         "pickPending": crate::evora::pick::pending(),
         "fonts": fonts,
         "bridge": counters,
         "wasmMemoryBytes": wasm_memory_bytes(),
     })
+}
+
+/// `diag.exportPdfA` (EVORA-CIC-18-s): the Export PDF dialog with the fields of the PDF/A-2b preset, then OK.
+pub fn diag_export_pdfa(app: &mut DesignApp) -> Value {
+    diag_export_dialog(
+        app,
+        &[
+            ("preset", json!("PDF/A-2b")),
+            ("standard", json!("a2b")),
+            ("compressImages", json!(false)),
+            ("marksCrop", json!(false)),
+            ("marksBleed", json!(false)),
+            ("marksPageInfo", json!(false)),
+        ],
+    )
+}
+
+/// `diag.exportBadPages` (EVORA-CIC-18-s): the Export PDF dialog with a page range the engine refuses, then OK.
+pub fn diag_export_bad_pages(app: &mut DesignApp) -> Value {
+    diag_export_dialog(app, &[("pages", json!("abc"))])
+}
+
+/// The dialog opens as its menu item opens it, and closes as its OK closes it.
+fn diag_export_dialog(app: &mut DesignApp, fields: &[(&str, Value)]) -> Value {
+    menus::activate(app, "app.exportPdf", &Value::Null);
+    let Some(d) = app.ui.dialog.as_mut().filter(|d| d.id == "pdfExport") else {
+        return json!({"opened": false});
+    };
+    for (key, value) in fields {
+        d.fields.insert((*key).to_owned(), value.clone());
+    }
+    dialogs::confirm_by_user(app);
+    json!({"opened": true})
 }
 
 /// `diag.stats` `setup` (EVORA-CIC-26): the page size, units, facing pages and bleed of the document,

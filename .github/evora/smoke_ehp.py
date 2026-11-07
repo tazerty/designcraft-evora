@@ -37,6 +37,11 @@ juge chaque étiquette :
   OPEN-BYTES       evora:open des octets enregistrés : accusé positif, dirty false, UN document
   EXPORT-PDF       une exportation PDF rend un evora:export (application/pdf, %PDF)
   EXPORT-PNG       une exportation PNG rend un evora:export (image/png, signature PNG)
+  EXPORT-A2B       la boîte Exporter en PDF, préréglage PDF/A-2b (diag.exportPdfA) : un evora:export dont les octets
+                   portent pdfaid part 2 et conformance B, xmp:CreateDate à l'heure du navigateur, /CreationDate au même
+                   instant, Producer Evora Cicero (EVORA-CIC-18-s)
+  EXPORT-FAILED    la même boîte, plage de pages refusée (diag.exportBadPages) : une alerte « Can't Export the File »
+                   porte le message du moteur, aucun evora:export, Échap la ferme (EVORA-CIC-18-s)
   PICK             Placer : evora:pick {purpose: import, accept, multiple: false}, puis evora:file et
                    evora:ack ferment l'échange
   SHELL-REFUSED    file.revert et help.about (coquille) refusés : capability
@@ -116,7 +121,7 @@ ADMITTED = {"app.exportPdf", "app.exportInteractivePdf", "app.exportPng", "app.e
             "app.placeDialog", "app.loadSwatches"}
 LABELS = ["READY", "INIT-V2", "INIT-EXTRA", "INIT-ACK", "STARTED", "CATALOG", "NEW-DOC", "NEW-A4", "NEW-SPEC",
           "NEW-SPEC-REFUSED", "MODIFY", "SAVE-REQ",
-          "S-ACK-1", "S-ACK-2", "S-ACK-3", "S-ACK-4", "S-ACK-5", "OPEN-BYTES", "EXPORT-PDF", "EXPORT-PNG", "PICK",
+          "S-ACK-1", "S-ACK-2", "S-ACK-3", "S-ACK-4", "S-ACK-5", "OPEN-BYTES", "EXPORT-PDF", "EXPORT-PNG", "EXPORT-A2B", "EXPORT-FAILED", "PICK",
           "SHELL-REFUSED", "PARAMS-REFUSED", "DESTRUCTIVE", "DESTRUCTIVE-MARKERS", "DESTRUCTIVE-SET", "SOURCE-REFUSED",
           "FILTER-NEW", "FOCUS-OUT", "LANG", "THEME", "THEME-LIGHT", "THEME-DARK", "WORKSPACES", "MENUS", "ICONS", "KEYMAP",
           "TOOL-KEYS", "TERMS", "FR-COVERAGE",
@@ -285,6 +290,18 @@ PARENT = """<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Ev
     else document.getElementById('engine').contentWindow.postMessage(msg, ENGINE, transfer);
     return id; };
   window.__copy = function (id) { const b = window.__buffers[id]; return b ? b.slice(0) : null; };
+  window.__pdfFacts = function (id) {
+    const b = window.__buffers[id];
+    if (!b) return null;
+    const s = new TextDecoder('latin1').decode(b);
+    const g = re => { const m = s.match(re); return m ? m[1] : null; };
+    const created = g(/<xmp:CreateDate>([^<]+)</);
+    const at = created ? Date.parse(created) : NaN;
+    return { head: s.slice(0, 5), bytes: b.byteLength, part: g(/pdfaid:part(?:="|>)(\d)/), conformance: g(/pdfaid:conformance(?:="|>)([A-Za-z])/),
+      created: created, driftSeconds: Number.isNaN(at) ? null : Math.round(Math.abs(Date.now() - at) / 1000),
+      createdDigits: Number.isNaN(at) ? null : new Date(at).toISOString().replace(/[-:T]/g, '').slice(0, 14),
+      infoDigits: g(/\/CreationDate\s*\(D:(\d{14})/), producer: g(/<pdf:Producer>([^<]+)</) };
+  };
 })();
 </script></body></html>"""
 
@@ -572,6 +589,40 @@ class Banc:
         return False, f"aucune modification (dialogue {self.diag().get('dialog')})"
 
     # ── document neuf (EVORA-CIC-26) ───────────────────────────────────────
+    def export_standards(self):
+        """EXPORT-A2B puis EXPORT-FAILED : la boîte Exporter en PDF telle que l'utilisateur la valide (EVORA-CIC-18-s)."""
+        self.click_canvas()  # le focus au moteur, pour Échap : aucun clic une fois l'alerte ouverte
+        n = self.count()
+        a = self.answer(self.command("diag.exportPdfA"))
+        ex = self.wait(lambda m: m.get("type") == "evora:export", start=n)
+        facts = None
+        if ex:
+            facts = json.loads(self.js(f"JSON.stringify(window.__pdfFacts({json.dumps(ex['id'])}))") or "null")
+            self.send("evora:ack", "{ok: true}", ex["id"])
+        stats = self.diag()
+        note = {"ack": a and a["payload"], "facts": facts, "dialog": stats.get("dialog"), "alert": stats.get("alert")}
+        f = facts or {}
+        self.set("EXPORT-A2B", bool(a and a["payload"].get("ok")) and (ex or {}).get("payload", {}).get("mime") == "application/pdf"
+                 and f.get("head") == "%PDF-" and f.get("part") == "2" and f.get("conformance") in ("B", "b")
+                 and f.get("driftSeconds") is not None and f["driftSeconds"] <= 600
+                 and f.get("infoDigits") is not None and f.get("infoDigits") == f.get("createdDigits")
+                 and f.get("producer") == "Evora Cicero" and stats.get("dialog") is None, note)
+        if stats.get("dialog"):
+            self.key("Escape", "Escape", 27)
+            self.quiet(lambda m: False, 1.0)
+
+        n = self.count()
+        a = self.answer(self.command("diag.exportBadPages"))
+        none = self.quiet(lambda m: m.get("type") == "evora:export", start=n)
+        stats = self.diag()
+        alert = stats.get("alert") or {}
+        self.key("Escape", "Escape", 27)
+        self.quiet(lambda m: False, 1.0)
+        closed = self.diag().get("dialog")
+        self.set("EXPORT-FAILED", bool(a and a["payload"].get("ok")) and none and stats.get("dialog") == "alert"
+                 and alert.get("title") == "Can't Export the File" and "abc" in str(alert.get("message")) and closed is None,
+                 {"ack": a and a["payload"], "aucun export": none, "dialog": stats.get("dialog"), "alert": alert, "apres echap": closed})
+
     def setup_command(self, params):
         """host.newDocumentSetup avec `params` : (id, réponse) ; réponse None sans evora:ack à la borne."""
         i = self.command(SETUP_COMMAND, params=json.dumps(params))
@@ -781,6 +832,8 @@ class Banc:
                 self.send("evora:ack", "{ok: true}", ex["id"])
             self.set(label, bool(a and a["payload"].get("ok")) and ep.get("mime") == mime and ep.get("docRef") == doc2
                      and (ep.get("bytes") or {}).get("head", "").startswith(magic), {"ack": a and a["payload"], "export": ep})
+
+        self.export_standards()
 
         # Sélecteur de la coquille.
         n = self.count()

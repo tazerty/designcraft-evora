@@ -3034,12 +3034,15 @@ pub fn show(app: &mut DesignApp, ctx: &egui::Context) {
     }
     app.ui.dialog = Some(d);
     match result {
-        Some(true) => {
-            let _ = confirm(app);
-        }
+        Some(true) => confirm_by_user(app),
         Some(false) => cancel(app),
         None => {}
     }
+}
+
+/// OK chosen by the user, on the button or with Enter (Evora build, couture CL6-03).
+pub fn confirm_by_user(app: &mut DesignApp) {
+    let _ = confirm(app);
 }
 
 /// Cell Options keys (`table.getCellStroke` names) and whether each belongs to the stroke.
